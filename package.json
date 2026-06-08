@@ -1,0 +1,22 @@
+{
+  "name": "hono-backend-template-docs",
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.33.0",
+  "description": "",
+  "author": "",
+  "license": "ISC",
+  "keywords": [],
+  "scripts": {
+    "lint": "eslint",
+    "lint:fix": "eslint --fix"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
+    "@tanstack/eslint-plugin-query": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-format": "catalog:",
+    "eslint-plugin-react-refresh": "catalog:",
+    "typescript": "catalog:"
+  }
+}
