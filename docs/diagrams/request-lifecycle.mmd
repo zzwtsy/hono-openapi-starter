@@ -1,0 +1,13 @@
+flowchart TD
+  A[接收请求] --> B[全局 middleware]
+  B --> C[生成/读取 requestId]
+  C --> D[访问日志开始]
+  D --> E[feature 路由]
+  E --> F[route middleware]
+  F --> G[handler]
+  G --> H[use-case]
+  H --> I[repository 或 Better Auth API]
+  I --> J[响应构建]
+  J --> K[错误映射]
+  K --> L[访问日志结束]
+  L --> M[HTTP 响应]

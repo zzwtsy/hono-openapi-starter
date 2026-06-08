@@ -1,0 +1,15 @@
+.agents/** linguist-generated=true
+
+# 统一换行符为 LF，避免跨平台协作时的换行符混乱
+* text=auto eol=lf
+
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary

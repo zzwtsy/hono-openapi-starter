@@ -1,0 +1,12 @@
+flowchart TD
+  A[请求校验] -->|失败| B[校验错误]
+  B --> C[defaultHook 或错误映射]
+  C --> D[COMMON_VALIDATION_FAILED]
+
+  E[handler 或 use-case] -->|throw AppError| F[已知业务错误]
+  F --> G[错误映射]
+  G --> H[统一错误响应]
+
+  I[未知异常] --> J[normalizeUnknownError]
+  J --> K[COMMON_INTERNAL_ERROR]
+  K --> L[通用 500 响应与完整内部日志]

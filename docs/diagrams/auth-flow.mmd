@@ -1,0 +1,19 @@
+sequenceDiagram
+  participant Client as 客户端
+  participant Hono
+  participant BetterAuth as Better Auth
+  participant DB as 数据库
+
+  Client->>Hono: 提交登录请求 POST /api/auth/sign-in/email
+  Hono->>BetterAuth: 调用 auth.handler(request)
+  BetterAuth->>DB: 校验用户并创建 session
+  DB-->>BetterAuth: 返回 session
+  BetterAuth-->>Hono: 写入 cookie 并返回原生响应
+  Hono-->>Client: 返回 auth 原生响应
+
+  Client->>Hono: 读取当前用户 GET /api/v1/me
+  Hono->>BetterAuth: 调用 auth.api.getSession(headers)
+  BetterAuth->>DB: 读取 session
+  DB-->>BetterAuth: 返回 user/session
+  BetterAuth-->>Hono: 返回 user/session
+  Hono-->>Client: 返回统一 envelope 业务响应
