@@ -1,5 +1,7 @@
 import antfu from "@antfu/eslint-config";
-import pluginQuery from "@tanstack/eslint-plugin-query";
+
+const appSourceFiles = ["apps/{frontend,backend}/src/**/*.{ts,tsx}"];
+const frontendSourceFiles = ["apps/frontend/src/**/*.{ts,tsx}"];
 
 export default antfu({
   formatters: true,
@@ -16,25 +18,25 @@ export default antfu({
     "**/*.md",
     "**/.agents/**",
     "apps/frontend/src/routeTree.gen.ts",
-    "apps/backend/src/db/migrations",
+    "apps/backend/src/db/migrations/**",
   ],
   rules: {
     "style/brace-style": ["error", "1tbs", { allowSingleLine: true }],
     "jsdoc/check-param-names": "off",
   },
 }).append({
-  plugins: {
-    "@tanstack/query": pluginQuery,
-  },
-}).append({
-  files: ["apps/frontend/src/**/*.{ts,tsx}"],
+  files: appSourceFiles,
   rules: {
-    "react-refresh/only-export-components": "off",
     "ts/strict-boolean-expressions": ["error", {
       allowString: true,
       allowNumber: false,
       allowNullableObject: true,
       allowNullableBoolean: false,
     }],
+  },
+}).append({
+  files: frontendSourceFiles,
+  rules: {
+    "react-refresh/only-export-components": "off",
   },
 });
