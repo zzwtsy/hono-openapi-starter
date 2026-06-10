@@ -1,9 +1,11 @@
 import type { OpenAPIHono, RouteConfig, RouteHandler } from "@hono/zod-openapi";
+import type { HonoLogLayerVariables } from "@loglayer/hono";
 import type { Schema } from "hono";
 
 export interface AppBindings {
-  Variables: {
+  Variables: HonoLogLayerVariables & {
     requestId: string;
+    userId?: string;
   };
 }
 

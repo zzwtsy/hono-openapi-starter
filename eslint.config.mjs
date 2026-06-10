@@ -1,7 +1,6 @@
 import antfu from "@antfu/eslint-config";
 
 const appSourceFiles = ["apps/{frontend,backend}/src/**/*.{ts,tsx}"];
-const backendBootstrapFiles = ["apps/backend/src/index.ts"];
 const frontendSourceFiles = ["apps/frontend/src/**/*.{ts,tsx}"];
 
 export default antfu({
@@ -39,10 +38,5 @@ export default antfu({
   files: frontendSourceFiles,
   rules: {
     "react-refresh/only-export-components": "off",
-  },
-}).append({
-  files: backendBootstrapFiles,
-  rules: {
-    "no-console": ["error", { allow: ["log", "warn", "error"] }],
   },
 });

@@ -44,11 +44,11 @@ src/core/logger/
 
 | 字段 | 说明 |
 | --- | --- |
-| `method` | HTTP 方法 |
-| `path` | 请求路径 |
-| `status` | HTTP 状态码 |
-| `durationMs` | 请求耗时 |
-| `userId` | 已认证用户 ID，可为空 |
+| `req.method` | HTTP 方法 |
+| `req.url` | 请求路径 |
+| `req.remoteAddress` | 客户端地址，优先来自 `x-forwarded-for`，其次 `x-real-ip` |
+| `res.statusCode` | HTTP 状态码 |
+| `responseTime` | 请求耗时，单位毫秒 |
 
 错误日志额外字段：
 
@@ -56,18 +56,20 @@ src/core/logger/
 | --- | --- |
 | `code` | 业务错误码 |
 | `status` | HTTP 状态码 |
+| `type` | 错误类型 |
 | `stack` | 错误栈 |
 | `cause` | 原始错误原因 |
 
 ## JSONL 示例
 
 ```json
-{"ts":"2026-06-03T12:00:00.000Z","level":"info","msg":"request completed","requestId":"req_123","method":"GET","path":"/api/v1/users","status":200,"durationMs":12,"userId":"user_123"}
+{"ts":"2026-06-03T12:00:00.000Z","level":"info","msg":"request completed","requestId":"req_123","req":{"method":"GET","url":"/api/v1/users","remoteAddress":"127.0.0.1"},"res":{"statusCode":200},"responseTime":12}
 ```
 
 ## 初始化示例
 
 ```ts
+import { honoLogLayer } from "@loglayer/hono";
 import { LogLayer } from "loglayer";
 import { serializeError } from "serialize-error";
 import { LogFileRotationTransport } from "@loglayer/transport-log-file-rotation";
@@ -96,46 +98,35 @@ export const logger = new LogLayer({
 ## Hono middleware 示例
 
 ```ts
-import { createMiddleware } from "hono/factory";
+import { honoLogLayer } from "@loglayer/hono";
 import { logger } from "./index";
+import { resolveRequestId } from "../http/request-id-middleware";
 
 export const loggerMiddleware = () =>
-  createMiddleware(async (c, next) => {
-    const start = performance.now();
-    const requestId = c.get("requestId");
-    const method = c.req.method;
-    const path = c.req.path;
-
-    const reqLogger = logger.withContext({ requestId, method, path });
-    c.set("logger", reqLogger);
-
-    try {
-      await next();
-
-      const durationMs = Math.round((performance.now() - start) * 100) / 100;
-
-      reqLogger
-        .withMetadata({
-          status: c.res.status,
-          durationMs,
-          userId: c.get("user")?.id ?? null,
-        })
-        .info("request completed");
-    } catch (error) {
-      const durationMs = Math.round((performance.now() - start) * 100) / 100;
-
-      reqLogger
-        .withMetadata({
-          status: c.res.status || 500,
-          durationMs,
-          userId: c.get("user")?.id ?? null,
-        })
-        .withError(error as Error)
-        .error("request failed");
-
-      throw error;
-    }
+  honoLogLayer({
+    instance: logger,
+    requestId: resolveRequestId,
+    autoLogging: {
+      request: false,
+      response: true,
+    },
   });
+```
+
+错误日志由统一 `errorHandler` 记录，复用 request-scoped logger：
+
+```ts
+c.var.logger
+  .withMetadata({
+    requestId: c.get("requestId"),
+    req: { method: c.req.method, url: c.req.path },
+    res: { statusCode },
+    status: statusCode,
+    code,
+    type,
+  })
+  .withError(error)
+  .error("request failed");
 ```
 
 ## 敏感信息脱敏

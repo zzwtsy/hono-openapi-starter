@@ -12,10 +12,16 @@
   "dependencies": {
     "@hono/node-server": "catalog:",
     "@hono/zod-openapi": "catalog:",
+    "@loglayer/hono": "catalog:",
+    "@loglayer/plugin-redaction": "catalog:",
+    "@loglayer/transport-log-file-rotation": "catalog:",
+    "@loglayer/transport-simple-pretty-terminal": "catalog:",
     "@scalar/hono-api-reference": "catalog:",
     "dotenv": "catalog:",
     "dotenv-expand": "catalog:",
     "hono": "catalog:",
+    "loglayer": "catalog:",
+    "serialize-error": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

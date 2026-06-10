@@ -17,8 +17,6 @@ export const EnvSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]),
   /** 保留的最大日志文件数量 (默认: 90) */
   LOG_MAX_FILES: z.coerce.number().default(90),
-  /** 是否删除非当前进程创建的日志文件, 默认不删除 */
-  LOG_REMOVE_OTHER_FILES: z.stringbool().default(false),
 
   // --- 数据库相关配置 ---
   DATABASE_URL: z.string(),

@@ -112,6 +112,7 @@ tests/
 - requestId 已写入日志。
 - 敏感字段已脱敏。
 - 生产 JSONL 每行都是合法 JSON。
-- 错误日志包含 code/status/requestId。
+- request log 包含 `req`、`res`、`responseTime`。
+- 错误日志包含 `code`、`status`、`type`、`requestId`。
 
 不要对 pretty console 输出做重快照。

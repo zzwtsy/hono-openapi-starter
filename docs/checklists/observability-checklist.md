@@ -8,9 +8,9 @@ lastReviewedAt: 2026-06-03
 
 ## 日志
 
-- [ ] request log 包含 method/path/status/durationMs/requestId。
-- [ ] error log 包含 code/status/stack/requestId。
-- [ ] userId 在认证后写入日志上下文。
+- [ ] request log 包含 `requestId`、`req.method`、`req.url`、`res.statusCode`、`responseTime`。
+- [ ] error log 包含 `code`、`status`、`type`、`stack`、`requestId`、`req`、`res`。
+- [ ] 认证后需要写用户维度日志时，通过 request-scoped logger 写入结构化 metadata。
 - [ ] JSONL 每行都是合法 JSON。
 - [ ] 生产日志按天轮转。
 - [ ] 日志脱敏规则有测试覆盖。
@@ -21,7 +21,7 @@ lastReviewedAt: 2026-06-03
 - [ ] 响应头返回 `X-Request-Id`。
 - [ ] 响应体返回 `meta.requestId`。
 - [ ] 日志返回 `requestId`。
-- [ ] 预留 `trace_id` 和 `span_id` 字段。
+- [ ] 需要 trace correlation 时启用 LogLayer OpenTelemetry plugin 写入 trace/span 字段。
 
 ## 健康检查
 
