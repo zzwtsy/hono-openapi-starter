@@ -5,8 +5,6 @@ import type { ErrorCode } from "../errors/error-registry.js";
 import type { AppBindings } from "./context.js";
 import { errorRegistry } from "../errors/error-registry.js";
 
-export type JsonErrorStatusCode = 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500;
-
 export interface ResponseMeta {
   requestId: string;
 }
