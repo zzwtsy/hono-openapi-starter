@@ -1,7 +1,7 @@
 import antfu from "@antfu/eslint-config";
 
 const appSourceFiles = ["apps/{frontend,backend}/src/**/*.{ts,tsx}"];
-const frontendSourceFiles = ["apps/frontend/src/**/*.{ts,tsx}"];
+const frontendUiSourceFiles = ["apps/frontend/src/components/ui/**/*.{ts,tsx}"];
 
 export default antfu({
   formatters: true,
@@ -35,7 +35,7 @@ export default antfu({
     }],
   },
 }).append({
-  files: frontendSourceFiles,
+  files: frontendUiSourceFiles,
   rules: {
     "react-refresh/only-export-components": "off",
   },
