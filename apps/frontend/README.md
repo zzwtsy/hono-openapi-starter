@@ -1,21 +1,49 @@
-# React + TypeScript + Vite + shadcn/ui
+---
+status: Active
+owner: frontend-platform
+lastReviewedAt: 2026-06-11
+---
 
-This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
+# Frontend App
 
-## Adding components
+这是 workspace 中的前端基础壳应用，使用 React、TypeScript、Vite、Tailwind CSS 和 shadcn/ui。
 
-To add components to your app, run the following command:
+## 当前状态
+
+- 入口：`src/main.tsx`。
+- 主应用：`src/App.tsx`。
+- 已配置 Vite、React、Tailwind CSS 和 shadcn/ui。
+- 已包含基础 `Button` 组件示例。
+- 当前尚未接入后端 API、路由系统或业务页面。
+
+## 常用命令
+
+从仓库根目录运行：
 
 ```bash
-npx shadcn@latest add button
+pnpm --filter frontend dev
+pnpm --filter frontend build
+pnpm --filter frontend lint
+pnpm --filter frontend typecheck
+pnpm --filter frontend preview
 ```
 
-This will place the ui components in the `src/components` directory.
+在 `apps/frontend` 目录内也可以运行对应脚本：
 
-## Using components
+```bash
+pnpm dev
+pnpm build
+pnpm lint
+pnpm typecheck
+pnpm preview
+```
 
-To use the components in your app, import them as follows:
+## shadcn/ui
+
+UI 组件放在 `src/components/ui`。当前示例：
 
 ```tsx
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 ```
+
+新增 shadcn/ui 组件时，在 frontend package 上下文中运行 CLI，并保持组件输出到现有 `src/components` 结构。
