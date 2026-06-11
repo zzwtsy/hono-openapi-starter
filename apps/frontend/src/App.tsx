@@ -1,3 +1,4 @@
+import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 
 export function App() {
@@ -10,13 +11,7 @@ export function App() {
           <p>We&apos;ve already added the button component for you.</p>
           <Button className="mt-2">Button</Button>
         </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press
-          {" "}
-          <kbd>d</kbd>
-          {" "}
-          to toggle dark mode)
-        </div>
+        <ModeToggle />
       </div>
     </div>
   );

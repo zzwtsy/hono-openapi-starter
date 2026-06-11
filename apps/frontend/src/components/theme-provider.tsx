@@ -1,6 +1,6 @@
 import * as React from "react";
 
-type Theme = "dark" | "light" | "system";
+export type Theme = "dark" | "light" | "system";
 type ResolvedTheme = "dark" | "light";
 
 interface ThemeProviderProps {
@@ -40,11 +40,18 @@ function getSystemTheme(): ResolvedTheme {
 
 function disableTransitionsTemporarily() {
   const style = document.createElement("style");
+
   style.appendChild(
-    document.createTextNode(
-      "*,*::before,*::after{-webkit-transition:none!important;transition:none!important}",
-    ),
+    document.createTextNode(`
+      *:not(.theme-toggle-icon),
+      *:not(.theme-toggle-icon)::before,
+      *:not(.theme-toggle-icon)::after {
+        -webkit-transition: none !important;
+        transition: none !important;
+      }
+    `),
   );
+
   document.head.appendChild(style);
 
   return () => {
@@ -57,29 +64,10 @@ function disableTransitionsTemporarily() {
   };
 }
 
-function isEditableTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  if (target.isContentEditable) {
-    return true;
-  }
-
-  const editableParent = target.closest(
-    "input, textarea, select, [contenteditable='true']",
-  );
-  if (editableParent) {
-    return true;
-  }
-
-  return false;
-}
-
 export function ThemeProvider({
   children,
   defaultTheme = "system",
-  storageKey = "theme",
+  storageKey = "vite-ui-theme",
   disableTransitionOnChange = true,
   ...props
 }: ThemeProviderProps) {
@@ -137,46 +125,6 @@ export function ThemeProvider({
       mediaQuery.removeEventListener("change", handleChange);
     };
   }, [themeInternal, applyTheme]);
-
-  React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat) {
-        return;
-      }
-
-      if (event.metaKey || event.ctrlKey || event.altKey) {
-        return;
-      }
-
-      if (isEditableTarget(event.target)) {
-        return;
-      }
-
-      if (event.key.toLowerCase() !== "d") {
-        return;
-      }
-
-      setThemeInternal((currentTheme) => {
-        const nextTheme
-          = currentTheme === "dark"
-            ? "light"
-            : currentTheme === "light"
-              ? "dark"
-              : getSystemTheme() === "dark"
-                ? "light"
-                : "dark";
-
-        localStorage.setItem(storageKey, nextTheme);
-        return nextTheme;
-      });
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [storageKey]);
 
   React.useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
