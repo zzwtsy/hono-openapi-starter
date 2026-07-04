@@ -64,6 +64,10 @@ src/
       permissions.ts
       openapi.ts
 
+    authorization/
+      permission-service.ts
+      check.ts
+
   db/
     client.ts
     index.ts
@@ -83,6 +87,12 @@ src/
       shared/
         ids.ts
         timestamps.ts
+      organizations.ts
+      roles.ts
+      permissions.ts
+      role-permissions.ts
+      user-roles.ts
+      user-permissions.ts
       users.ts
       audit-logs.ts
       relations.ts

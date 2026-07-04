@@ -20,6 +20,7 @@ lastReviewedAt: 2026-06-03
 - [统一响应格式](docs/conventions/response-envelope.md)
 - [错误码体系](docs/conventions/error-code-system.md)
 - [Better Auth 集成](docs/conventions/auth-better-auth.md)
+- [权限层规范](docs/conventions/authorization.md)
 - [Drizzle 数据库规范](docs/conventions/database-drizzle.md)
 - [LogLayer 日志规范](docs/conventions/logging-loglayer.md)
 - [开发流程规范](docs/conventions/development-workflow.md)

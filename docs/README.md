@@ -44,7 +44,7 @@ lastReviewedAt: 2026-06-03
 | 新增 feature | `docs/architecture/directory-structure.md`、`docs/conventions/development-workflow.md`、`docs/features/_template.md` |
 | 新增 API | `docs/conventions/api-openapi.md`、`docs/conventions/response-envelope.md`、`docs/conventions/error-code-system.md`、`docs/conventions/testing-strategy.md` |
 | 新增错误码 | `docs/conventions/error-code-system.md`、相关 feature 文档、`docs/conventions/testing-strategy.md` |
-| 修改认证或权限 | `docs/conventions/auth-better-auth.md`、`docs/adr/0003-keep-better-auth-native.md`、相关 feature 文档 |
+| 修改认证或权限 | `docs/conventions/auth-better-auth.md`、`docs/conventions/authorization.md`、`docs/adr/0003-keep-better-auth-native.md`、`docs/adr/0004-authorization-layer.md`、相关 feature 文档 |
 | 修改数据库 | `docs/conventions/database-drizzle.md`、`docs/conventions/development-workflow.md`、相关 feature 文档 |
 | 排查日志或可观测性 | `docs/conventions/logging-loglayer.md`、`docs/conventions/ci-cd-security-observability.md`、`docs/checklists/observability-checklist.md` |
 | 修改文档治理 | `AGENTS.md`、`docs/conventions/documentation-system.md`、本文件 |
@@ -71,6 +71,7 @@ docs/
     response-envelope.md
     error-code-system.md
     auth-better-auth.md
+    authorization.md
     database-drizzle.md
     logging-loglayer.md
     documentation-system.md
@@ -86,6 +87,7 @@ docs/
     0001-feature-slices.md
     0002-unified-response-envelope.md
     0003-keep-better-auth-native.md
+    0004-authorization-layer.md
 
   diagrams/
     request-lifecycle.mmd
