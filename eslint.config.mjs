@@ -1,5 +1,4 @@
 import antfu from "@antfu/eslint-config";
-import pluginQuery from "@tanstack/eslint-plugin-query";
 
 export default antfu({
   formatters: true,
@@ -18,13 +17,17 @@ export default antfu({
     "apps/frontend/src/routeTree.gen.ts",
     "apps/backend/src/db/migrations",
   ],
+  overrides: {
+    javascript: {
+      "no-console": "error",
+    },
+    typescript: {
+      "no-console": "error",
+    },
+  },
   rules: {
     "style/brace-style": ["error", "1tbs", { allowSingleLine: true }],
     "jsdoc/check-param-names": "off",
-  },
-}).append({
-  plugins: {
-    "@tanstack/query": pluginQuery,
   },
 }).append({
   files: ["apps/frontend/src/**/*.{ts,tsx}"],

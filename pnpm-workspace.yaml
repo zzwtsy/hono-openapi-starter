@@ -28,7 +28,6 @@ catalog:
   "@loglayer/transport-simple-pretty-terminal": ^3.2.0
   "@scalar/hono-api-reference": ^0.11.8
   "@tailwindcss/vite": ^4
-  "@tanstack/eslint-plugin-query": ^5.101.2
   "@types/node": ^24
   "@types/react": ^19
   "@types/react-dom": ^19
@@ -36,6 +35,8 @@ catalog:
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
   dotenv: ^17.4.2
+  drizzle-kit: ^0.31.10
+  drizzle-orm: ^0.45.2
   eslint: ^10.3.0
   eslint-plugin-format: ^2.0.1
   eslint-plugin-react-refresh: ^0.5.3
@@ -43,6 +44,7 @@ catalog:
   hono: ^4.12.27
   loglayer: ^9.3.0
   lucide-react: ^1.23.0
+  postgres: ^3.4.9
   radix-ui: ^1.6.1
   react: ^19.2.7
   react-dom: ^19.2.7
