@@ -1,7 +1,7 @@
 {
   "name": "hono-backend-template-docs",
   "version": "1.0.0",
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@11.9.0",
   "description": "",
   "author": "",
   "license": "ISC",
