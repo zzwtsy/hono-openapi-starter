@@ -93,50 +93,31 @@ export const logger = new LogLayer({
 });
 ```
 
-## Hono middleware 示例
+## Hono 中间件集成
+
+使用 `@loglayer/hono` 官方集成创建 request-scoped logger 并记录 pino-http 风格访问日志。官方集成内部基于 `child()` 隔离每个请求的 logger，避免直接 `logger.withContext()` 污染全局单例导致的并发串号问题。
 
 ```ts
-import { createMiddleware } from "hono/factory";
+import { honoLogLayer } from "@loglayer/hono";
 import { logger } from "./index";
+import { resolveRequestId } from "../http/request-id-middleware";
 
-export const loggerMiddleware = () =>
-  createMiddleware(async (c, next) => {
-    const start = performance.now();
-    const requestId = c.get("requestId");
-    const method = c.req.method;
-    const path = c.req.path;
-
-    const reqLogger = logger.withContext({ requestId, method, path });
-    c.set("logger", reqLogger);
-
-    try {
-      await next();
-
-      const durationMs = Math.round((performance.now() - start) * 100) / 100;
-
-      reqLogger
-        .withMetadata({
-          status: c.res.status,
-          durationMs,
-          userId: c.get("user")?.id ?? null,
-        })
-        .info("request completed");
-    } catch (error) {
-      const durationMs = Math.round((performance.now() - start) * 100) / 100;
-
-      reqLogger
-        .withMetadata({
-          status: c.res.status || 500,
-          durationMs,
-          userId: c.get("user")?.id ?? null,
-        })
-        .withError(error as Error)
-        .error("request failed");
-
-      throw error;
-    }
-  });
+app.use("*", honoLogLayer({
+  instance: logger,
+  requestId: resolveRequestId,
+  autoLogging: {
+    request: false,
+    response: true,
+  },
+}));
 ```
+
+集成后 `c.var.logger` 即为带 `requestId`/`method`/`path` 上下文的请求级 logger，feature handler 与错误处理直接复用。
+
+注意：
+
+- `await next()` 不会抛错（Hono 把异常转成 Response 回灌 `c.res`），访问日志中间件**不要**用 `try/catch next` 兜底；错误日志统一在 `app.onError` 里用 `c.var.logger.withError(err).error(...)` 写。
+- `resolveRequestId` 用 `WeakMap<Request, string>` 缓存，保证中间件与 logger 集成共用同一个 requestId。
 
 ## 敏感信息脱敏
 

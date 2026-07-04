@@ -3,17 +3,31 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && tsc-alias",
-    "start": "node dist/index.js"
+    "build": "tsc -p tsconfig.build.json && tsc-alias",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
-    "hono": "catalog:"
+    "@hono/zod-openapi": "catalog:",
+    "@loglayer/hono": "catalog:",
+    "@loglayer/plugin-redaction": "catalog:",
+    "@loglayer/transport-log-file-rotation": "catalog:",
+    "@loglayer/transport-simple-pretty-terminal": "catalog:",
+    "@scalar/hono-api-reference": "catalog:",
+    "dotenv": "catalog:",
+    "hono": "catalog:",
+    "loglayer": "catalog:",
+    "serialize-error": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "tsc-alias": "catalog:",
     "tsx": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -138,7 +138,7 @@ lastReviewedAt: 2026-06-03
 生成规则：
 
 1. 优先读取可信上游传来的 `X-Request-Id`。
-2. 如果不存在，则生成新的 UUID。
+2. 如果不存在，则生成新的 UUID（模板使用 UUIDv4，`crypto.randomUUID()`；上方示例中的 v7 格式仅为 UUID 形态展示）。
 3. 写入 Hono context。
 4. 写入 response header。
 5. 写入 response body。
