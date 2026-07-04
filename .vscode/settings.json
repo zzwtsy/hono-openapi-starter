@@ -58,5 +58,5 @@
     "defineAppConfig"
   ],
   "js/ts.tsdk.path": "node_modules\\typescript\\lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true
+  "js/ts.tsdk.promptToUseWorkspaceVersion": true
 }
