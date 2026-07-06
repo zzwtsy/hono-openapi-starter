@@ -197,6 +197,14 @@ src/
 
 不放业务规则。
 
+## feature 分层选择
+
+按复杂度选择是否 service/repository(见 [开发流程规范](../conventions/development-workflow.md)):
+
+- 简单 feature:无 service/repository,handler 直接 `db`
+- 中等 feature:有 service(直接 `db`),无 repository
+- 复杂 feature:分层,repository 接收 `db | tx`
+
 ## 简单 feature 形态
 
 适合 `health`、`profile`、`settings` 这类小模块。
@@ -220,7 +228,6 @@ features/users/
   handlers.ts
   schemas.ts
   service.ts
-  repository.ts
   errors.ts
   permissions.ts
   users.test.ts

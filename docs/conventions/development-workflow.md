@@ -37,7 +37,7 @@ lastReviewedAt: 2026-06-03
 2. 更新 `db/schema/index.ts`。
 3. 生成 migration。
 4. review migration SQL。
-5. 编写 repository。
+5. 数据访问:简单/中等 feature 在 handler/service 直接用 `db`;复杂 feature 编写 repository(接收 `db | tx`)。
 6. 编写 integration test。
 7. 更新数据模型文档。
 
@@ -50,41 +50,47 @@ lastReviewedAt: 2026-06-03
 5. 更新错误码文档。
 6. 添加错误响应测试。
 
+## feature 分层选择
+
+按复杂度选择分层:
+
+- **简单 feature**(health、profile、settings):无 service/repository,handler 直接用 `db`。
+- **中等 feature**(users、projects):有 service(业务逻辑 + 直接 `db`),无 repository。
+- **复杂 feature**(billing、audit-logs):分层(handler → service → repository),repository 接收 `db | tx` 支持事务。
+
+core 基础设施(含权限层)直接用全局 `db`,不传 `exec`。
+
 ## handler 规范
 
 handler 只做：
 
 - 读取 `c.req.valid(...)`
 - 读取 `c.get("user")`、`c.get("requestId")`
-- 调用 service/use-case
+- 调用 service/use-case(中等/复杂 feature)或直接 `db`(简单 feature)
 - 返回 response helper
 
-handler 不做：
-
-- 复杂业务逻辑
-- 直接写 SQL
-- 拼装错误响应
-- 直接访问 Drizzle table
-- 直接判断复杂权限
+简单 feature(无 service)handler 可直接用 `db`;中等/复杂 feature handler 调 service,不直接访问 db。
 
 ## service/use-case 规范
 
 service/use-case 负责：
 
 - 业务规则
-- 事务边界
+- 事务边界(`db.transaction`)
 - 权限策略调用
-- 调用多个 repository
+- 数据访问:中等 feature 直接用 `db`;复杂 feature 调 repository
 - 抛 `AppError`
 
-## repository 规范
+## repository 规范(复杂 feature 适用)
+
+复杂 feature(billing、audit-logs 等)用 repository 分层;简单/中等 feature 直接在 handler/service 用 `db`,无需 repository。
 
 repository 负责：
 
 - 数据查询
 - 数据写入
 - 映射数据库结果
-- 接收 `db | tx`
+- 接收 `db | tx`(事务由 service 控制)
 
 repository 不负责：
 

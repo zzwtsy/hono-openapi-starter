@@ -152,17 +152,21 @@ declare module "@/core/auth/permissions" {
 
 ```ts
 import { createMiddleware } from "hono/factory";
+import { PermissionService } from "@/core/authorization";
 import { AppError } from "@/core/errors/app-error";
 import type { AppPermission } from "@/core/auth/permissions";
 
-export const requirePermission = (permission: AppPermission) =>
+export const requirePermission = (permission: AppPermission, options?: { orgId?: string }) =>
   createMiddleware(async (c, next) => {
     const user = c.get("user");
-    const allowed = await hasPermission(user, permission);
+    if (!user) throw new AppError("COMMON_UNAUTHORIZED");
 
-    if (!allowed) {
-      throw new AppError("COMMON_FORBIDDEN");
-    }
+    const orgId = options?.orgId ?? user.orgId;
+    if (!orgId) throw new AppError("COMMON_FORBIDDEN");
+
+    // PermissionService 直接用全局 db(core 基础设施不传 db/tx)
+    const allowed = await PermissionService.check(user.id, permission, orgId);
+    if (!allowed) throw new AppError("COMMON_FORBIDDEN");
 
     await next();
   });
