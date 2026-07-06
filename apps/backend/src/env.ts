@@ -17,7 +17,7 @@ config({
 const parsed = safeParseEnv(process.env);
 
 if (!parsed.success) {
-  console.error(formatEnvValidationError(parsed.error, ENV_FILE_HINT));
+  process.stderr.write(`${formatEnvValidationError(parsed.error, ENV_FILE_HINT)}\n`);
   // 注意：环境变量不合法时主动终止进程，防止应用带着错误配置启动。
   process.exit(1);
 }
