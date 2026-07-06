@@ -10,7 +10,8 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "auth:generate": "pnpm dlx @better-auth/cli@latest generate --config src/core/auth/better-auth.ts --output src/db/schema/auth-schema.ts -y"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
@@ -20,6 +21,7 @@
     "@loglayer/transport-log-file-rotation": "catalog:",
     "@loglayer/transport-simple-pretty-terminal": "catalog:",
     "@scalar/hono-api-reference": "catalog:",
+    "better-auth": "catalog:",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",

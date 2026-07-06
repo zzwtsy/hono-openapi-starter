@@ -16,6 +16,7 @@ export default antfu({
     "**/.agents/**",
     "apps/frontend/src/routeTree.gen.ts",
     "apps/backend/src/db/migrations",
+    "apps/backend/src/db/schema/auth-schema.ts",
   ],
   overrides: {
     javascript: {
