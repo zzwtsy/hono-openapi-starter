@@ -24,6 +24,7 @@ lastReviewedAt: 2026-06-03
 - [Drizzle 数据库规范](docs/conventions/database-drizzle.md)
 - [LogLayer 日志规范](docs/conventions/logging-loglayer.md)
 - [开发流程规范](docs/conventions/development-workflow.md)
+- [注释规范](docs/conventions/commenting.md)
 - [测试策略](docs/conventions/testing-strategy.md)
 - [CI/CD、安全与可观测性](docs/conventions/ci-cd-security-observability.md)
 

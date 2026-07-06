@@ -94,53 +94,9 @@ repository 不负责：
 - 复杂业务规则
 - 权限判断
 
-## 注释规范
+## 注释与 TODO
 
-注释解释“为什么”，不是重复“代码做什么”。
-
-需要 TSDoc 的场景：
-
-- exported function
-- 模板公共 API
-- OpenAPI helper
-- logger helper
-- auth middleware
-- error helper
-- 复杂 use-case
-- 复杂 SQL
-- 安全策略
-- 兼容性逻辑
-
-不建议写注释的场景：
-
-```ts
-// Get user by id
-const user = await userRepository.findById(id);
-```
-
-推荐注释：
-
-```ts
-/**
- * Creates a user inside a transaction because user creation also writes
- * an audit log entry. Both records must be committed or rolled back together.
- */
-export async function createUser(input: CreateUserInput) {
-  // ...
-}
-```
-
-## TODO 格式
-
-```txt
-TODO(issue-or-owner, yyyy-mm-dd): action
-```
-
-示例：
-
-```ts
-// TODO(api-123, 2026-06-03): remove v1 alias after mobile release 2.8
-```
+注释规范(原则、TSDoc、行内注释、TODO/FIXME/HACK 格式、反模式、评审 checklist)见 [注释规范](./commenting.md)。
 
 ## Code Review 检查点
 

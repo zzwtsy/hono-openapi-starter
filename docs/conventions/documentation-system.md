@@ -67,6 +67,7 @@ docs/
     logging-loglayer.md
     documentation-system.md
     development-workflow.md
+    commenting.md
     testing-strategy.md
     ci-cd-security-observability.md
 
