@@ -3,6 +3,7 @@ import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import env from "../../env.js";
+import { permissionCacheMiddleware } from "../authorization/index.js";
 import { errorHandler } from "../errors/error-handler.js";
 import { requestIdMiddleware, resolveRequestId } from "../http/request-id-middleware.js";
 import { logger } from "../logger/index.js";
@@ -33,6 +34,8 @@ export function createApp() {
       response: true,
     },
   }));
+  // 请求级权限 cache（ALS）：同请求内 PermissionService.check 共享结果，避免重复递归 CTE。
+  app.use("*", permissionCacheMiddleware());
   // 错误处理和 404 在 app 边界统一收口，避免 feature handler 自己拼响应格式。
   app.onError(errorHandler);
   app.notFound(notFoundHandler);
