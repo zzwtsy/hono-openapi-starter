@@ -10,8 +10,11 @@ packages:
   - "packages/*"
 
 allowBuilds:
+  cpu-features: set this to true or false
   esbuild: true
   msw: false
+  protobufjs: set this to true or false
+  ssh2: set this to true or false
 
 overrides:
   semver: ^7
@@ -28,6 +31,7 @@ catalog:
   "@loglayer/transport-simple-pretty-terminal": ^3.2.0
   "@scalar/hono-api-reference": ^0.11.8
   "@tailwindcss/vite": ^4
+  "@testcontainers/postgresql": ^12.0.4
   "@types/node": ^24
   "@types/react": ^19
   "@types/react-dom": ^19
