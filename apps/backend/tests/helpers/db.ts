@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 
-import { db } from "../db/client.js";
+import { db } from "../../src/db/client.js";
 
 /**
  * 清空所有业务表(Better Auth 4 表 + 权限层 6 表 + projects),集成测试每个 case 前调用,保证隔离。

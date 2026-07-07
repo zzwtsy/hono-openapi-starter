@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { resetDb } from "../../../tests/helpers/db.js";
 import { db } from "../../db/client.js";
 import {
   organizations,
@@ -10,7 +11,6 @@ import {
   userPermissions,
   userRoles,
 } from "../../db/schema/index.js";
-import { resetDb } from "../../test/db.js";
 import { checkPermission } from "./check.js";
 
 /**

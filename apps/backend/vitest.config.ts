@@ -21,7 +21,7 @@ export default defineConfig({
         test: {
           name: "integration",
           include: ["src/**/*.integration.test.ts"],
-          globalSetup: ["./src/test/global-setup.ts"],
+          globalSetup: ["./tests/helpers/global-setup.ts"],
         },
         resolve: { alias: srcAlias },
       },
