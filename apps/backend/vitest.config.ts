@@ -1,6 +1,8 @@
 import { resolve } from "node:path";
-import process from "node:process";
 import { defineConfig } from "vitest/config";
+
+// vitest 4 projects 模式下,顶层 resolve 不被 project 继承,需在每个 project 配置。
+const srcAlias = { "@": resolve(import.meta.dirname, "src") };
 
 export default defineConfig({
   test: {
@@ -13,6 +15,7 @@ export default defineConfig({
           include: ["src/**/*.test.ts"],
           exclude: ["src/**/*.integration.test.ts"],
         },
+        resolve: { alias: srcAlias },
       },
       {
         test: {
@@ -20,12 +23,8 @@ export default defineConfig({
           include: ["src/**/*.integration.test.ts"],
           globalSetup: ["./src/test/global-setup.ts"],
         },
+        resolve: { alias: srcAlias },
       },
     ],
-  },
-  resolve: {
-    alias: {
-      "@": resolve(process.cwd(), "src"),
-    },
   },
 });

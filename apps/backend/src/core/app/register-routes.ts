@@ -1,5 +1,6 @@
 import type { AppOpenAPI } from "./create-router.js";
 import healthRouter from "@/features/health/index.js";
+import projectsRouter from "@/features/projects/index.js";
 
 import { auth } from "../auth/index.js";
 
@@ -13,4 +14,5 @@ import { auth } from "../auth/index.js";
 export function registerRoutes(app: AppOpenAPI) {
   app.on(["POST", "GET"], "/api/auth/*", async c => auth.handler(c.req.raw));
   app.route("/api/v1", healthRouter);
+  app.route("/api/v1", projectsRouter);
 }
