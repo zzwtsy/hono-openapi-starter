@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 
 import { logger } from "../core/logger/index.js";
-import { db } from "./client.js";
+import { client, db } from "./client.js";
 
 // migrations 文件夹相对脚本位置：开发时 src/db/migrations；
 // 生产构建后需把 migrations copy 到 dist/db/migrations（tsc 不 copy .sql，构建脚本/Dockerfile 处理）。
@@ -16,6 +16,8 @@ const migrationsFolder = resolve(__dirname, "migrations");
 async function main() {
   await migrate(db, { migrationsFolder });
   logger.info("migrated");
+  // 关闭连接池,否则 postgres-js 保持 socket 活跃,进程不退出。
+  await client.end();
 }
 
 main().catch((error) => {
