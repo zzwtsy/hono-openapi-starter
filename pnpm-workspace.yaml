@@ -10,11 +10,11 @@ packages:
   - "packages/*"
 
 allowBuilds:
-  cpu-features: set this to true or false
+  cpu-features: false
   esbuild: true
   msw: false
-  protobufjs: set this to true or false
-  ssh2: set this to true or false
+  protobufjs: false
+  ssh2: false
 
 overrides:
   semver: ^7

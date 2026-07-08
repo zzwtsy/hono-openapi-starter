@@ -143,6 +143,8 @@ db/testing/factories.ts
 
 用途区分：
 
-- `seed.ts`：本地开发和 demo 数据。
+- `seed.ts`：本地开发和 demo 数据（dev-only，生产不跑）。
 - `factories.ts`：测试数据工厂。
 - `reset-db.ts`：integration test 前后清理数据库。
+
+权限目录（`permissions` 表）与标准 `admin` 角色不归 seed：app 启动时由 `syncAuthorizationCatalog` 从代码同步（见 [权限层规范](./authorization.md) 数据生命周期）。`seed.ts` 复用该同步保证本地目录就位。

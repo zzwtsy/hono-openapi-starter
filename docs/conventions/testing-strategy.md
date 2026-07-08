@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-07
+lastReviewedAt: 2026-07-08
 ---
 
 # 测试策略
@@ -33,36 +33,41 @@ lastReviewedAt: 2026-07-07
 
 ### vitest projects 分离
 
-`vitest.config.ts` 用 projects 分离 unit / integration:
+`vitest.config.ts` 用 projects 按目录分离 unit / integration:
 
 - `unit`:`src/**/*.test.ts`,不起容器(默认 `pnpm test`,无需 Docker)
-- `integration`:`src/**/*.integration.test.ts`,globalSetup 起容器(`pnpm test:integration`,需 Docker)
+- `integration`:`tests/integration/**/*.test.ts`,globalSetup 起容器(`pnpm test:integration`,需 Docker)
 
-命名约定:集成测试文件名必须以 `.integration.test.ts` 结尾,才会被 integration project 拾取。
+目录约定:集成测试放 `tests/integration/**` 下(不再用 `.integration.test.ts` 文件名后缀),目录边界让误归类在目录树里显式可见。
 
 ### scripts
 
-- `pnpm test`:只跑 unit(无需 Docker)
+- `pnpm test`:只跑 unit(无需 Docker),本地快速回路
 - `pnpm test:integration`:只跑 integration(需 Docker)
-- `pnpm test:all`:全跑
+- `pnpm test:all`:全跑(需 Docker)
+- `pnpm test:ci`:CI 用,等同 `test:all`(需 Docker)
 
 ### globalSetup
 
-`src/test/global-setup.ts`:
+`tests/helpers/global-setup.ts`:
 
 - 起 `PostgreSqlContainer("postgres:16-alpine")`
 - 把容器连接串写入 `process.env.DATABASE_URL`,让全局 `db`(`db/client.ts`)自动连容器
 - 设置 `EnvSchema` 其余必需 env(测试专用值),让 `env.ts` 校验通过——不依赖 `.env.test` 文件
-- 跑 drizzle `migrate`(独立 client,跑完关闭)
+- 跑 drizzle `migrate`(复用 `src/db/run-migrations.ts`,一次性 client 跑完关闭)
 - teardown 停容器
+
+### worker 收尾
+
+`tests/helpers/integration-teardown.ts` 作为 integration project 的 `setupFiles`,`afterAll` 关闭 worker 的全局 `db` 池(`closeDb`),避免 postgres-js 保持 socket 活跃导致 worker 无法自行退出。
 
 ### resetDb
 
-`src/test/db.ts` 的 `resetDb()`:TRUNCATE 所有业务表(Better Auth 4 表 + 权限层 6 表)CASCADE。集成测试每个 case 前 `beforeEach` 调用,保证隔离。
+`tests/helpers/db.ts` 的 `resetDb()`:动态遍历 drizzle schema 所有表(含 Better Auth、权限层、projects 等,新增表自动包含)TRUNCATE CASCADE。集成测试每个 case 前 `beforeEach` 调用,保证隔离。
 
 ### 写集成测试
 
-集成测试直接 `import { db } from "../../db/client.js"` 做 seed,调被测函数。`checkPermission` 用全局 `db`(连容器),无需 vi.mock。参考 `src/core/authorization/check.integration.test.ts`。
+集成测试放 `tests/integration/<模块>/` 下,直接 `import { db } from "../../../src/db/client.js"` 做 seed,调被测函数。`checkPermission` 用全局 `db`(连容器),无需 vi.mock。参考 `tests/integration/authorization/check.test.ts`。
 
 ## route test
 

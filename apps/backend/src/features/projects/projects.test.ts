@@ -1,7 +1,7 @@
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AppBindings } from "@/core/http/context.js";
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppError } from "@/core/errors/app-error.js";
 
@@ -50,6 +50,11 @@ function authed() {
 }
 
 describe("projects routes", () => {
+  // 每个用例前重置 mock 实现,避免 mockResolvedValue 跨用例残留导致顺序依赖(漏 setup 时报 403 而非假通过)。
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
   it("无 session 时 list 返回 401", async () => {
     mockGetSession.mockResolvedValue(null);
 
@@ -59,7 +64,7 @@ describe("projects routes", () => {
   });
 
   it("有 session 但无权限时 list 返回 403", async () => {
-    mockGetSession.mockResolvedValue({ user: mockUser as never, session: mockSession as never });
+    authed();
     mockCheck.mockResolvedValue(false);
 
     const res = await buildApp().request("/projects");
