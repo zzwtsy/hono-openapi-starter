@@ -1,5 +1,5 @@
 import type { AppBindings } from "../http/context.js";
-import type { AppPermission } from "./permissions.js";
+import type { AppPermission } from "./permissions-manifest.js";
 import { createMiddleware } from "hono/factory";
 
 import { PermissionService } from "../authorization/index.js";
@@ -11,9 +11,9 @@ import { AppError } from "../errors/app-error.js";
  * - 需在 `requireAuth` 之后调用(读 `c.get("user")`)
  * - orgId 默认 `user.orgId`;显式传入则用传入的
  * - 请求级 memoize 由全局 `permissionCacheMiddleware`(ALS)提供,调用方无需关心
- * - `permission` 必须是 `AppPermission` union 的成员;若 TS 报
- *   "string 不可赋值给 never",说明对应 feature 还没通过 module augmentation
- *   声明权限(见 `AppPermissionRegistry`)
+ * - `permission` 必须是 `AppPermission` union 的成员(从 `permissions-manifest.ts` 的
+ *   `APP_PERMISSIONS` 数组推导);若 TS 报 "string 不可赋值给 never",说明对应 feature 还没在
+ *   manifest 展开自己的权限数组
  *
  * @throws {AppError} COMMON_UNAUTHORIZED - user 不存在(防御性,requireAuth 应已跑)
  * @throws {AppError} COMMON_FORBIDDEN - user.orgId 为 null(无组织无权限)或权限检查未通过

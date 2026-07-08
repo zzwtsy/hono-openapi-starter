@@ -1,27 +1,17 @@
 /** 权限名格式:`<resource>.<action>`(如 `users.read`)。 */
 export type PermissionName = `${string}.${string}`;
 
-/** 确保 `T` 是合法权限名(供各 feature 定义字面量 union 用)。 */
-export type EnsurePermissionName<T extends PermissionName> = T;
-
 /**
- * 权限注册表:各 feature 在自己的 `permissions.ts` 通过 module augmentation 汇入。
+ * 权限定义:name + 可选 description。
  *
- * @example
- * declare module "@/core/auth/permissions" {
- *   interface AppPermissionRegistry {
- *     users: "users.read" | "users.create";
- *   }
- * }
- */
-export interface AppPermissionRegistry {}
-
-/**
- * 应用所有权限的联合类型(受 `AppPermissionRegistry` 约束,格式必须为 `<resource>.<action>`)。
+ * 各 feature 在自己的 `permissions.ts` 用 `as const satisfies readonly PermissionDefinition[]`
+ * 声明权限数组;`core/auth/permissions-manifest.ts` 汇总为 `APP_PERMISSIONS`。同一个数组既是
+ * 类型来源(`AppPermission` union 从它推导)又是运行时目录(`syncAuthorizationCatalog` 从它同步进 DB),
+ * 权限名只写一次,漏登记在编译期报错(fail-loud),不会出现「类型合法但运行时缺权限」的静默裂缝。
  *
- * 注册表初始为空,此时该类型为 `never`——直接调 `requirePermission("xxx")` 会报
- * "Argument of type 'string' is not assignable to parameter of type 'never'"。
- * 各 feature 必须先通过 module augmentation(见 `AppPermissionRegistry`)声明自己的权限,
- * 才能在路由里使用 `requirePermission`。
+ * `description` 进数据库 `permissions` 表,供管理界面展示。
  */
-export type AppPermission = AppPermissionRegistry[keyof AppPermissionRegistry] & PermissionName;
+export interface PermissionDefinition {
+  name: PermissionName;
+  description?: string;
+}

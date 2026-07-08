@@ -13,13 +13,7 @@ vi.mock("../authorization/index.js", () => ({
   PermissionService: { check: mockCheck },
 }));
 
-// 测试用权限(module augmentation)。实际业务权限由各 feature permissions.ts 声明。
-declare module "./permissions.js" {
-  interface AppPermissionRegistry {
-    test: "test.read" | "test.write";
-  }
-}
-
+// 测试用真实权限 projects.read(来自 manifest),mock PermissionService 不实际查 DB。
 interface MockUser {
   id: string;
   orgId: string | null;
@@ -33,7 +27,7 @@ function buildApp(user?: MockUser, requirePermissionOptions?: { orgId?: string }
     }
     await next();
   });
-  app.use("/protected", requirePermission("test.read", requirePermissionOptions));
+  app.use("/protected", requirePermission("projects.read", requirePermissionOptions));
   app.get("/protected", c => c.json({ ok: true }));
   app.onError((err, c) => {
     const status = err instanceof AppError ? err.status : 500;
@@ -79,7 +73,7 @@ describe("requirePermission", () => {
 
     await buildApp({ id: "u-1", orgId: "org-1" }).request("/protected");
 
-    expect(mockCheck).toHaveBeenCalledWith("u-1", "test.read", "org-1");
+    expect(mockCheck).toHaveBeenCalledWith("u-1", "projects.read", "org-1");
   });
 
   it("显式 orgId 覆盖 user.orgId", async () => {
@@ -87,6 +81,6 @@ describe("requirePermission", () => {
 
     await buildApp({ id: "u-1", orgId: "org-1" }, { orgId: "other-org" }).request("/protected");
 
-    expect(mockCheck).toHaveBeenCalledWith("u-1", "test.read", "other-org");
+    expect(mockCheck).toHaveBeenCalledWith("u-1", "projects.read", "other-org");
   });
 });
