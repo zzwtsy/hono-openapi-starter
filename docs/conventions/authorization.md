@@ -17,6 +17,22 @@ lastReviewedAt: 2026-07-04
 
 > 决策背景见 [ADR-0004](../adr/0004-authorization-layer.md)。
 
+## 边界划分（Port/Adapter）
+
+权限层按 PEP/PDP 分离，core 只保留 PEP + 抽象 + 无策略基础设施，策略算法与数据查询归 `features/iam`：
+
+| 职责 | 位置 | 说明 |
+| --- | --- | --- |
+| PEP（执行） | `core/auth/require-permission.ts` | 中间件，调 `PermissionService.check` |
+| Port（接口） | `core/authorization/permission-checker.ts` | `PermissionChecker` 接口 + holder + `setPermissionChecker` |
+| memoize 装饰 | `core/authorization/permission-service.ts` | 读 ALS 缓存，miss 调 holder |
+| ALS 缓存机制 | `core/authorization/permission-cache.ts` | 请求级缓存，纯横切基础设施 |
+| 启动同步 | `core/authorization/sync.ts` | 读代码 `APP_PERMISSIONS` 写 db 镜像，无策略 |
+| PDP Adapter | `features/iam/permission-checker.ts` | `IamPermissionChecker`，递归 CTE 算法 + db 查询 |
+| PAP（管理） | `features/iam/service.ts` | 角色/授权/组织管理 API |
+
+core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `app.ts` 启动时 `setPermissionChecker(new IamPermissionChecker())` 装配。这层隔离让 PDP 可替换——将来换 Cerbos/SpiceDB 等外部引擎，只换 Adapter，core 与 PEP 不动。
+
 ## 权限模型
 
 | 概念 | 说明 |
@@ -101,7 +117,7 @@ user_roles(user_id, role_id, org_id, expires_at?)
 user_permissions(user_id, permission, org_id, effect, expires_at?)
 ```
 
-权限字符串由 TypeScript `AppPermission` union 约束（各 feature 在自己的 `permissions.ts` 用 `as const satisfies` 声明权限数组，类型与运行时同源；`permissions-manifest.ts` 汇总为 `APP_PERMISSIONS`，`AppPermission` 从它推导）。数据库 `permissions` 表是代码的镜像，由启动同步写入（见下文）。
+权限字符串由 TypeScript `AppPermission` union 约束（各 feature 在自己的 `permissions.ts` 用 `as const satisfies` 声明权限数组，并用 `declare module` 把权限名 push 到 core 的 `AppPermissionRegistry`；`AppPermission` 从 registry 推导。core 不 import features，类型由 features 反转 push）。数据库 `permissions` 表是代码的镜像，由组装点（`index.ts`）汇总各 feature 权限后启动同步写入（见下文）。
 
 ## 数据生命周期
 
@@ -109,9 +125,9 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 
 | 数据 | 表 | 真相来源 | 生产怎么来 |
 | --- | --- | --- | --- |
-| ① 权限目录 | `permissions` | 代码（`AppPermission` union） | app 启动时代码同步（`syncAuthorizationCatalog`） |
-| ② 角色定义 | `roles` + `role_permissions` | 代码（标准 `admin` 角色） | 同 ①，启动时同步 |
-| ③ 实例数据 | `organizations` / `users` / `user_roles` / `user_permissions` | 每个 deployment 自己 | 管理 API（未来）+ 一次性 bootstrap |
+| ① 权限目录 | `permissions` | 代码（各 feature `permissions.ts` 声明 + `declare module` 注册类型；组装点 `index.ts` 汇总） | 组装点汇总传 `syncAuthorizationCatalog`，app 启动时同步 |
+| ② 角色定义 | `roles` + `role_permissions` | 代码（`admin` 角色，`source='code'`）+ 管理 API（其他角色，`source='instance'`） | `admin` 启动同步；其他角色管理 API 建 |
+| ③ 实例数据 | `organizations` / `users` / `user_roles` / `user_permissions` | 每个 deployment 自己 | 管理 API + 一次性 bootstrap（`pnpm db:bootstrap`） |
 
 ### 代码同步（①②）
 
@@ -123,9 +139,17 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 
 各 feature 在 `permissions.ts` 用 `as const satisfies readonly PermissionDefinition[]` 声明权限数组（类型与运行时同源）；`core/auth/permissions-manifest.ts` 汇总所有 feature 的数组为 `APP_PERMISSIONS`，`AppPermission` union 从它推导。新增 feature 时在 manifest 追加 import + 展开到数组--漏登记会导致 `requirePermission("x")` 编译报错。
 
-### 实例数据（③，未来）
+### 实例数据（③）
 
-组织、用户、授权是 deployment 特定的，走自建管理 API（`/api/v1/*` + envelope，见 [ADR-0004](../adr/0004-authorization-layer.md) 代价）。空生产从 0 开始，管理员建组织、授角色。第一个 admin 的引导（bootstrap）在管理 API 落地时实现。
+组织、用户、授权是 deployment 特定的，走自建管理 API（`/api/v1/*` + envelope，见 [ADR-0004](../adr/0004-authorization-layer.md) 代价）。空生产从 0 开始：先 `pnpm db:bootstrap` 造根组织 + 第一个 admin 用户（授标准 admin 角色），再由 admin 通过管理 API 建组织、建角色、授角色/直接授权。
+
+管理 API 端点（`features/iam` + `features/me`，均需 `iam.read`/`iam.manage`，`/api/v1/me` 仅需认证）：
+
+- `GET /api/v1/me`：当前用户信息 + 有效权限全集
+- `GET /api/v1/permissions`：权限目录（代码同步，只读）
+- 角色：`GET/POST /api/v1/roles`、`PATCH/DELETE /api/v1/roles/{id}`、`GET/POST /api/v1/roles/{id}/permissions`、`DELETE /api/v1/roles/{id}/permissions/{permission}`（仅 `source='instance'` 角色可改删）
+- 用户授权：`POST/DELETE /api/v1/users/{userId}/roles/{roleId}`、`POST/DELETE /api/v1/users/{userId}/permissions/{permission}`、`GET /api/v1/users/{userId}/permissions`
+- 组织：`GET/POST /api/v1/organizations`、`GET/PATCH/DELETE /api/v1/organizations/{orgId}`（改 parentId 防环，有子组织拒绝删除）
 
 ## 性能
 

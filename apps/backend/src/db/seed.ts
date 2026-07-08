@@ -5,6 +5,7 @@ import { hashPassword } from "better-auth/crypto";
 import { ADMIN_ROLE, syncAuthorizationCatalog } from "../core/authorization/index.js";
 import { logger } from "../core/logger/index.js";
 import env from "../env.js";
+import { allPermissions } from "../permissions-catalog.js";
 import { closeDb, db } from "./client.js";
 import { account, organizations, projects, user, userRoles } from "./schema/index.js";
 
@@ -32,7 +33,7 @@ async function main() {
   }
 
   // 权限目录 + 标准 admin 角色(复用启动同步,幂等)
-  await syncAuthorizationCatalog();
+  await syncAuthorizationCatalog(allPermissions);
   // dev 组织
   await db.insert(organizations).values({ id: DEV.org, name: "Dev Org" }).onConflictDoNothing();
   // dev 用户(带 orgId)+ 账号(better-auth 兼容哈希,绕过 DISABLE_SIGN_UP,登录走正常端点)

@@ -5,10 +5,11 @@ import { app } from "./app.js";
 import { syncAuthorizationCatalog } from "./core/authorization/index.js";
 import { logger } from "./core/logger/index.js";
 import env from "./env.js";
+import { allPermissions } from "./permissions-catalog.js";
 
 async function main() {
-  // 启动时从代码同步权限目录 + 标准 admin 角色到 DB(幂等,生产免人肉)。
-  await syncAuthorizationCatalog();
+  // 启动时从代码同步权限目录 + 标准 admin 角色到 DB(幂等)。
+  await syncAuthorizationCatalog(allPermissions);
 
   serve({
     fetch: app.fetch,

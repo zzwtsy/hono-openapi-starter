@@ -24,11 +24,12 @@ export const organizations = pgTable("organizations", {
   index("organizations_parent_id_idx").on(t.parentId),
 ]);
 
-/** 角色:权限集合(如 admin、viewer)。 */
+/** 角色:权限集合(如 admin、viewer)。`source` 区分代码同步角色(code,不可改删)与管理 API 创建角色(instance)。 */
 export const roles = pgTable("roles", {
   id: idColumn(),
   name: text("name").notNull().unique(),
   description: text("description"),
+  source: text("source", { enum: ["code", "instance"] }).notNull().default("instance"),
   createdAt: createdAtColumn(),
   updatedAt: updatedAtColumn(),
 });

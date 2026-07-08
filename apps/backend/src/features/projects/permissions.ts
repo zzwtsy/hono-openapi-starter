@@ -12,3 +12,11 @@ export const projectPermissions = [
 ] as const satisfies readonly PermissionDefinition[];
 
 export type ProjectPermission = (typeof projectPermissions)[number]["name"];
+
+// 类型层:把本 feature 的权限名 push 到 core 的 AppPermissionRegistry(declaration merging)。
+// core 不 import 本文件,但 requirePermission(perm: AppPermission) 能据此编译期校验漏登记。
+declare module "@/core/auth/permissions.js" {
+  interface AppPermissionRegistry {
+    "projects.read": true;
+  }
+}

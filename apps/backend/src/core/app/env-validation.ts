@@ -36,6 +36,14 @@ export const EnvSchema = z.object({
   CORS_ORIGINS: z.string().optional(),
   /** 生产环境是否公开 /openapi.json（默认关闭，避免暴露端点结构） */
   OPENAPI_PUBLIC: z.stringbool().default(false),
+
+  // --- bootstrap（首次部署造第一个 admin，用后可清除密码）---
+  /** bootstrap：首个 admin 邮箱 */
+  BOOTSTRAP_ADMIN_EMAIL: z.email().optional(),
+  /** bootstrap：首个 admin 密码（至少 8 位） */
+  BOOTSTRAP_ADMIN_PASSWORD: z.string().min(8).optional(),
+  /** bootstrap：根组织 ID */
+  BOOTSTRAP_ROOT_ORG_ID: z.string().default("org-root"),
 });
 
 /** 应用启动时环境变量的最终类型。 */

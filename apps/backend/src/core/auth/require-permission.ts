@@ -1,5 +1,5 @@
 import type { AppBindings } from "../http/context.js";
-import type { AppPermission } from "./permissions-manifest.js";
+import type { AppPermission } from "./permissions.js";
 import { createMiddleware } from "hono/factory";
 
 import { PermissionService } from "../authorization/index.js";

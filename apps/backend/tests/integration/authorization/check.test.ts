@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { checkPermission } from "../../../src/core/authorization/check.js";
-import { db } from "../../../src/db/client.js";
+import { db } from "@/db/client.js";
 import {
   organizations,
   permissions,
@@ -10,7 +9,8 @@ import {
   user,
   userPermissions,
   userRoles,
-} from "../../../src/db/schema/index.js";
+} from "@/db/schema/index.js";
+import { IamPermissionChecker } from "@/features/iam/permission-checker.js";
 import { resetDb } from "../../helpers/db.js";
 
 /**
@@ -56,6 +56,8 @@ async function seedBase() {
   });
 }
 
+const checker = new IamPermissionChecker();
+
 beforeEach(async () => {
   await resetDb();
   await seedBase();
@@ -69,7 +71,7 @@ describe("checkPermission", () => {
       orgId: ORG.south,
     });
 
-    const allowed = await checkPermission(USER_ID, PERM.usersRead, ORG.fujian);
+    const allowed = await checker.check(USER_ID, PERM.usersRead, ORG.fujian);
 
     expect(allowed).toBe(true);
   });
@@ -89,7 +91,7 @@ describe("checkPermission", () => {
       effect: "deny",
     });
 
-    const allowed = await checkPermission(USER_ID, PERM.usersDelete, ORG.fujian);
+    const allowed = await checker.check(USER_ID, PERM.usersDelete, ORG.fujian);
 
     expect(allowed).toBe(false);
   });
@@ -107,7 +109,7 @@ describe("checkPermission", () => {
       effect: "deny",
     });
 
-    const allowed = await checkPermission(USER_ID, PERM.usersDelete, ORG.south);
+    const allowed = await checker.check(USER_ID, PERM.usersDelete, ORG.south);
 
     expect(allowed).toBe(true);
   });
@@ -121,7 +123,7 @@ describe("checkPermission", () => {
       expiresAt: new Date(Date.now() - 60_000),
     });
 
-    const allowed = await checkPermission(USER_ID, PERM.usersRead, ORG.south);
+    const allowed = await checker.check(USER_ID, PERM.usersRead, ORG.south);
 
     expect(allowed).toBe(false);
   });
@@ -132,15 +134,15 @@ describe("checkPermission", () => {
       { userId: USER_ID, roleId: ROLE.admin, orgId: ORG.south },
     ]);
 
-    const readOk = await checkPermission(USER_ID, PERM.usersRead, ORG.south);
-    const deleteOk = await checkPermission(USER_ID, PERM.usersDelete, ORG.south);
+    const readOk = await checker.check(USER_ID, PERM.usersRead, ORG.south);
+    const deleteOk = await checker.check(USER_ID, PERM.usersDelete, ORG.south);
 
     expect(readOk).toBe(true);
     expect(deleteOk).toBe(true);
   });
 
   it("无任何授权返回 false", async () => {
-    const allowed = await checkPermission(USER_ID, PERM.usersRead, ORG.south);
+    const allowed = await checker.check(USER_ID, PERM.usersRead, ORG.south);
 
     expect(allowed).toBe(false);
   });
