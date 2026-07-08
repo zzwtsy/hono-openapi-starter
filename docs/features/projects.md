@@ -42,7 +42,7 @@ lastReviewedAt: 2026-07-07
 | --- | --- |
 | `projects.read` | 查看项目 |
 
-权限在 `features/projects/permissions.ts` 声明,通过 module augmentation 汇入 `AppPermissionRegistry`。
+权限在 `features/projects/permissions.ts` 用 `as const satisfies` 声明权限数组,由 `permissions-manifest.ts` 汇总为 `APP_PERMISSIONS`(`AppPermission` 从它推导)。
 
 - `requireAuth()` 校验 Better Auth session,注入 `user`
 - `requirePermission("projects.read")` 检查用户在 `user.orgId` 是否有 `projects.read`(考虑组织树祖先继承)
@@ -106,10 +106,12 @@ sequenceDiagram
   - 有权限 → 200,返回 list envelope
   - detail 不存在 → 404
   - detail 存在 → 200,返回 project envelope
-- integration:暂无(后续可加 `projects.integration.test.ts`,真实 db 查询)
+- integration:暂无(后续可加 `tests/integration/projects/projects.test.ts`,真实 db 查询)
 
 ## 12. Rollout / Migration Notes
 
 - migration `0002_gifted_marten_broadcloak.sql`:新建 `projects` 表 + `org_id` 索引 + FK
-- 只读 feature,无数据回填需求(开发阶段 SQL seed)
+- 权限目录(`projects.read`)+ 标准 `admin` 角色:app 启动时 `syncAuthorizationCatalog` 从代码自动同步,无需 seed
+- 开发环境:`pnpm db:seed` 造 dev 用户(授 admin 角色)+ 样例项目,端到端验证(登录 -> `GET /api/v1/projects` 200)
+- 生产:组织/用户/授权等实例数据走管理 API(未来)+ 一次性 bootstrap,seed 不进生产
 - 后续 create/update/delete 扩展时再加 migration(如需新列)

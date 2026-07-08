@@ -114,39 +114,34 @@ betterAuth({
 - `requirePermission` 的参数类型必须是 `AppPermission` 字面量 union，不能放宽成 `string` 或仅使用 `` `${string}.${string}` ``。
 - 权限字符串格式必须是 `<resource>.<action>`。
 - `core/auth` 只提供权限类型和 `requirePermission` 中间件，检查逻辑在 `core/authorization/`，不硬编码业务权限。
-- 各 feature 在自己的 `permissions.ts` 中定义权限 union，并通过 TypeScript module augmentation 汇入 `AppPermissionRegistry`。
+- 各 feature 在自己的 `permissions.ts` 中用 `as const satisfies` 声明权限数组，由 `permissions-manifest.ts` 汇总为 `APP_PERMISSIONS`，`AppPermission` 从它推导（类型与运行时同源，不靠 module augmentation）。
 
 `core/auth/permissions.ts` 示例：
 
 ```ts
 export type PermissionName = `${string}.${string}`;
 
-export type EnsurePermissionName<T extends PermissionName> = T;
-
-export interface AppPermissionRegistry {}
-
-export type AppPermission =
-  AppPermissionRegistry[keyof AppPermissionRegistry] & PermissionName;
-```
-
-`features/users/permissions.ts` 示例：
-
-```ts
-import type { EnsurePermissionName } from "@/core/auth/permissions";
-
-export type UserPermission = EnsurePermissionName<
-  | "users.read"
-  | "users.create"
-  | "users.update"
-  | "users.delete"
->;
-
-declare module "@/core/auth/permissions" {
-  interface AppPermissionRegistry {
-    users: UserPermission;
-  }
+/** 权限定义:name + 可选 description(进 DB permissions 表,供管理界面展示)。 */
+export interface PermissionDefinition {
+  name: PermissionName;
+  description?: string;
 }
 ```
+
+`features/projects/permissions.ts` 示例：
+
+```ts
+import type { PermissionDefinition } from "@/core/auth/permissions";
+
+/** `as const` 保字面量类型,`satisfies` 校验结构合法(不拓宽类型)。 */
+export const projectPermissions = [
+  { name: "projects.read", description: "查看项目" },
+] as const satisfies readonly PermissionDefinition[];
+
+export type ProjectPermission = (typeof projectPermissions)[number]["name"];
+```
+
+`core/auth/permissions-manifest.ts` 汇总所有 feature 的权限数组为 `APP_PERMISSIONS`（同样 `as const satisfies`），`AppPermission` union 从它推导。多权限 feature 在数组里加多行即可；新增 feature 时追加 import + 展开到数组——漏登记会导致 `AppPermission` 缺该权限，`requirePermission("x")` 编译报错。
 
 `core/auth/require-permission.ts` 示例：
 
@@ -154,7 +149,7 @@ declare module "@/core/auth/permissions" {
 import { createMiddleware } from "hono/factory";
 import { PermissionService } from "@/core/authorization";
 import { AppError } from "@/core/errors/app-error";
-import type { AppPermission } from "@/core/auth/permissions";
+import type { AppPermission } from "@/core/auth/permissions-manifest";
 
 export const requirePermission = (permission: AppPermission, options?: { orgId?: string }) =>
   createMiddleware(async (c, next) => {

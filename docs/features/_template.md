@@ -22,7 +22,7 @@ lastReviewedAt: 2026-06-03
 
 | Method | Path | OperationId | Auth | Description |
 | --- | --- | --- | --- | --- |
-| GET | `/api/v1/...` | `featureAction` | yes/no |  |
+| GET | `/api/v1/...` | `featureAction` | yes/no | |
 
 ## 5. Request / Response
 
@@ -30,11 +30,11 @@ lastReviewedAt: 2026-06-03
 
 ## 6. Auth & Permissions
 
-新增权限时，必须在 feature 的 `permissions.ts` 中声明 `<resource>.<action>` 字面量 union，并通过 `AppPermissionRegistry` 汇入全局 `AppPermission`。
+新增权限时，在 feature 的 `permissions.ts` 中用 `as const satisfies` 声明权限数组（`<resource>.<action>` 字面量），并在 `permissions-manifest.ts` 展开到 `APP_PERMISSIONS` 汇入全局 `AppPermission`（漏登记编译报错）。
 
 | Permission | Description |
 | --- | --- |
-| `<resource>.<action>` |  |
+| `<resource>.<action>` | |
 
 ## 7. Data Model
 
@@ -44,7 +44,7 @@ lastReviewedAt: 2026-06-03
 
 | Code | HTTP Status | Description |
 | --- | --- | --- |
-| `FEATURE_SOMETHING_FAILED` | 400 |  |
+| `FEATURE_SOMETHING_FAILED` | 400 | |
 
 ## 9. Request Flow
 

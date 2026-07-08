@@ -101,7 +101,31 @@ user_roles(user_id, role_id, org_id, expires_at?)
 user_permissions(user_id, permission, org_id, effect, expires_at?)
 ```
 
-权限字符串由 TypeScript `AppPermission` union 约束（各 feature 在自己的 `permissions.ts` 声明，通过 module augmentation 汇入），数据库 `permissions` 表用于运行时枚举和管理界面展示。
+权限字符串由 TypeScript `AppPermission` union 约束（各 feature 在自己的 `permissions.ts` 用 `as const satisfies` 声明权限数组，类型与运行时同源；`permissions-manifest.ts` 汇总为 `APP_PERMISSIONS`，`AppPermission` 从它推导）。数据库 `permissions` 表是代码的镜像，由启动同步写入（见下文）。
+
+## 数据生命周期
+
+权限层数据分三类，真相来源不同，生产里的来法也不同：
+
+| 数据 | 表 | 真相来源 | 生产怎么来 |
+| --- | --- | --- | --- |
+| ① 权限目录 | `permissions` | 代码（`AppPermission` union） | app 启动时代码同步（`syncAuthorizationCatalog`） |
+| ② 角色定义 | `roles` + `role_permissions` | 代码（标准 `admin` 角色） | 同 ①，启动时同步 |
+| ③ 实例数据 | `organizations` / `users` / `user_roles` / `user_permissions` | 每个 deployment 自己 | 管理 API（未来）+ 一次性 bootstrap |
+
+### 代码同步（①②）
+
+`core/authorization/sync.ts` 的 `syncAuthorizationCatalog()`：把 `APP_PERMISSIONS` 数组里的权限定义 upsert 进 `permissions` 表（含 `description`），并 upsert 标准 `admin` 角色（`role_permissions` 给 admin 授全部权限）。单事务原子完成，幂等 upsert，代码是真相来源，DB 是镜像。
+
+- **app 启动时自动跑**（`index.ts` 在 `serve` 前），dev/prod 都同步，生产免人肉。sync 假设 schema 已就位，部署需先 `db:migrate` 再 start。
+- `seed.ts`（dev/demo）也复用它，保证本地目录就位。
+- Upsert-only：从代码移除权限不会自动删库行，需手动清理 `role_permissions` + `permissions`。
+
+各 feature 在 `permissions.ts` 用 `as const satisfies readonly PermissionDefinition[]` 声明权限数组（类型与运行时同源）；`core/auth/permissions-manifest.ts` 汇总所有 feature 的数组为 `APP_PERMISSIONS`，`AppPermission` union 从它推导。新增 feature 时在 manifest 追加 import + 展开到数组--漏登记会导致 `requirePermission("x")` 编译报错。
+
+### 实例数据（③，未来）
+
+组织、用户、授权是 deployment 特定的，走自建管理 API（`/api/v1/*` + envelope，见 [ADR-0004](../adr/0004-authorization-layer.md) 代价）。空生产从 0 开始，管理员建组织、授角色。第一个 admin 的引导（bootstrap）在管理 API 落地时实现。
 
 ## 性能
 
