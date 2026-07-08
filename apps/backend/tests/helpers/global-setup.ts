@@ -1,11 +1,8 @@
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { dirname, resolve } from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import postgres from "postgres";
+
+import { runMigrations } from "../../src/db/run-migrations.js";
 
 /**
  * 集成测试 globalSetup:起一次性 PG 容器,跑 migration,把容器连接串写入 `DATABASE_URL`,
@@ -15,7 +12,10 @@ import postgres from "postgres";
  * 见 [测试策略](../../../docs/conventions/testing-strategy.md) 集成测试基础设施。
  */
 
-/** 测试专用 env(无真实密钥,仅供 EnvSchema 校验通过)。 */
+/**
+ * 测试专用 env(无真实密钥,仅供 EnvSchema 校验通过)。
+ * 注意:需与 EnvSchema(src/core/app/env-validation.ts)的必填字段保持同步——新增必填项时这里也要补。
+ */
 const TEST_ENV = {
   NODE_ENV: "test",
   LOG_LEVEL: "silent",
@@ -31,20 +31,10 @@ export async function setup() {
   const databaseUrl = container.getConnectionUri();
 
   // env 先就绪:worker 启动 import db/client 时 env.ts 会校验。
-  process.env.NODE_ENV = TEST_ENV.NODE_ENV;
-  process.env.DATABASE_URL = databaseUrl;
-  process.env.LOG_LEVEL = TEST_ENV.LOG_LEVEL;
-  process.env.BETTER_AUTH_SECRET = TEST_ENV.BETTER_AUTH_SECRET;
-  process.env.BETTER_AUTH_URL = TEST_ENV.BETTER_AUTH_URL;
-  process.env.DISABLE_SIGN_UP = TEST_ENV.DISABLE_SIGN_UP;
+  Object.assign(process.env, TEST_ENV, { DATABASE_URL: databaseUrl });
 
-  // 独立 client 跑 migration,跑完关闭,不影响 worker 的全局 db 连接。
-  // migrations 在 src/db/migrations(tests/helpers 在 src 平级,需跨入 src)。
-  const client = postgres(databaseUrl, { max: 1 });
-  const db = drizzle({ client });
-  const migrationsFolder = resolve(dirname(fileURLToPath(import.meta.url)), "../../src/db/migrations");
-  await migrate(db, { migrationsFolder });
-  await client.end();
+  // 跑 migration(复用 src/db/run-migrations.ts,单一来源维护 migrations 路径与 close 序列)。
+  await runMigrations(databaseUrl);
 }
 
 export async function teardown() {

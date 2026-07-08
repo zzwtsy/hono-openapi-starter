@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { resetDb } from "../../../tests/helpers/db.js";
-import { db } from "../../db/client.js";
+import { checkPermission } from "../../../src/core/authorization/check.js";
+import { db } from "../../../src/db/client.js";
 import {
   organizations,
   permissions,
@@ -10,12 +10,12 @@ import {
   user,
   userPermissions,
   userRoles,
-} from "../../db/schema/index.js";
-import { checkPermission } from "./check.js";
+} from "../../../src/db/schema/index.js";
+import { resetDb } from "../../helpers/db.js";
 
 /**
  * checkPermission 集成测试:真实 PG(testcontainers)验证递归 CTE 的组织树继承、
- * deny 传播、过期过滤、多角色并集。见 [权限层规范](../../../docs/conventions/authorization.md)。
+ * deny 传播、过期过滤、多角色并集。见 [权限层规范](../../../../docs/conventions/authorization.md)。
  *
  * 用全局 `db`:integration worker 里 `DATABASE_URL` 已被 globalSetup 指向容器。
  */

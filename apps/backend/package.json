@@ -10,8 +10,10 @@
     "test:watch": "vitest --project unit",
     "test:integration": "vitest run --project integration",
     "test:all": "vitest run",
+    "test:ci": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
     "db:studio": "drizzle-kit studio",
     "auth:generate": "pnpm dlx @better-auth/cli@latest generate --config src/core/auth/better-auth.ts --output src/db/schema/auth-schema.ts -y"
   },
