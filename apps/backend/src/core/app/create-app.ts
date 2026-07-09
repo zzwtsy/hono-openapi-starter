@@ -5,6 +5,7 @@ import { secureHeaders } from "hono/secure-headers";
 import env from "../../env.js";
 import { permissionCacheMiddleware } from "../authorization/index.js";
 import { errorHandler } from "../errors/error-handler.js";
+import { apiRateLimiter, authRateLimiter } from "../http/rate-limit.js";
 import { requestIdMiddleware, resolveRequestId } from "../http/request-id-middleware.js";
 import { logger } from "../logger/index.js";
 import { createRouter } from "./create-router.js";
@@ -34,6 +35,10 @@ export function createApp() {
       response: true,
     },
   }));
+  // 分级限流:认证端点(/api/auth/*)严格防暴力登录;业务 API(/api/v1/*)宽松防滥用。
+  // /healthz、/readyz 不挂,探针不限流。
+  app.use("/api/auth/*", authRateLimiter);
+  app.use("/api/v1/*", apiRateLimiter);
   // 请求级权限 cache（ALS）：同请求内 PermissionService.check 共享结果，避免重复递归 CTE。
   app.use("*", permissionCacheMiddleware());
   // 错误处理和 404 在 app 边界统一收口，避免 feature handler 自己拼响应格式。

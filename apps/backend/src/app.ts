@@ -2,7 +2,7 @@ import { createApp } from "./core/app/create-app.js";
 import { configureOpenApi } from "./core/app/openapi.js";
 import { registerAuthRoute } from "./core/app/register-routes.js";
 import { setPermissionChecker } from "./core/authorization/index.js";
-import healthRouter from "./features/health/index.js";
+import healthRouter, { healthzRouter } from "./features/health/index.js";
 import iamRouter from "./features/iam/index.js";
 import { IamPermissionChecker } from "./features/iam/permission-checker.js";
 import meRouter from "./features/me/index.js";
@@ -16,6 +16,7 @@ setPermissionChecker(new IamPermissionChecker());
 // 顺序固定:全局中间件必须在 app.route 之前注册,否则不作用于子路由(Hono 按注册顺序派发)。
 const app = createApp();
 registerAuthRoute(app);
+app.route("/", healthzRouter);
 app.route("/api/v1", healthRouter);
 app.route("/api/v1", meRouter);
 app.route("/api/v1", projectsRouter);

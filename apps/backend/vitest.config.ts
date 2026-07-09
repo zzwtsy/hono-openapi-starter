@@ -24,6 +24,14 @@ export default defineConfig({
       },
       {
         test: {
+          name: "contract",
+          include: ["tests/contract/**/*.test.ts"],
+          setupFiles: ["./tests/helpers/contract-setup.ts"],
+        },
+        resolve: { alias: srcAlias },
+      },
+      {
+        test: {
           name: "integration",
           include: ["tests/integration/**/*.test.ts"],
           globalSetup: ["./tests/helpers/global-setup.ts"],

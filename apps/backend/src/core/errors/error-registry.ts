@@ -34,6 +34,11 @@ export const errorRegistry = {
     defaultMessage: "Too many requests",
     expose: true,
   },
+  COMMON_SERVICE_UNAVAILABLE: {
+    status: 503,
+    defaultMessage: "Service unavailable",
+    expose: true,
+  },
   COMMON_INTERNAL_ERROR: {
     status: 500,
     defaultMessage: "Internal server error",

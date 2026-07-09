@@ -15,6 +15,7 @@ allowBuilds:
   msw: false
   protobufjs: false
   ssh2: false
+  unrs-resolver: set this to true or false
 
 overrides:
   semver: ^7
@@ -43,10 +44,13 @@ catalog:
   drizzle-kit: ^0.31.10
   drizzle-orm: ^0.45.2
   eslint: ^10.3.0
+  eslint-import-resolver-typescript: ^4.4.5
+  eslint-plugin-boundaries: ^7.0.2
   eslint-plugin-format: ^2.0.1
   eslint-plugin-react-refresh: ^0.5.3
   globals: ^17
   hono: ^4.12.27
+  hono-rate-limiter: ^0.5.3
   loglayer: ^9.3.0
   lucide-react: ^1.23.0
   postgres: ^3.4.9

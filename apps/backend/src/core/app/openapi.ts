@@ -14,7 +14,7 @@ export function configureOpenApi(app: AppOpenAPI) {
   // 需要静态 spec 时直接调 app.getOpenAPIDocument() 取文档,不依赖此端点。
   if (env.NODE_ENV === "development" || env.OPENAPI_PUBLIC) {
     app.doc("/openapi.json", {
-      openapi: "3.1.0",
+      openapi: "3.0.3",
       info: {
         title: "Hono 后端模板 API",
         version: "1.0.0",
