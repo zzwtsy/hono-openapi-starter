@@ -43,8 +43,8 @@ apps/frontend/src/
     utils.ts              # cn 等
 
   components/
+    layout/               # 布局组件(AppSidebar)
     ui/                   # shadcn 生成(Base UI)
-    theme-provider.tsx
 
   api/                    # @alova/wormhole 生成(入 git,eslint ignore)
     index.ts              # 可编辑:alova 实例 + envelope 剥离

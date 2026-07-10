@@ -1,7 +1,6 @@
 import type { Me } from "@/api/globals";
 import type { Session } from "@/lib/auth-client";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
-import { NavBar } from "@/components/NavBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -42,13 +41,6 @@ export const Route = createRootRouteWithContext<{ auth: AuthState }>()({
 });
 
 function RootComponent() {
-  const { auth } = Route.useRouteContext();
-  return (
-    <div className="min-h-svh">
-      <NavBar auth={auth} />
-      <main>
-        <Outlet />
-      </main>
-    </div>
-  );
+  // 根布局:仅 Outlet。受保护区 Sidebar 布局在 _authenticated;公开路由(/login、/403)裸渲染。
+  return <Outlet />;
 }
