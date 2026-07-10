@@ -25,6 +25,8 @@ lastReviewedAt: 2026-06-03
 13. build
 14. deploy
 
+实际 CI(`.github/workflows/ci.yml`,push main + PR 触发)落地子集:install + typecheck + lint(含 boundary + format)+ test:all(unit/integration/contract)+ build;frontend typecheck + build(并行 job)。未实现:route tests、OpenAPI generate/lint/validate(contract test 静态校验替代)、SDK smoke test、deploy(模板无部署目标)。
+
 ## OpenAPI CI
 
 最低要求：
