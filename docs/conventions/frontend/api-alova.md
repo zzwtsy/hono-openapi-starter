@@ -85,10 +85,14 @@ useRoles = () => useRequest(() => iamApi.listRoles());
 
 后端业务 API 强制 envelope `{ success, code, message, data, error, meta }`(见 [backend/response-envelope](../backend/response-envelope.md))。前端两端剥离,使生成类型 = data 类型,运行时也返回 data:
 
-- **类型剥离**:`alova.config.ts` 的 `handleApi` 把 `apiDescriptor.responses` 改为 `properties.data`。
-- **运行时剥离**:`src/api/index.ts` 的 `responded.onSuccess` 检 `!json.success` 抛错、`return json.data`。
+- **类型剥离**:`alova.config.ts` 的 `handleApi` 仅当响应同时含 `success` + `data`(确认是 envelope)时把 `responses` 改为 `properties.data`;非 envelope 端点原样保留(与 `meta.raw` 运行时分支对齐,避免类型变 `undefined`)。
+- **运行时剥离**:`src/api/index.ts` 的 `responded.onSuccess` 先检 `res.status === 401`(session 过期/无效 -> hard-nav `/login?redirect=<当前路径>` 并抛错,重载后 `useSession` 重新求值),再 `res.json()` 检 `!json.success` 抛错、`return json.data`。
 
 两端一致:生成类型 = data 类型,运行时返回 data。
+
+### 401 处理(session 过期)
+
+业务 API(`/api/v1/*`)401 即 Better Auth cookie 失效。`responded.onSuccess` 用 `window.location.assign('/login?redirect=...')` hard-nav(非 SPA `router.navigate`):`api` 层按依赖边界不依赖 `lib`/router,且 hard-nav 天然清内存态、重载后 `useSession` 重新求值,`/login` beforeLoad 不会把已登出用户弹回 `/dashboard`,无循环。Better Auth `/api/auth/*` 不经 alova,其 401 由 Better Auth client 自身处理,与此无关。
 
 ## 非 envelope 端点(meta.raw)
 

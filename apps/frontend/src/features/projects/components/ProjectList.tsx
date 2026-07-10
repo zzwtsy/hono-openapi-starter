@@ -2,7 +2,7 @@ import { useRequest } from "alova/client";
 import Apis from "@/api";
 
 export function ProjectList() {
-  const { data, loading, error } = useRequest(() => Apis.Projects.listProjects());
+  const { data, loading, error } = useRequest(() => Apis.Projects.listProjects(), { cacheFor: 60_000 });
   if (loading) {
     return <p className="text-muted-foreground">加载中...</p>;
   }

@@ -2,7 +2,7 @@ import { useRequest } from "alova/client";
 import Apis from "@/api";
 
 export function RoleList() {
-  const { data, loading, error } = useRequest(() => Apis.IAM.listRoles());
+  const { data, loading, error } = useRequest(() => Apis.IAM.listRoles(), { cacheFor: 60_000 });
   if (loading) {
     return <p className="text-muted-foreground">加载中...</p>;
   }

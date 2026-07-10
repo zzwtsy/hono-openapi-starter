@@ -10,9 +10,13 @@ export default defineConfig({
       global: "Apis",
       type: "typescript",
       // 后端 envelope { success, code, message, data, error, meta };
-      // 剥到 data,使生成类型 = 业务数据类型(与 index.ts responded 运行时剥离一致)
+      // 仅当响应是 envelope(同时含 success + data)时剥到 data,使生成类型 = 业务数据类型(与 index.ts responded 运行时剥离一致)。
+      // 非 envelope 端点(文件下载/SSE/二进制)原样保留,与 index.ts 的 meta.raw 运行时分支对齐,避免类型变 undefined。
       handleApi: (apiDescriptor) => {
-        apiDescriptor.responses = apiDescriptor.responses?.properties?.data;
+        const props = apiDescriptor.responses?.properties;
+        if (props && "success" in props && "data" in props) {
+          apiDescriptor.responses = props.data;
+        }
         return apiDescriptor;
       },
     },

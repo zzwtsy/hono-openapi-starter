@@ -37,6 +37,14 @@ export const alovaInstance = createAlova({
       if (method.meta?.raw === true) {
         return res;
       }
+      // session 过期/无效:业务 API 401 即 cookie 失效。hard-nav 到 /login(带 redirect),
+      // 重载后 useSession 重新求值 -> session=null -> /login 显示(P0 beforeLoad 不会弹回 /dashboard),无循环。
+      // 用 window.location 而非 router:api 层按边界不依赖 lib/router,且 hard-nav 天然清内存态、loop-safe。
+      if (res.status === 401) {
+        const back = window.location.pathname + window.location.search;
+        window.location.assign(`/login?redirect=${encodeURIComponent(back)}`);
+        throw new Error("登录已过期");
+      }
       const json = (await res.json()) as ApiResponse;
       if (!json.success) {
         throw new Error(json.message || "请求失败");

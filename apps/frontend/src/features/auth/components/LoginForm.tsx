@@ -2,7 +2,12 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { useLogin } from "../hooks";
 
-export function LoginForm() {
+interface LoginFormProps {
+  /** 登录成功后回跳目标(由 /login route 从 search.redirect 传入,safeRedirect 兜底)。 */
+  redirectTo?: string;
+}
+
+export function LoginForm({ redirectTo }: LoginFormProps) {
   const { login } = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,7 +17,7 @@ export function LoginForm() {
     event.preventDefault();
     setError(null);
     try {
-      await login(email, password);
+      await login(email, password, redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
     }
