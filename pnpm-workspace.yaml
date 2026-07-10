@@ -15,15 +15,17 @@ allowBuilds:
   msw: false
   protobufjs: false
   ssh2: false
-  unrs-resolver: set this to true or false
+  unrs-resolver: false
 
 overrides:
   semver: ^7
 
 catalog:
+  "@alova/wormhole": ^1.5.2
   "@antfu/eslint-config": ^9.1.0
+  "@base-ui/react": ^1.6.0
   "@eslint-react/eslint-plugin": ^5.6.0
-  "@fontsource-variable/inter": ^5.2.8
+  "@fontsource-variable/noto-sans": ^5.2.10
   "@hono/node-server": ^2.0.8
   "@hono/zod-openapi": ^1.4.0
   "@loglayer/hono": ^2.3.0
@@ -32,11 +34,14 @@ catalog:
   "@loglayer/transport-simple-pretty-terminal": ^3.2.0
   "@scalar/hono-api-reference": ^0.11.8
   "@tailwindcss/vite": ^4
+  "@tanstack/react-router": ^1.170.17
+  "@tanstack/router-plugin": ^1.168.19
   "@testcontainers/postgresql": ^12.0.4
   "@types/node": ^24
   "@types/react": ^19
   "@types/react-dom": ^19
   "@vitejs/plugin-react": ^6
+  alova: ^3.5.1
   better-auth: ^1.6.23
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
@@ -54,7 +59,6 @@ catalog:
   loglayer: ^9.3.0
   lucide-react: ^1.23.0
   postgres: ^3.4.9
-  radix-ui: ^1.6.1
   react: ^19.2.7
   react-dom: ^19.2.7
   serialize-error: ^13.0.1

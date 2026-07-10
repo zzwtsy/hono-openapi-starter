@@ -18,7 +18,8 @@ export default antfu({
     "apps/frontend/src/routeTree.gen.ts",
     "apps/backend/src/db/migrations",
     "apps/backend/src/db/schema/auth-schema.ts",
-    "apps/backend/openapi.json",
+    "apps/frontend/src/api/*",
+    "!apps/frontend/src/api/index.ts",
   ],
   overrides: {
     javascript: {
@@ -70,6 +71,53 @@ export default antfu({
         { from: { element: { type: "core" } }, allow: { to: { element: { type: ["core", "db"] } } } },
         { from: { element: { type: "features" } }, allow: { to: { element: { type: ["core", "db", "features"] } } } },
         { from: { element: { type: "db" } }, allow: { to: { element: { type: ["db", "core"] } } } },
+      ],
+    }],
+  },
+}).append({
+  files: ["apps/frontend/src/components/ui/**/*.{ts,tsx}"],
+  rules: {
+    // shadcn 组件导出 cva 变体(如 buttonVariants),ui 是生成的设计系统层,豁免
+    "react-refresh/only-export-components": "off",
+  },
+}).append({
+  files: ["apps/frontend/src/routes/**/*.{ts,tsx}"],
+  rules: {
+    // route 文件必须导出 Route(createFileRoute 返回值,非字面量常量)+ 组件,豁免 react-refresh
+    "react-refresh/only-export-components": "off",
+  },
+}).append({
+  files: ["apps/frontend/src/**/*.{ts,tsx}"],
+  rules: {
+    // alova Method 是 thenable(promise-like),ts/promise-function-async 误报返回 promise 未标 async,前端 off
+    "ts/promise-function-async": "off",
+  },
+}).append({
+  files: ["apps/frontend/src/**/*.{ts,tsx}"],
+  plugins: { boundaries },
+  settings: {
+    "import/resolver": {
+      typescript: { project: "apps/frontend/tsconfig.json" },
+    },
+    "boundaries/elements": [
+      { type: "routes", pattern: "apps/frontend/src/routes/**", partialMatch: false },
+      { type: "features", pattern: "apps/frontend/src/features/*" },
+      { type: "lib", pattern: "apps/frontend/src/lib/**", partialMatch: false },
+      { type: "ui", pattern: "apps/frontend/src/components/ui/**", partialMatch: false },
+      { type: "api", pattern: "apps/frontend/src/api/**", partialMatch: false },
+    ],
+  },
+  rules: {
+    // routes(装配层)-> features/lib/ui/api;features(能力层)-> lib/ui/api(features 间 disallow,跨 feature 走 routes);
+    // lib -> lib;ui -> ui/lib;api(生成物)-> api
+    "boundaries/dependencies": ["error", {
+      default: "disallow",
+      policies: [
+        { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["features", "lib", "ui", "api"] } } } },
+        { from: { element: { type: "features" } }, allow: { to: { element: { type: ["lib", "ui", "api"] } } } },
+        { from: { element: { type: "lib" } }, allow: { to: { element: { type: ["lib"] } } } },
+        { from: { element: { type: "ui" } }, allow: { to: { element: { type: ["ui", "lib"] } } } },
+        { from: { element: { type: "api" } }, allow: { to: { element: { type: ["api"] } } } },
       ],
     }],
   },
