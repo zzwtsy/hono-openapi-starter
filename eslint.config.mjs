@@ -35,9 +35,11 @@ export default antfu({
     "test/prefer-lowercase-title": ["error", { ignore: ["describe"] }],
   },
 }).append({
-  files: ["apps/frontend/src/**/*.{ts,tsx}"],
+  files: [
+    "apps/frontend/src/**/*.{ts,tsx}",
+    "apps/backend/src/**/*.ts",
+  ],
   rules: {
-    "react-refresh/only-export-components": "off",
     "ts/strict-boolean-expressions": ["error", {
       allowString: true,
       allowNumber: false,
