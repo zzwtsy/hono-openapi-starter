@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { iamApi } from "@/features/iam/api";
+import Apis from "@/api";
 import { RoleList } from "@/features/iam/components/RoleList";
 import { requirePermission } from "@/lib/require-permission";
 
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/iam/roles")({
   },
   loader: async () => {
     // 关键路由预取:写 alova cache,组件 useRequest 命中,避免二次请求
-    await iamApi.listRoles();
+    await Apis.IAM.listRoles();
   },
   component: () => (
     <div className="p-6">

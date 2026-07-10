@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { projectsApi } from "@/features/projects/api";
+import Apis from "@/api";
 import { ProjectList } from "@/features/projects/components/ProjectList";
 import { requirePermission } from "@/lib/require-permission";
 
@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/projects/")({
     requirePermission(context.auth.permissions, "projects.read");
   },
   loader: async () => {
-    await projectsApi.listProjects();
+    await Apis.Projects.listProjects();
   },
   component: () => (
     <div className="p-6">

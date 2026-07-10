@@ -1,7 +1,8 @@
-import { useProjects } from "../hooks";
+import { useRequest } from "alova/client";
+import Apis from "@/api";
 
 export function ProjectList() {
-  const { data, loading, error } = useProjects();
+  const { data, loading, error } = useRequest(() => Apis.Projects.listProjects());
   if (loading) {
     return <p className="text-muted-foreground">加载中...</p>;
   }

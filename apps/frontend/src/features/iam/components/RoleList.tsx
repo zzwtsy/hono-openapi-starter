@@ -1,7 +1,8 @@
-import { useRoles } from "../hooks";
+import { useRequest } from "alova/client";
+import Apis from "@/api";
 
 export function RoleList() {
-  const { data, loading, error } = useRoles();
+  const { data, loading, error } = useRequest(() => Apis.IAM.listRoles());
   if (loading) {
     return <p className="text-muted-foreground">加载中...</p>;
   }
