@@ -23,12 +23,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import { useLogout } from "@/features/auth/hooks";
 
 // 受保护区的侧边栏:导航按 permissions 显隐(前端 UX,后端 PermissionChecker 才是授权边界);
-// 用户区显示登录态,登出走 useLogout(signOut + router.invalidate)。
+// 用户区显示登录态,登出走 useLogout(signOut + effect 监听 session 跳 /login)。
 // 放 _authenticated layout 渲染(其 context 一定有 permissions/user)。
 
 interface NavItem {
@@ -81,7 +80,7 @@ export function AppSidebar({ auth }: AppSidebarProps) {
         <SidebarGroup>
           <SidebarGroupLabel>导航</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1">
               {visible.map(item => (
                 <SidebarMenuItem key={item.to}>
                   <SidebarMenuButton
@@ -126,7 +125,6 @@ export function AppSidebar({ auth }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 }
