@@ -8,7 +8,8 @@ export const Route = createFileRoute("/_authenticated/projects/")({
     requirePermission(context.auth.permissions, "projects.read");
   },
   loader: async () => {
-    await Apis.Projects.listProjects();
+    // 关键路由预取:写 alova cache(cacheFor 60s),组件 useRequest 命中,避免二次请求与 back-nav 重拉
+    await Apis.Projects.listProjects({ cacheFor: 60_000 });
   },
   component: () => (
     <div className="p-6">

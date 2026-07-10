@@ -11,8 +11,8 @@ export const Route = createFileRoute("/_authenticated")({
         search: { redirect: location.href },
       });
     }
-    // session 在手,取 permissions(命中 alova cache,避免每路由重拉)
-    const me = await Apis.Me.getMe();
+    // session 在手,取 permissions;cacheFor 5min 命中 alova cache,避免跨受保护页面每路由重拉 /me
+    const me = await Apis.Me.getMe({ cacheFor: 5 * 60_000 });
     return {
       auth: { ...context.auth, user: me.user, permissions: me.permissions },
     };
