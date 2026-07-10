@@ -1,18 +1,11 @@
-import type { ReactNode } from "react";
-import {
-  createContext,
-  use,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+/* eslint-disable react-refresh/only-export-components */
+import * as React from "react";
 
 type Theme = "dark" | "light" | "system";
 type ResolvedTheme = "dark" | "light";
 
 interface ThemeProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
   defaultTheme?: Theme;
   storageKey?: string;
   disableTransitionOnChange?: boolean;
@@ -26,7 +19,7 @@ interface ThemeProviderState {
 const COLOR_SCHEME_QUERY = "(prefers-color-scheme: dark)";
 const THEME_VALUES: Theme[] = ["dark", "light", "system"];
 
-const ThemeProviderContext = createContext<
+const ThemeProviderContext = React.createContext<
   ThemeProviderState | undefined
 >(undefined);
 
@@ -91,7 +84,7 @@ export function ThemeProvider({
   disableTransitionOnChange = true,
   ...props
 }: ThemeProviderProps) {
-  const [themeInternal, setThemeInternal] = useState<Theme>(() => {
+  const [theme, setThemeState] = React.useState<Theme>(() => {
     const storedTheme = localStorage.getItem(storageKey);
     if (isTheme(storedTheme)) {
       return storedTheme;
@@ -100,15 +93,15 @@ export function ThemeProvider({
     return defaultTheme;
   });
 
-  const setTheme = useCallback(
+  const setTheme = React.useCallback(
     (nextTheme: Theme) => {
       localStorage.setItem(storageKey, nextTheme);
-      setThemeInternal(nextTheme);
+      setThemeState(nextTheme);
     },
     [storageKey],
   );
 
-  const applyTheme = useCallback(
+  const applyTheme = React.useCallback(
     (nextTheme: Theme) => {
       const root = document.documentElement;
       const resolvedTheme
@@ -127,10 +120,10 @@ export function ThemeProvider({
     [disableTransitionOnChange],
   );
 
-  useEffect(() => {
-    applyTheme(themeInternal);
+  React.useEffect(() => {
+    applyTheme(theme);
 
-    if (themeInternal !== "system") {
+    if (theme !== "system") {
       return undefined;
     }
 
@@ -144,9 +137,9 @@ export function ThemeProvider({
     return () => {
       mediaQuery.removeEventListener("change", handleChange);
     };
-  }, [themeInternal, applyTheme]);
+  }, [theme, applyTheme]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) {
         return;
@@ -164,7 +157,7 @@ export function ThemeProvider({
         return;
       }
 
-      setThemeInternal((currentTheme) => {
+      setThemeState((currentTheme) => {
         const nextTheme
           = currentTheme === "dark"
             ? "light"
@@ -186,7 +179,7 @@ export function ThemeProvider({
     };
   }, [storageKey]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) {
         return;
@@ -197,11 +190,11 @@ export function ThemeProvider({
       }
 
       if (isTheme(event.newValue)) {
-        setThemeInternal(event.newValue);
+        setThemeState(event.newValue);
         return;
       }
 
-      setThemeInternal(defaultTheme);
+      setThemeState(defaultTheme);
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -211,23 +204,23 @@ export function ThemeProvider({
     };
   }, [defaultTheme, storageKey]);
 
-  const value = useMemo(
+  const value = React.useMemo(
     () => ({
-      theme: themeInternal,
+      theme,
       setTheme,
     }),
-    [themeInternal, setTheme],
+    [theme, setTheme],
   );
 
   return (
-    <ThemeProviderContext {...props} value={value}>
+    <ThemeProviderContext.Provider {...props} value={value}>
       {children}
-    </ThemeProviderContext>
+    </ThemeProviderContext.Provider>
   );
 }
 
 export function useTheme() {
-  const context = use(ThemeProviderContext);
+  const context = React.useContext(ThemeProviderContext);
 
   if (context === undefined) {
     throw new Error("useTheme must be used within a ThemeProvider");
