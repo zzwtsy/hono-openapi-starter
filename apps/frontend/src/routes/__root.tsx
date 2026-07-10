@@ -16,7 +16,7 @@ export const Route = createRootRouteWithContext<{ auth: AuthState }>()({
   component: RootComponent,
   errorComponent: ({ error }) => (
     <div className="flex min-h-svh items-center justify-center p-6">
-      <Card className="max-w-md">
+      <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>页面加载失败</CardTitle>
           <CardDescription>路由或数据加载出错</CardDescription>
@@ -30,7 +30,7 @@ export const Route = createRootRouteWithContext<{ auth: AuthState }>()({
   ),
   notFoundComponent: () => (
     <div className="flex min-h-svh items-center justify-center p-6">
-      <Card className="max-w-md">
+      <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>404</CardTitle>
           <CardDescription>页面不存在</CardDescription>
