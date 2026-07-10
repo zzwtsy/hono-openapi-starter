@@ -102,7 +102,7 @@ repository 不负责：
 
 ## 注释与 TODO
 
-注释规范(原则、TSDoc、行内注释、TODO/FIXME/HACK 格式、反模式、评审 checklist)见 [注释规范](./commenting.md)。
+注释规范(原则、TSDoc、行内注释、TODO/FIXME/HACK 格式、反模式、评审 checklist)见 [注释规范](../shared/commenting.md)。
 
 ## Code Review 检查点
 

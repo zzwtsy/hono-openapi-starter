@@ -199,7 +199,7 @@ src/
 
 ## feature 分层选择
 
-按复杂度选择是否 service/repository(见 [开发流程规范](../conventions/development-workflow.md)):
+按复杂度选择是否 service/repository(见 [开发流程规范](../../conventions/backend/development-workflow.md)):
 
 - 简单 feature:无 service/repository,handler 直接 `db`
 - 中等 feature:有 service(直接 `db`),无 repository

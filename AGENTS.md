@@ -13,9 +13,10 @@
 
 - `README.md`：repo 入口，只放稳定入口、推荐阅读顺序和关键文档链接。
 - `docs/README.md`：文档地图，按任务指向应该阅读和维护的文档。
-- `docs/architecture/`：当前架构事实、目录边界、请求生命周期和禁止模式。
-- `docs/conventions/`：开发、API、错误码、日志、数据库、测试、文档系统等执行规范。
-- `docs/features/`：feature 设计模板和具体 feature 文档。
+- `docs/architecture/`：当前架构事实（`overview` 整体 + `backend`/`frontend` 目录边界、请求生命周期和禁止模式）。
+- `docs/conventions/`：执行规范（`shared` 项目级 + `backend` + `frontend`）。
+- `docs/features/`：feature 设计模板和具体 feature 文档（`backend`/`frontend`）。
+- `docs/packages/`：`packages/*` 共享包文档（自定义 eslint 规则、共享依赖）。
 - `docs/adr/`：已经接受的长期架构决策；只记录决策历史，不能当作当前实现的唯一事实。
 - `docs/diagrams/`：Mermaid 图，必须和对应 architecture 或 feature 文档保持一致。
 - `docs/checklists/`：安全、可观测性等验收清单。
@@ -27,10 +28,10 @@
 1. `README.md`
 2. `docs/README.md`
 3. `docs/architecture/overview.md`
-4. `docs/architecture/directory-structure.md`
+4. `docs/architecture/backend/directory-structure.md`（后端任务）或 `docs/architecture/frontend/directory-structure.md`（前端任务）
 5. `docs/adr/README.md`，再读相关 `docs/adr/*.md`
-6. 与任务直接相关的 `docs/conventions/*.md`
-7. 涉及 feature 时读 `docs/features/_template.md`
+6. 与任务直接相关的 `docs/conventions/{shared,backend,frontend}/*.md`
+7. 涉及 feature 时读 `docs/features/{backend,frontend}/_template.md`
 8. 涉及验收时读相关 `docs/checklists/*.md`
 
 读完文档后必须回到当前事实：用 `rg` 或 `find` 定位实际实现、测试、配置和现有文档，确认文档没有脱离当前状态。

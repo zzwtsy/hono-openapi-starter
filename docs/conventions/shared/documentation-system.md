@@ -1,7 +1,7 @@
 ---
 status: Active
-owner: backend-platform
-lastReviewedAt: 2026-06-03
+owner: platform
+lastReviewedAt: 2026-07-10
 ---
 
 # 文档系统规范
@@ -26,9 +26,10 @@ lastReviewedAt: 2026-06-03
 | API 契约 | `createRoute` + OpenAPI |
 | 架构决策 | `docs/adr` |
 | 架构说明 | `docs/architecture` |
-| Feature 设计 | `docs/features` |
+| Feature 设计 | `docs/features/{backend,frontend}` |
+| 共享包 | `docs/packages` |
 | 图 | `docs/diagrams/*.mmd` |
-| 开发规范 | `docs/conventions` |
+| 开发规范 | `docs/conventions/{shared,backend,frontend}` |
 | 验收清单 | `docs/checklists` |
 
 ## 文档路由与阅读顺序
@@ -39,10 +40,10 @@ lastReviewedAt: 2026-06-03
 2. `docs/README.md`：确认任务应该读取哪些文档。
 3. `AGENTS.md`：确认维护者和 agent 的工作循环、禁止行为和质量门禁。
 4. `docs/architecture/overview.md`：确认当前架构原则。
-5. `docs/architecture/directory-structure.md`：确认目录职责、边界和禁止模式。
+5. `docs/architecture/backend/directory-structure.md` 或 `docs/architecture/frontend/directory-structure.md`：确认目录职责、边界和禁止模式。
 6. `docs/adr/README.md`，再读相关 `docs/adr/*.md`：确认长期决策历史。
-7. 与任务直接相关的 `docs/conventions/*.md`：确认执行规范。
-8. 涉及 feature 时读 `docs/features/_template.md` 和具体 feature 文档。
+7. 与任务直接相关的 `docs/conventions/{shared,backend,frontend}/*.md`：确认执行规范。
+8. 涉及 feature 时读 `docs/features/{backend,frontend}/_template.md` 和具体 feature 文档。
 9. 涉及验收时读相关 `docs/checklists/*.md`。
 
 读完文档后必须回到当前事实：用 `rg` 或 `find` 定位当前实现、测试、配置和已有文档，确认文档没有脱离真实状态。
@@ -55,39 +56,31 @@ docs/
 
   architecture/
     overview.md
-    directory-structure.md
-    request-lifecycle.md
+    backend/{directory-structure, request-lifecycle}.md
+    frontend/{directory-structure, request-lifecycle}.md
 
   conventions/
-    api-openapi.md
-    response-envelope.md
-    error-code-system.md
-    auth-better-auth.md
-    database-drizzle.md
-    logging-loglayer.md
-    documentation-system.md
-    development-workflow.md
-    commenting.md
-    testing-strategy.md
-    ci-cd-security-observability.md
+    shared/{commenting, documentation-system, ci-cd-security-observability}.md
+    backend/{api-openapi, response-envelope, error-code-system, auth-better-auth, authorization, database-drizzle, logging-loglayer, development-workflow, testing-strategy}.md
+    frontend/{api-alova, routing, auth, state-cache, development-workflow, testing}.md
 
   features/
-    _template.md
+    backend/{_template, iam, projects}.md
+    frontend/_template.md
+
+  packages/_template.md
 
   adr/
     README.md
     0001-feature-slices.md
     0002-unified-response-envelope.md
     0003-keep-better-auth-native.md
+    0004-authorization-layer.md
+    0005-frontend-wormhole-selection.md
+    0006-frontend-architecture.md
 
   diagrams/
-    request-lifecycle.mmd
-    auth-flow.mmd
-    error-flow.mmd
-
   checklists/
-    security-checklist.md
-    observability-checklist.md
 ```
 
 ## 推荐扩展目录
@@ -108,7 +101,7 @@ docs/
 
 至少更新：
 
-1. `docs/features/<feature>.md`
+1. `docs/features/{backend,frontend}/<feature>.md`
 2. OpenAPI route definitions
 3. 错误码文档
 4. 权限文档，如果涉及授权
@@ -241,16 +234,16 @@ supersededBy: docs/adr/0008-use-problem-details-for-public-api.md
 
 | 变更类型 | 必须更新的文档 |
 | --- | --- |
-| 新增 feature | `docs/features/<feature>.md` |
+| 新增 feature | `docs/features/{backend,frontend}/<feature>.md` |
 | 新增或修改 API | OpenAPI route 定义、feature 文档、API 规范相关说明 |
-| 修改响应格式 | `docs/conventions/response-envelope.md`、相关 ADR |
-| 新增错误码 | `docs/conventions/error-code-system.md`、feature 文档 |
-| 修改认证/权限策略 | `docs/conventions/auth-better-auth.md`、feature 文档；必要时新增认证/权限架构文档 |
-| 修改数据库表结构 | `docs/conventions/database-drizzle.md`、feature 文档；必要时新增数据访问架构文档 |
+| 修改响应格式 | `docs/conventions/backend/response-envelope.md`、相关 ADR |
+| 新增错误码 | `docs/conventions/backend/error-code-system.md`、feature 文档 |
+| 修改认证/权限策略 | `docs/conventions/backend/auth-better-auth.md`、feature 文档；必要时新增认证/权限架构文档 |
+| 修改数据库表结构 | `docs/conventions/backend/database-drizzle.md`、feature 文档；必要时新增数据访问架构文档 |
 | 引入新基础设施 | architecture 文档、ADR |
-| 修改目录结构或边界规则 | `docs/architecture/directory-structure.md`、ADR |
-| 修改日志、监控、审计策略 | `docs/conventions/logging-loglayer.md`、architecture 文档 |
-| 修改开发流程 | `docs/conventions/development-workflow.md` |
+| 修改目录结构或边界规则 | `docs/architecture/{backend,frontend}/directory-structure.md`、ADR |
+| 修改日志、监控、审计策略 | `docs/conventions/backend/logging-loglayer.md`、architecture 文档 |
+| 修改开发流程 | `docs/conventions/{backend,frontend}/development-workflow.md` |
 | 新增环境变量 | 环境变量说明、部署说明 |
 | 修改部署或迁移流程 | 部署文档、migration 文档、ADR |
 
@@ -529,7 +522,7 @@ flowchart TD
 
 为了避免文档系统过重，模板默认只强制以下最小闭环：
 
-1. 新增或修改 feature，必须更新 `docs/features/<feature>.md`。
+1. 新增或修改 feature，必须更新 `docs/features/{backend,frontend}/<feature>.md`。
 2. 新增或修改 API，必须更新 OpenAPI route 定义。
 3. 新增或修改错误码，必须更新错误码注册表和错误码文档。
 4. 新增或修改数据库 schema，必须更新 migration，并在 feature 文档中说明影响。

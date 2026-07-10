@@ -90,7 +90,7 @@ export const requireAuth = () =>
 
 ## 权限策略
 
-> 权限层（组织树、角色、直接授权、deny、过期）自建为独立模块，不扩展 Better Auth。完整设计见 [权限层规范](./authorization.md)，决策见 [ADR-0004](../adr/0004-authorization-layer.md)。本节只描述 `requirePermission`、权限类型与 Better Auth 的衔接。
+> 权限层（组织树、角色、直接授权、deny、过期）自建为独立模块，不扩展 Better Auth。完整设计见 [权限层规范](./authorization.md)，决策见 [ADR-0004](../../adr/0004-authorization-layer.md)。本节只描述 `requirePermission`、权限类型与 Better Auth 的衔接。
 
 `requirePermission` 是自建中间件（`core/auth/require-permission.ts`），内部调用 `core/authorization/` 的 `PermissionService.check`，**不使用 Better Auth 的 `hasPermission`**。支持可选 `orgId`（不传则默认 `user.orgId`）：
 

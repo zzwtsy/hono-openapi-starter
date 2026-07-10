@@ -15,7 +15,7 @@ lastReviewedAt: 2026-07-04
 
 两者唯一联系是 `user.id`：授权表通过 `user_id` 外键引用 Better Auth 的 `user.id`。`requireAuth`（Better Auth）拿到 user 注入 context，`requirePermission`（自建）用 `user.id` 查授权表。换认证方案时权限层不受影响。
 
-> 决策背景见 [ADR-0004](../adr/0004-authorization-layer.md)。
+> 决策背景见 [ADR-0004](../../adr/0004-authorization-layer.md)。
 
 ## 边界划分（Port/Adapter）
 
@@ -141,7 +141,7 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 
 ### 实例数据（③）
 
-组织、用户、授权是 deployment 特定的，走自建管理 API（`/api/v1/*` + envelope，见 [ADR-0004](../adr/0004-authorization-layer.md) 代价）。空生产从 0 开始：先 `pnpm db:bootstrap` 造根组织 + 第一个 admin 用户（授标准 admin 角色），再由 admin 通过管理 API 建组织、建角色、授角色/直接授权。
+组织、用户、授权是 deployment 特定的，走自建管理 API（`/api/v1/*` + envelope，见 [ADR-0004](../../adr/0004-authorization-layer.md) 代价）。空生产从 0 开始：先 `pnpm db:bootstrap` 造根组织 + 第一个 admin 用户（授标准 admin 角色），再由 admin 通过管理 API 建组织、建角色、授角色/直接授权。
 
 管理 API 端点（`features/iam` + `features/me`，均需 `iam.read`/`iam.manage`，`/api/v1/me` 仅需认证）：
 
@@ -158,6 +158,6 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 
 ## 禁止
 
-- 不要把权限层做成 Better Auth 插件（见 [ADR-0004](../adr/0004-authorization-layer.md)）。
+- 不要把权限层做成 Better Auth 插件（见 [ADR-0004](../../adr/0004-authorization-layer.md)）。
 - 不要用 Better Auth 的 `hasPermission`（纯角色驱动，无组织树/直接授权/过期/deny）。
 - 不要在 `/api/auth/*` 挂权限管理端点（那是认证原生边界，权限管理走 `/api/v1/*` + envelope）。
