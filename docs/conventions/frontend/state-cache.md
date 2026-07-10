@@ -51,3 +51,10 @@ const { send } = useRequest(() => Apis.IAM.createRole({ data: {...} }), {
 ## cache 与 loader 协作
 
 关键路由 loader `await method` 写 cache,组件 `useRequest` 命中(见 [routing](./routing.md) loader 预取)。
+
+显式 `cacheFor` 覆盖默认 5s,使预取与 back-nav 真正命中(默认 5s 跨页导航 >5s 即失效):
+
+- `_authenticated` beforeLoad `getMe({ cacheFor: 5 * 60_000 })`:跨受保护页面不重拉 `/me`(permissions stale 由后端兜底)。
+- 列表 loader `listRoles({ cacheFor: 60_000 })` 写 cache,组件 `useRequest(() => listRoles(), { cacheFor: 60_000 })` 命中。loader(无 hook)在 method 设 `cacheFor`,组件在 `useRequest` config 设(见 [api-alova](./api-alova.md) 策略位置约定),同 key 共享 cache。
+
+未来引入 mutation(增删改)时,GET 标 `hitSource` 失效相关 cache(零命令式 `invalidateCache`)。

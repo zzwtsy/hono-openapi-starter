@@ -20,7 +20,7 @@ TanStack Router 文件路由,`src/routes/` 下文件即路由。`routeTree.gen.t
 | --- | --- |
 | `_authenticated.tsx` | 登录守卫 layout:无 session -> /login;有 -> getMe 取 permissions 下钻 |
 | 单路由 `beforeLoad` | 权限守卫:`requirePermission(context.auth.permissions, "iam.read")` |
-| `login.tsx` / `403.tsx` | 公开路由(不在 _authenticated 下) |
+| `login.tsx` / `403.tsx` | 公开路由(不在 _authenticated 下);`login` 已登录则跳 `/dashboard`,并声明 `redirect` 搜索参数供登录后回跳 |
 | `index.tsx` | / -> redirect /dashboard |
 
 ### 登录守卫(_authenticated)
@@ -72,12 +72,16 @@ loader: async () => {
 
 ## 登录/登出
 
-`signIn`/`signOut` 后调 `router.invalidate()` 重走守卫(`_authenticated` 重新取 permissions):
+登录:`signIn` 成功后 `router.navigate` 到回跳目标(或 `/dashboard`),触发 `_authenticated` beforeLoad 取 permissions;`/login?redirect=<href>` 由 `_authenticated` 守卫写入,登录后经 `safeRedirect` 校验回跳(防 open-redirect):
 
 ```ts
 const { login } = useLogin(); // features/auth/hooks
-await login(email, password); // signIn + router.invalidate
+await login(email, password, redirect); // signIn + router.navigate(safeRedirect(redirect))
 ```
+
+登出:`signOut` 后 `router.invalidate()` 重走守卫(session 变 null -> `_authenticated` 重定向 `/login`)。
+
+session 过期(alova 401)不走此流程,由 [api-alova](./api-alova.md) 的 `responded` 统一 hard-nav 到 `/login`。
 
 ## 守卫不是授权边界
 

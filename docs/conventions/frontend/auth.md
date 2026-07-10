@@ -46,7 +46,7 @@ return <RouterProvider router={router} context={{ auth: { session } }} />;
 
 - session 来自 `useSession`(React-land),通过 `<RouterProvider context>` 注入。
 - 等 `isPending` 结束再渲染,避免 beforeLoad 拿到未 resolve 的 session。
-- 登录/登出后 `router.invalidate()` 重走守卫。
+- 登录后 `router.navigate` 到回跳目标(触发 `_authenticated` 重取 permissions);登出后 `router.invalidate()` 重走守卫。详见 [routing](./routing.md)。
 
 ## permissions
 

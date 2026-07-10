@@ -37,7 +37,9 @@ apps/frontend/src/
 
   lib/                    # 跨 feature 基础设施
     auth-client.ts        # Better Auth client + Session 类型
+    env.ts                # 环境变量校验(zod fail-fast)
     require-permission.ts # 前端权限守卫 helper
+    safe-redirect.ts      # open-redirect 防御(登录回跳目标校验)
     utils.ts              # cn 等
 
   components/

@@ -40,6 +40,6 @@ flowchart TD
 
 ## 登录/登出
 
-`signIn`/`signOut` 后调 `router.invalidate()` 重走守卫(`_authenticated` 重新取 permissions)。session 来自 Better Auth `useSession`(React-land),App 等 `isPending` 结束再渲染 RouterProvider,避免 beforeLoad 拿到未 resolve 的 session。
+登录:`signIn` 成功后 `router.navigate` 到 `redirect` 目标(或 `/dashboard`),触发 `_authenticated` 重新取 permissions。登出:`signOut` 后 `router.invalidate()` 重走守卫(session 变 null -> 重定向 `/login`)。session 过期(业务 API alova 401)由 `responded.onSuccess` 统一 hard-nav `/login?redirect=<当前>`。session 来自 Better Auth `useSession`(React-land),App 等 `isPending` 结束再渲染 RouterProvider,避免 beforeLoad 拿到未 resolve 的 session。
 
 详细规范见 [routing](../../conventions/frontend/routing.md)、[auth](../../conventions/frontend/auth.md)、[api-alova](../../conventions/frontend/api-alova.md)。
