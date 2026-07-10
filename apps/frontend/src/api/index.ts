@@ -1,6 +1,7 @@
 import { createAlova } from "alova";
 import adapterFetch from "alova/fetch";
 import reactHook from "alova/react";
+import { env } from "@/lib/env";
 import { createApis, mountApis, withConfigType } from "./createApis";
 
 /** 后端统一响应 envelope(见 backend core/http/openapi/components.ts)。 */
@@ -27,7 +28,7 @@ declare module "alova" {
 // 类型剥离在 alova.config.ts 的 handleApi 完成(生成类型 = data 类型),
 // 这里 responded 运行时剥 envelope,两端一致。
 export const alovaInstance = createAlova({
-  baseURL: "",
+  baseURL: env.VITE_API_BASE_URL,
   statesHook: reactHook,
   requestAdapter: adapterFetch(),
   responded: {

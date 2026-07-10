@@ -17,5 +17,5 @@ export default defineConfig({
       },
     },
   ],
-  autoUpdate: true,
+  autoUpdate: false,
 });
