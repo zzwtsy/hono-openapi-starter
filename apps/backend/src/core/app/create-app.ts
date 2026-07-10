@@ -35,9 +35,11 @@ export function createApp() {
       response: true,
     },
   }));
-  // 分级限流:认证端点(/api/auth/*)严格防暴力登录;业务 API(/api/v1/*)宽松防滥用。
+  // 分级限流:认证 sign-in/sign-up 严格防暴力登录;get-session/sign-out 等不限流(非滥用向量,
+  // 且 get-session 被 client 频繁拉取,限流会误伤正常浏览/登出)。业务 API(/api/v1/*)宽松防滥用。
   // /healthz、/readyz 不挂,探针不限流。
-  app.use("/api/auth/*", authRateLimiter);
+  app.use("/api/auth/sign-in/*", authRateLimiter);
+  app.use("/api/auth/sign-up/*", authRateLimiter);
   app.use("/api/v1/*", apiRateLimiter);
   // 请求级权限 cache（ALS）：同请求内 PermissionService.check 共享结果，避免重复递归 CTE。
   app.use("*", permissionCacheMiddleware());

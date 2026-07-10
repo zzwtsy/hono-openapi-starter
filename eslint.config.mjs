@@ -79,6 +79,8 @@ export default antfu({
   rules: {
     // shadcn 组件导出 cva 变体(如 buttonVariants),ui 是生成的设计系统层,豁免
     "react-refresh/only-export-components": "off",
+    "ts/strict-boolean-expressions": "off",
+    "react/no-context-provider": "off",
   },
 }).append({
   files: ["apps/frontend/src/routes/**/*.{ts,tsx}"],
