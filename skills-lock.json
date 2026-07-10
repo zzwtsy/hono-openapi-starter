@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "alova-client-usage": {
+      "source": "alovajs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/alova-client-usage/SKILL.md",
+      "computedHash": "76cbbca405b251eef39c1e54e32cbe5455625b0158c9d64c7216ee363fa53066"
+    },
+    "alova-wormhole-usage": {
+      "source": "alovajs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/alova-wormhole-usage/SKILL.md",
+      "computedHash": "db27cbc33dc7e53771c6338f4e6d80eb1a0c344bfc08404198eff8974cb5b5f1"
+    },
     "better-auth-best-practices": {
       "source": "better-auth/skills",
       "sourceType": "github",
@@ -30,6 +42,12 @@
       "sourceType": "github",
       "skillPath": "skills/vitest/SKILL.md",
       "computedHash": "943d436114c677802426741980146c07560bf375297666b03062444f4b98a785"
+    },
+    "worma-guidelines": {
+      "source": "alovajs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/worma-guidelines/SKILL.md",
+      "computedHash": "8b62c9826237a9934befbd9b844c463642793435859ef11c79971dbc30835c18"
     }
   }
 }
