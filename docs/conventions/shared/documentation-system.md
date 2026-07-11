@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: platform
-lastReviewedAt: 2026-07-10
+lastReviewedAt: 2026-07-11
 ---
 
 # 文档系统规范
@@ -83,13 +83,14 @@ docs/
   checklists/
 ```
 
+执行计划不进 `docs/`，放在 Claude Code 的 `.claude/plans/` 目录（见 [execution-plan](../../../.claude/skills/execution-plan/SKILL.md) 技能）。每份计划带 frontmatter `status: draft`，完成后转 `Active` 或归档。
+
 ## 推荐扩展目录
 
 以下目录和文件只有在项目实际需要时再创建。未创建前，它们只代表治理建议，不代表当前事实。
 
 | 路径 | 使用场景 |
 | --- | --- |
-| `docs/plans/` | 复杂执行计划、阶段拆分、验收标准；完成后应归档或标记状态 |
 | `docs/reports/` | 实际运行、回填、重跑和数据校验记录；必须包含命令、时间、范围和结果 |
 | `docs/references/` | 远端接口、OpenAPI、数据字典、样例图片、服务器协议等可查事实 |
 | `docs/archive/` | 仅用于历史追溯的归档文档 |
