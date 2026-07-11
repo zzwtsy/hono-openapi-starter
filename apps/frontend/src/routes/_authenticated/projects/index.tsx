@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Apis from "@/api";
+import { PageHeader } from "@/components/layout/page-header";
 import { ProjectList } from "@/features/projects/components/ProjectList";
 import { requirePermission } from "@/lib/require-permission";
 
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/_authenticated/projects/")({
   },
   component: () => (
     <div className="flex flex-col gap-4 p-6">
-      <h1 className="font-medium">项目</h1>
+      <PageHeader title="项目" description="当前组织下的项目。" />
       <ProjectList />
     </div>
   ),

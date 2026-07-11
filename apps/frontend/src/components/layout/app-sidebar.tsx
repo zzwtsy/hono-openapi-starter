@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { Me } from "@/api/globals";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -98,6 +99,11 @@ export function AppSidebar({ auth }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <ThemeToggle />
+          </SidebarMenuItem>
+        </SidebarMenu>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
