@@ -93,11 +93,11 @@ shadcn 生成的设计系统层(Base UI)。eslint 豁免 `react-refresh`。
 | features | lib, ui, api(features 之间 disallow,跨 feature 走 routes 装配) |
 | lib | lib |
 | ui | ui, lib |
-| api | api(生成物不依赖项目模块) |
+| api | api, lib(生成物 eslint-disable 免约束;手写 index.ts 装配 alova 实例,允许 lib/env) |
 
 强制规范:
 
 1. `routes` 不能被其他层 import(只由 router 消费)。
 2. `features` 之间不直接 import(跨 feature 经 routes 装配或上移 `lib`)。
-3. `api` 只依赖自身 + alova(生成物独立)。
+3. `api` 依赖自身 + alova;手写 `index.ts` 可依赖 `lib/env`(alova 实例 baseURL)。生成物(`createApis`/`apiDefinitions`/`globals.d.ts`)eslint-disable 免约束。
 4. 根文件(`main`/`App`/`router`)不在任何 element,不受 boundaries 约束。
