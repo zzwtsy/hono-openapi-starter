@@ -13,8 +13,8 @@ export const Route = createFileRoute("/_authenticated")({
         search: { redirect: location.href },
       });
     }
-    // session 在手,取 permissions;cacheFor 5min 命中 alova cache,避免跨受保护页面每路由重拉 /me
-    const me = await Apis.Me.getMe({ cacheFor: 5 * 60_000 });
+    // session 在手,取 permissions;cacheFor 5min 在 api/index.ts $$userConfigMap 集中配置,此处纯调用命中 cache
+    const me = await Apis.Me.getMe();
     return {
       auth: { ...context.auth, user: me.user, permissions: me.permissions },
     };
