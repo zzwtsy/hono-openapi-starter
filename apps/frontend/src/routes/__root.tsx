@@ -1,6 +1,6 @@
 import type { Me } from "@/api/globals";
 import type { Session } from "@/lib/auth-client";
-import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -35,6 +35,9 @@ export const Route = createRootRouteWithContext<{ auth: AuthState }>()({
           <CardTitle>404</CardTitle>
           <CardDescription>页面不存在</CardDescription>
         </CardHeader>
+        <CardContent>
+          <Button render={<Link to="/dashboard" />}>返回首页</Button>
+        </CardContent>
       </Card>
     </div>
   ),

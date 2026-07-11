@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Apis from "@/api";
+import { PageHeader } from "@/components/layout/page-header";
 import { RoleList } from "@/features/iam/components/RoleList";
 import { requirePermission } from "@/lib/require-permission";
 
@@ -20,7 +21,7 @@ function RolesPage() {
   const canManage = auth.permissions?.includes("iam.manage") === true;
   return (
     <div className="flex flex-col gap-4 p-6">
-      <h1 className="font-medium">角色管理</h1>
+      <PageHeader title="角色管理" description="管理实例角色及其描述。" />
       <RoleList canManage={canManage} />
     </div>
   );

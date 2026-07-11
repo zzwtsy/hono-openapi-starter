@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -6,9 +7,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   return (
-    <div className="p-6">
-      <h1 className="font-medium">Dashboard</h1>
-      <p className="text-muted-foreground">概览页待实现。</p>
+    <div className="flex flex-col gap-4 p-6">
+      <PageHeader title="Dashboard" description="概览页待实现。" />
     </div>
   );
 }
