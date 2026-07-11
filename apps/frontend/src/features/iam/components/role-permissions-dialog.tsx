@@ -1,7 +1,7 @@
 import type { Permission, Role } from "@/api/globals";
 import { useRequest } from "alova/client";
 import { CircleAlert, KeyRound, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -50,20 +50,20 @@ export function RolePermissionsDialog({ role, onClose }: RolePermissionsDialogPr
     error: grantedError,
     send: sendGranted,
   } = useRequest(() => Apis.IAM.listRolePermissions({ pathParams: { roleId: role.id } }));
-  const [working, setWorking] = useState<Set<string>>(() => new Set());
-  const [search, setSearch] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
   const loading = permsLoading || grantedLoading;
   const error = permsError ?? grantedError;
   const initial = useMemo(() => new Set(granted ?? []), [granted]);
 
-  // granted 加载/重试后,把 working 同步到初始态(批量编辑的 reset)。set-state-in-effect 是必要的:
-  // working 需跟随 granted 数据变化重置,不能用 useMemo(working 是可变编辑态)。
-  useEffect(() => {
-    // eslint-disable-next-line react/set-state-in-effect -- 同步外部数据到编辑态,仅 initial 变化时触发(重试/首次加载)
+  const [working, setWorking] = useState<Set<string>>(() => new Set(initial));
+  const [search, setSearch] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  // granted 加载/重试后,把 working 同步到初始态(批量编辑的 reset)。working 是可变编辑态,不能用 useMemo
+  // (会跟随 initial 抹掉用户勾选)。用 React 官方推荐的"渲染期间 reset 状态"模式:同步重置、无空态闪烁、无需抑制。
+  const [prevInitial, setPrevInitial] = useState(initial);
+  if (initial !== prevInitial) {
+    setPrevInitial(initial);
     setWorking(new Set(initial));
-  }, [initial]);
+  }
 
   const toAdd = useMemo(() => [...working].filter(p => !initial.has(p)), [working, initial]);
   const toRemove = useMemo(() => [...initial].filter(p => !working.has(p)), [working, initial]);
