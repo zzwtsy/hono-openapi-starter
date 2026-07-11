@@ -1,6 +1,6 @@
 import type { Role } from "@/api/globals";
 import { useRequest } from "alova/client";
-import { CircleAlert, MoreHorizontal, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { CircleAlert, KeyRound, MoreHorizontal, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
@@ -32,6 +32,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RoleForm } from "./role-form";
+import { RolePermissionsDialog } from "./role-permissions-dialog";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("zh-CN");
@@ -47,6 +48,7 @@ export function RoleList({ canManage }: RoleListProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Role | null>(null);
   const [deleting, setDeleting] = useState<Role | null>(null);
+  const [assigning, setAssigning] = useState<Role | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
 
   const confirmDelete = async () => {
@@ -156,6 +158,10 @@ export function RoleList({ canManage }: RoleListProps) {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                     <DropdownMenuGroup>
+                                      <DropdownMenuItem onClick={() => { setAssigning(role); }}>
+                                        <KeyRound />
+                                        权限分配
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => { setEditing(role); }}>
                                         <Pencil />
                                         编辑
@@ -196,6 +202,17 @@ export function RoleList({ canManage }: RoleListProps) {
             <RoleForm key={editing.id} role={editing} onSuccess={handleUpdated} />
           )}
         </DialogContent>
+      </Dialog>
+      <Dialog
+        open={assigning !== null}
+        onOpenChange={(o) => {
+          if (!o)
+            setAssigning(null);
+        }}
+      >
+        {assigning !== null && (
+          <RolePermissionsDialog key={assigning.id} role={assigning} onClose={() => { setAssigning(null); }} />
+        )}
       </Dialog>
 
       <AlertDialog

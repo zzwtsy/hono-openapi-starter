@@ -111,7 +111,7 @@ export default antfu({
   },
   rules: {
     // routes(装配层)-> features/lib/ui/api;features(能力层)-> lib/ui/api(features 间 disallow,跨 feature 走 routes);
-    // lib -> lib;ui -> ui/lib;api(生成物)-> api
+    // lib -> lib;ui -> ui/lib;api -> api/lib(生成物 eslint-disable 免约束;手写 index.ts 装配 alova 实例,允许 lib/env)
     "boundaries/dependencies": ["error", {
       default: "disallow",
       policies: [
@@ -119,7 +119,7 @@ export default antfu({
         { from: { element: { type: "features" } }, allow: { to: { element: { type: ["lib", "ui", "api"] } } } },
         { from: { element: { type: "lib" } }, allow: { to: { element: { type: ["lib"] } } } },
         { from: { element: { type: "ui" } }, allow: { to: { element: { type: ["ui", "lib"] } } } },
-        { from: { element: { type: "api" } }, allow: { to: { element: { type: ["api"] } } } },
+        { from: { element: { type: "api" } }, allow: { to: { element: { type: ["api", "lib"] } } } },
       ],
     }],
   },
