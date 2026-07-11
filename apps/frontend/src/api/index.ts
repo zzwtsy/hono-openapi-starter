@@ -54,7 +54,20 @@ export const alovaInstance = createAlova({
   },
 });
 
-export const $$userConfigMap = withConfigType({});
+// 缓存策略(见 docs/conventions/frontend/state-cache.md):cacheFor/hitSource/name 集中在此(method 级策略,
+// createApis 把 configMap[key] merge 进每次调用)。loader/hooks 调 Apis.xxx() 不再传 cacheFor,单一来源。
+// GET 标 cacheFor + hitSource,mutation 标 name;mutation 成功自动失效相关 GET 缓存。
+export const $$userConfigMap = withConfigType({
+  "Me.getMe": { cacheFor: 5 * 60_000 },
+  "IAM.listRoles": {
+    cacheFor: 60_000,
+    hitSource: ["IAM.createRole", "IAM.updateRole", "IAM.deleteRole"],
+  },
+  "Projects.listProjects": { cacheFor: 60_000, hitSource: [] },
+  "IAM.createRole": { name: "IAM.createRole" },
+  "IAM.updateRole": { name: "IAM.updateRole" },
+  "IAM.deleteRole": { name: "IAM.deleteRole" },
+});
 
 const Apis = createApis(alovaInstance, $$userConfigMap);
 
