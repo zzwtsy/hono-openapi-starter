@@ -4,6 +4,7 @@ import { CircleAlert, KeyRound, MoreHorizontal, Pencil, Plus, ShieldCheck, Trash
 import { useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
+import { Can } from "@/components/Can";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -38,12 +39,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("zh-CN");
 }
 
-interface RoleListProps {
-  /** 有 iam.manage 才显示新建/编辑/删除。 */
-  canManage: boolean;
-}
-
-export function RoleList({ canManage }: RoleListProps) {
+export function RoleList() {
   const { data, loading, error, send } = useRequest(() => Apis.IAM.listRoles());
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Role | null>(null);
@@ -99,14 +95,14 @@ export function RoleList({ canManage }: RoleListProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {canManage && (
+      <Can perm="iam.manage">
         <div className="flex justify-end">
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus data-icon="inline-start" />
             新建角色
           </Button>
         </div>
-      )}
+      </Can>
       {data?.length === 0
         ? (
             <Empty>
@@ -130,7 +126,9 @@ export function RoleList({ canManage }: RoleListProps) {
                         <TableHead>描述</TableHead>
                         <TableHead>来源</TableHead>
                         <TableHead>创建时间</TableHead>
-                        {canManage && <TableHead className="text-right">操作</TableHead>}
+                        <Can perm="iam.manage">
+                          <TableHead className="text-right">操作</TableHead>
+                        </Can>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -149,7 +147,7 @@ export function RoleList({ canManage }: RoleListProps) {
                               : <Badge>实例</Badge>}
                           </TableCell>
                           <TableCell className="text-muted-foreground">{formatDate(role.createdAt)}</TableCell>
-                          {canManage && (
+                          <Can perm="iam.manage">
                             <TableCell className="text-right">
                               {role.source === "instance" && (
                                 <DropdownMenu>
@@ -175,7 +173,7 @@ export function RoleList({ canManage }: RoleListProps) {
                                 </DropdownMenu>
                               )}
                             </TableCell>
-                          )}
+                          </Can>
                         </TableRow>
                       ))}
                     </TableBody>

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
-import type { Me } from "@/api/globals";
+import type { AuthState } from "@/routes/__root";
+import type { AppPermission } from "@/types/permissions";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -26,6 +27,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useLogout } from "@/features/auth/hooks";
+import { hasPermission } from "@/lib/permissions";
 
 // 受保护区的侧边栏:导航按 permissions 显隐(前端 UX,后端 PermissionChecker 才是授权边界);
 // 用户区显示登录态,登出走 useLogout(signOut + effect 监听 session 跳 /login)。
@@ -35,7 +37,8 @@ interface NavItem {
   to: string;
   title: string;
   icon: LucideIcon;
-  permission?: string;
+  /** 显示该导航项所需的权限;省略则任何登录用户可见(如概览)。 */
+  permission?: AppPermission;
   match: (pathname: string) => boolean;
 }
 
@@ -46,7 +49,7 @@ const navItems: NavItem[] = [
 ];
 
 interface AppSidebarProps {
-  auth: { user?: Me["user"]; permissions?: string[] };
+  auth: AuthState;
 }
 
 export function AppSidebar({ auth }: AppSidebarProps) {
@@ -54,7 +57,7 @@ export function AppSidebar({ auth }: AppSidebarProps) {
   const { logout } = useLogout();
 
   const visible = navItems.filter(
-    item => item.permission === undefined || auth.permissions?.includes(item.permission) === true,
+    item => item.permission === undefined || hasPermission(auth.permissions, item.permission),
   );
   const name = auth.user?.name ?? "";
   const email = auth.user?.email ?? "";

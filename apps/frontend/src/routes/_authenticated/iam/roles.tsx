@@ -16,13 +16,10 @@ export const Route = createFileRoute("/_authenticated/iam/roles")({
 });
 
 function RolesPage() {
-  const { auth } = Route.useRouteContext();
-  // 读需要 iam.read(见 beforeLoad);写操作(新建/编辑/删除)额外要 iam.manage
-  const canManage = auth.permissions?.includes("iam.manage") === true;
   return (
     <div className="flex flex-col gap-4 p-6">
       <PageHeader title="角色管理" description="管理实例角色及其描述。" />
-      <RoleList canManage={canManage} />
+      <RoleList />
     </div>
   );
 }

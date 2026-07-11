@@ -139,7 +139,7 @@ export interface Me {
   /**
    * 当前组织下的有效权限名列表(空数组表示未绑定组织或无权限)
    */
-  permissions: string[];
+  permissions: ('projects.read' | 'iam.read' | 'iam.manage')[];
 }
 export interface Project {
   /**
@@ -334,7 +334,7 @@ declare global {
        *   // 当前组织下的有效权限名列表(空数组表示未绑定组织或无权限)
        *   // [items] start
        *   // [items] end
-       *   permissions: string[]
+       *   permissions: ('projects.read' | 'iam.read' | 'iam.manage')[]
        * }
        * ```
        */
