@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/iam/roles")({
     await Apis.IAM.listRoles({ cacheFor: 60_000 });
   },
   component: () => (
-    <div className="p-6">
+    <div className="flex flex-col gap-4 p-6">
       <h1 className="font-medium">角色管理</h1>
       <RoleList />
     </div>
