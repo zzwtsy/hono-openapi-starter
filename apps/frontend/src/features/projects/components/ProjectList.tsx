@@ -13,7 +13,7 @@ function formatDate(iso: string): string {
 }
 
 export function ProjectList() {
-  const { data, loading, error, send } = useRequest(() => Apis.Projects.listProjects(), { cacheFor: 60_000 });
+  const { data, loading, error, send } = useRequest(() => Apis.Projects.listProjects());
 
   if (loading) {
     return <ProjectListSkeleton />;

@@ -16,6 +16,7 @@
     "@base-ui/react": "catalog:",
     "@fontsource-variable/noto-sans": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-form": "catalog:",
     "@tanstack/react-router": "catalog:",
     "alova": "catalog:",
     "better-auth": "catalog:",
