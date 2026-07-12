@@ -67,12 +67,24 @@ export const $$userConfigMap = withConfigType({
   "IAM.listRolePermissions": {
     hitSource: ["IAM.assignRolePermissions", "IAM.deleteRolePermission"],
   },
+  "IAM.listOrganizations": {
+    cacheFor: 60_000,
+    hitSource: ["IAM.createOrganization", "IAM.updateOrganization", "IAM.deleteOrganization"],
+  },
+  "IAM.listUsers": { cacheFor: 60_000 },
   "Projects.listProjects": { cacheFor: 60_000, hitSource: [] },
   "IAM.createRole": { name: "IAM.createRole" },
   "IAM.updateRole": { name: "IAM.updateRole" },
   "IAM.deleteRole": { name: "IAM.deleteRole" },
   "IAM.assignRolePermissions": { name: "IAM.assignRolePermissions" },
   "IAM.deleteRolePermission": { name: "IAM.deleteRolePermission" },
+  "IAM.createOrganization": { name: "IAM.createOrganization" },
+  "IAM.updateOrganization": { name: "IAM.updateOrganization" },
+  "IAM.deleteOrganization": { name: "IAM.deleteOrganization" },
+  "IAM.assignUserRole": { name: "IAM.assignUserRole" },
+  "IAM.deleteUserRole": { name: "IAM.deleteUserRole" },
+  "IAM.assignUserPermission": { name: "IAM.assignUserPermission" },
+  "IAM.deleteUserPermission": { name: "IAM.deleteUserPermission" },
 });
 
 const Apis = createApis(alovaInstance, $$userConfigMap);

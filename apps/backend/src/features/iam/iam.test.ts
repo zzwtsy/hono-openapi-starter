@@ -13,6 +13,7 @@ const {
   mockCheck,
   mockListPermissions,
   mockListRoles,
+  mockListUsers,
   mockCreateRole,
   mockDeleteRole,
   mockListRolePermissions,
@@ -22,6 +23,7 @@ const {
   mockCheck: vi.fn(),
   mockListPermissions: vi.fn(),
   mockListRoles: vi.fn(),
+  mockListUsers: vi.fn(),
   mockCreateRole: vi.fn(),
   mockDeleteRole: vi.fn(),
   mockListRolePermissions: vi.fn(),
@@ -34,6 +36,7 @@ vi.mock("./service.js", () => ({
   IamService: {
     listPermissions: mockListPermissions,
     listRoles: mockListRoles,
+    listUsers: mockListUsers,
     createRole: mockCreateRole,
     deleteRole: mockDeleteRole,
     listRolePermissions: mockListRolePermissions,
@@ -61,6 +64,7 @@ const mockRole = {
 function buildApp() {
   const app = new OpenAPIHono<AppBindings>();
   app.openapi(routes.listPermissionsRoute, handlers.listPermissionsHandler);
+  app.openapi(routes.listUsersRoute, handlers.listUsersHandler);
   app.openapi(routes.listRolesRoute, handlers.listRolesHandler);
   app.openapi(routes.createRoleRoute, handlers.createRoleHandler);
   app.openapi(routes.deleteRoleRoute, handlers.deleteRoleHandler);
@@ -109,6 +113,25 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { name: string }[] };
     expect(body.data[0].name).toBe("viewer");
+  });
+
+  it("listUsers 无 iam.read 返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/users");
+    expect(res.status).toBe(403);
+  });
+
+  it("listUsers 有 iam.read 返回用户列表", async () => {
+    authed();
+    mockListUsers.mockResolvedValue([{ id: "u-1", name: "a", email: "a@b.c", orgId: "org-1", createdAt: new Date() }]);
+
+    const res = await buildApp().request("/users");
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: { id: string }[] };
+    expect(body.data[0].id).toBe("u-1");
+    expect(mockListUsers).toHaveBeenCalledWith("org-1");
   });
 
   it("createRole 无 iam.manage 返回 403", async () => {

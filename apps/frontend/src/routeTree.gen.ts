@@ -15,7 +15,9 @@ import { Route as R403RouteImport } from './routes/403'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
+import { Route as AuthenticatedIamUsersRouteImport } from './routes/_authenticated/iam/users'
 import { Route as AuthenticatedIamRolesRouteImport } from './routes/_authenticated/iam/roles'
+import { Route as AuthenticatedIamOrganizationsRouteImport } from './routes/_authenticated/iam/organizations'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -47,18 +49,31 @@ const AuthenticatedProjectsIndexRoute =
     path: '/projects/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedIamUsersRoute = AuthenticatedIamUsersRouteImport.update({
+  id: '/iam/users',
+  path: '/iam/users',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedIamRolesRoute = AuthenticatedIamRolesRouteImport.update({
   id: '/iam/roles',
   path: '/iam/roles',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedIamOrganizationsRoute =
+  AuthenticatedIamOrganizationsRouteImport.update({
+    id: '/iam/organizations',
+    path: '/iam/organizations',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/403': typeof R403Route
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
   '/iam/roles': typeof AuthenticatedIamRolesRoute
+  '/iam/users': typeof AuthenticatedIamUsersRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -66,7 +81,9 @@ export interface FileRoutesByTo {
   '/403': typeof R403Route
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
   '/iam/roles': typeof AuthenticatedIamRolesRoute
+  '/iam/users': typeof AuthenticatedIamUsersRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
 }
 export interface FileRoutesById {
@@ -76,7 +93,9 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
   '/_authenticated/iam/roles': typeof AuthenticatedIamRolesRoute
+  '/_authenticated/iam/users': typeof AuthenticatedIamUsersRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
 }
 export interface FileRouteTypes {
@@ -86,10 +105,20 @@ export interface FileRouteTypes {
     | '/403'
     | '/login'
     | '/dashboard'
+    | '/iam/organizations'
     | '/iam/roles'
+    | '/iam/users'
     | '/projects/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/403' | '/login' | '/dashboard' | '/iam/roles' | '/projects'
+  to:
+    | '/'
+    | '/403'
+    | '/login'
+    | '/dashboard'
+    | '/iam/organizations'
+    | '/iam/roles'
+    | '/iam/users'
+    | '/projects'
   id:
     | '__root__'
     | '/'
@@ -97,7 +126,9 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/dashboard'
+    | '/_authenticated/iam/organizations'
     | '/_authenticated/iam/roles'
+    | '/_authenticated/iam/users'
     | '/_authenticated/projects/'
   fileRoutesById: FileRoutesById
 }
@@ -152,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/iam/users': {
+      id: '/_authenticated/iam/users'
+      path: '/iam/users'
+      fullPath: '/iam/users'
+      preLoaderRoute: typeof AuthenticatedIamUsersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/iam/roles': {
       id: '/_authenticated/iam/roles'
       path: '/iam/roles'
@@ -159,18 +197,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIamRolesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/iam/organizations': {
+      id: '/_authenticated/iam/organizations'
+      path: '/iam/organizations'
+      fullPath: '/iam/organizations'
+      preLoaderRoute: typeof AuthenticatedIamOrganizationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedIamOrganizationsRoute: typeof AuthenticatedIamOrganizationsRoute
   AuthenticatedIamRolesRoute: typeof AuthenticatedIamRolesRoute
+  AuthenticatedIamUsersRoute: typeof AuthenticatedIamUsersRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedIamOrganizationsRoute: AuthenticatedIamOrganizationsRoute,
   AuthenticatedIamRolesRoute: AuthenticatedIamRolesRoute,
+  AuthenticatedIamUsersRoute: AuthenticatedIamUsersRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
 }
 
