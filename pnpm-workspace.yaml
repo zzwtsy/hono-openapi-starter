@@ -26,6 +26,8 @@ catalog:
   "@base-ui/react": ^1.6.0
   "@eslint-react/eslint-plugin": ^5.6.0
   "@fontsource-variable/noto-sans": ^5.2.10
+  "@headless-tree/core": ^1.7.0
+  "@headless-tree/react": ^1.7.0
   "@hono/node-server": ^2.0.8
   "@hono/zod-openapi": ^1.4.0
   "@loglayer/hono": ^2.3.0

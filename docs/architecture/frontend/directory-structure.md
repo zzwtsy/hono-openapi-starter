@@ -31,7 +31,12 @@ apps/frontend/src/
       hooks.ts            # useLogin/useLogout(signIn + router.invalidate)
       components/LoginForm.tsx
     iam/
-      components/RoleList.tsx
+      organization-tree.ts # 组织树索引、路径与后代计算
+      components/
+        RoleList.tsx
+        OrganizationExplorer.tsx
+        organization-tree.tsx
+        organization-details.tsx
     projects/
       components/ProjectList.tsx
 
@@ -79,9 +84,11 @@ shadcn 生成的设计系统层(Base UI)。eslint 豁免 `react-refresh`。
 
 ## feature 分层(按需,不强制)
 
-- **简单 feature**:只 `components/`(如 iam、projects 当前)
+- **简单 feature**:只 `components/`(如 projects 当前)
 - **中等 feature**:`components/` + `hooks.ts`(多组件复用同一请求 + 策略)
 - **复杂 feature**:`components/` + `hooks.ts` + `api.ts`(业务语义封装:参数转换/聚合)+ `types.ts`
+
+IAM 当前使用 `components/` + 纯数据 helper `organization-tree.ts`；helper 负责树投影和业务规则，不为此引入额外 hooks/api 分层。
 
 判断标准:**封装必须注入价值**(复用策略 / 业务语义),否则直接用 `Apis` + `useRequest`,不为封装而封装(见 [api-alova](../../conventions/frontend/api-alova.md))。
 

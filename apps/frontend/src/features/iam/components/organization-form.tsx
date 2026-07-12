@@ -9,6 +9,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { buildOrganizationTree } from "../organization-tree";
 
 const organizationSchema = z.object({
   name: z.string().min(1, "请输入组织名"),
@@ -18,14 +19,20 @@ const organizationSchema = z.object({
 interface OrganizationFormProps {
   organizations: Organization[];
   organization?: Organization;
-  onSuccess: () => void;
+  defaultParentId?: string;
+  onSuccess: (organization: Organization) => void | Promise<void>;
 }
 
-export function OrganizationForm({ organizations, organization, onSuccess }: OrganizationFormProps) {
+export function OrganizationForm({
+  organizations,
+  organization,
+  defaultParentId,
+  onSuccess,
+}: OrganizationFormProps) {
   const form = useForm({
     defaultValues: {
       name: organization?.name ?? "",
-      parentId: organization?.parentId ?? "",
+      parentId: organization?.parentId ?? defaultParentId ?? "",
     },
     validators: {
       onChange: organizationSchema,
@@ -33,30 +40,27 @@ export function OrganizationForm({ organizations, organization, onSuccess }: Org
     onSubmit: async ({ value }) => {
       try {
         const parentId = value.parentId === "" ? undefined : value.parentId;
+        let savedOrganization: Organization;
         if (organization) {
-          await Apis.IAM.updateOrganization({
+          savedOrganization = await Apis.IAM.updateOrganization({
             pathParams: { orgId: organization.id },
             data: { name: value.name, parentId: parentId ?? null },
           });
           toast.success("组织已更新");
         } else {
-          await Apis.IAM.createOrganization({
+          savedOrganization = await Apis.IAM.createOrganization({
             data: { name: value.name, parentId },
           });
           toast.success("组织已创建");
         }
-        onSuccess();
+        await onSuccess(savedOrganization);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "操作失败");
       }
     },
   });
 
-  const selectableOrgs = organizations.filter(o => o.id !== organization?.id);
-  const parentItems = [
-    { label: "无（根组织）", value: null },
-    ...selectableOrgs.map(o => ({ label: o.name, value: o.id })),
-  ];
+  const parentItems = buildOrganizationTree(organizations).getParentOptions(organization?.id);
 
   return (
     <>
@@ -78,6 +82,8 @@ export function OrganizationForm({ organizations, organization, onSuccess }: Org
                 <FieldLabel htmlFor="org-name">名称</FieldLabel>
                 <Input
                   id="org-name"
+                  name="name"
+                  autoComplete="off"
                   value={field.state.value}
                   onChange={e => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}
