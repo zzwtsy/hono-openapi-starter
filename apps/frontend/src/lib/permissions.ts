@@ -14,19 +14,3 @@ export function hasPermission(
 ): boolean {
   return permissions?.includes(required) === true;
 }
-
-/** 是否持有任一权限。空 `required` 返回 false(无要求即不满足,与 `every` 语义对称取舍)。 */
-export function hasAnyPermission(
-  permissions: readonly AppPermission[] | undefined,
-  ...required: readonly AppPermission[]
-): boolean {
-  return required.some(r => hasPermission(permissions, r));
-}
-
-/** 是否持有全部权限。空 `required` 返回 true。 */
-export function hasAllPermissions(
-  permissions: readonly AppPermission[] | undefined,
-  ...required: readonly AppPermission[]
-): boolean {
-  return required.every(r => hasPermission(permissions, r));
-}

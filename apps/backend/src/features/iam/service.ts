@@ -204,6 +204,35 @@ export const IamService = {
     return PermissionService.listEffectivePermissions(userId, orgId);
   },
 
+  /** 列出用户在某组织已授的角色记录(原始授权,非祖先继承,含过期)。 */
+  async listUserRoles(userId: string, orgId: string) {
+    return db
+      .select({
+        roleId: userRoles.roleId,
+        roleName: roles.name,
+        orgId: userRoles.orgId,
+        expiresAt: userRoles.expiresAt,
+      })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(and(eq(userRoles.userId, userId), eq(userRoles.orgId, orgId)))
+      .orderBy(asc(roles.name));
+  },
+
+  /** 列出用户在某组织的直接授权记录(原始授权,allow/deny,非祖先继承,含过期)。 */
+  async listUserDirectPermissions(userId: string, orgId: string) {
+    return db
+      .select({
+        permission: userPermissions.permission,
+        effect: userPermissions.effect,
+        orgId: userPermissions.orgId,
+        expiresAt: userPermissions.expiresAt,
+      })
+      .from(userPermissions)
+      .where(and(eq(userPermissions.userId, userId), eq(userPermissions.orgId, orgId)))
+      .orderBy(asc(userPermissions.permission));
+  },
+
   // --- 组织 ---
   /** 列出所有组织(扁平,带 parentId,前端构建树)。 */
   async listOrganizations() {

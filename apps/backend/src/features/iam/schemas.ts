@@ -109,3 +109,19 @@ export const UserSummarySchema = z.object({
   orgId: z.string().nullable().openapi({ description: "归属组织 ID", example: "org-root" }),
   createdAt: z.iso.datetime().openapi({ description: "创建时间(ISO 8601)" }),
 }).openapi("UserSummary");
+
+/** 用户在某组织已授的角色记录(原始授权,非祖先继承)。 */
+export const UserRoleAssignmentSchema = z.object({
+  roleId: z.string().openapi({ description: "角色 ID", example: "role-admin" }),
+  roleName: z.string().openapi({ description: "角色名", example: "admin" }),
+  orgId: z.string().openapi({ description: "授权绑定的组织 ID", example: "org-root" }),
+  expiresAt: z.iso.datetime().nullable().openapi({ description: "过期时间(ISO 8601),null 表示永不过期" }),
+}).openapi("UserRoleAssignment");
+
+/** 用户在某组织的直接授权记录(原始授权,allow/deny,非祖先继承)。 */
+export const UserDirectPermissionSchema = z.object({
+  permission: z.string().openapi({ description: "权限名 <resource>.<action>", example: "users.delete" }),
+  effect: z.enum(["allow", "deny"]).openapi({ description: "允许或拒绝" }),
+  orgId: z.string().openapi({ description: "授权绑定的组织 ID", example: "org-root" }),
+  expiresAt: z.iso.datetime().nullable().openapi({ description: "过期时间(ISO 8601),null 表示永不过期" }),
+}).openapi("UserDirectPermission");

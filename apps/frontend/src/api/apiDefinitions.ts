@@ -36,6 +36,8 @@ export default {
   'IAM.assignUserPermission': ['POST', '/api/v1/users/{userId}/permissions/{permission}'],
   'IAM.deleteUserPermission': ['DELETE', '/api/v1/users/{userId}/permissions/{permission}'],
   'IAM.listUserPermissions': ['GET', '/api/v1/users/{userId}/permissions'],
+  'IAM.listUserRoles': ['GET', '/api/v1/users/{userId}/roles'],
+  'IAM.listUserDirectPermissions': ['GET', '/api/v1/users/{userId}/direct-permissions'],
   'IAM.listOrganizations': ['GET', '/api/v1/organizations'],
   'IAM.createOrganization': ['POST', '/api/v1/organizations'],
   'IAM.getOrganization': ['GET', '/api/v1/organizations/{orgId}'],

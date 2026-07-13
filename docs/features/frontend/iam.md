@@ -38,9 +38,20 @@ features/iam/
     organization-form.tsx               # 创建、编辑与移动组织
     RoleList.tsx
     UserList.tsx
+    role-permissions-dialog.tsx         # 角色权限分配(批量编辑 + diff)
+    user-authorization-dialog.tsx       # 用户授权(角色 + 直接 allow/deny + 撤销 + 过期)
 ```
 
 `@headless-tree/core` / `@headless-tree/react` 只负责树状态、ARIA 和键盘行为；节点视觉继续使用项目的 shadcn/Base UI、Tailwind 语义 token 和 Lucide。
+
+## 用户授权
+
+`UserList` 的「授权」按钮打开 `user-authorization-dialog`，按 Tabs 分两页管理某用户在当前组织的授权，顶部共享「有效权限」(后端 `listUserEffectivePermissions`，含祖先继承 + deny 减法)：
+
+- **角色授权**：列出已授角色(`listUserRoles`，含过期) + 逐条撤销(`deleteUserRole`) + 授角色表单(角色 Select + 过期 DatePicker + `assignUserRole`)。
+- **直接授权**：列出已授直接权限(`listUserDirectPermissions`，含 effect/过期) + 逐条撤销(`deleteUserPermission`) + 授直接权限表单(权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`)。deny = 阻止部分权限。
+
+过期用 DatePicker(react-day-picker v10 + Base UI Popover 薄包装)，日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET + `send` 手动刷新(双保险)。`iam.manage` 才显示授权入口。
 
 ## 组织树数据
 
