@@ -72,6 +72,20 @@ export const $$userConfigMap = withConfigType({
     hitSource: ["IAM.createOrganization", "IAM.updateOrganization", "IAM.deleteOrganization"],
   },
   "IAM.listUsers": { cacheFor: 60_000 },
+  // 用户授权:撤销/授予后有效权限全集需自动失效(此前靠手动 send)
+  "IAM.listUserPermissions": {
+    cacheFor: 60_000,
+    hitSource: ["IAM.assignUserRole", "IAM.deleteUserRole", "IAM.assignUserPermission", "IAM.deleteUserPermission"],
+  },
+  // 新端点:某组织直接授予的原始记录,撤销后自动失效
+  "IAM.listUserRoles": {
+    cacheFor: 60_000,
+    hitSource: ["IAM.assignUserRole", "IAM.deleteUserRole"],
+  },
+  "IAM.listUserDirectPermissions": {
+    cacheFor: 60_000,
+    hitSource: ["IAM.assignUserPermission", "IAM.deleteUserPermission"],
+  },
   "Projects.listProjects": { cacheFor: 60_000, hitSource: [] },
   "IAM.createRole": { name: "IAM.createRole" },
   "IAM.updateRole": { name: "IAM.updateRole" },

@@ -81,6 +81,7 @@ export default antfu({
     "react-refresh/only-export-components": "off",
     "ts/strict-boolean-expressions": "off",
     "react/no-context-provider": "off",
+    "react/no-nested-component-definitions": "off",
   },
 }).append({
   files: ["apps/frontend/src/routes/**/*.{ts,tsx}"],

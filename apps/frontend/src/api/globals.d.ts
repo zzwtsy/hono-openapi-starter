@@ -266,6 +266,42 @@ export interface UpdateOrganization {
    */
   parentId?: string | null;
 }
+export interface UserRoleAssignment {
+  /**
+   * 角色 ID
+   */
+  roleId: string;
+  /**
+   * 角色名
+   */
+  roleName: string;
+  /**
+   * 授权绑定的组织 ID
+   */
+  orgId: string;
+  /**
+   * 过期时间(ISO 8601),null 表示永不过期
+   */
+  expiresAt: string | null;
+}
+export interface UserDirectPermission {
+  /**
+   * 权限名 <resource>.<action>
+   */
+  permission: string;
+  /**
+   * 允许或拒绝
+   */
+  effect: 'allow' | 'deny';
+  /**
+   * 授权绑定的组织 ID
+   */
+  orgId: string;
+  /**
+   * 过期时间(ISO 8601),null 表示永不过期
+   */
+  expiresAt: string | null;
+}
 declare global {
   interface Apis {
     Health: {
@@ -1156,6 +1192,120 @@ declare global {
       >(
         config: Config
       ): Alova2Method<string[], 'IAM.listUserPermissions', Config>;
+      /**
+       * ---
+       *
+       * [GET] 列出用户在某组织已授的角色记录
+       *
+       * **path:** /api/v1/users/{userId}/roles
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   userId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Query Parameters**
+       * ```ts
+       * type QueryParameters = {
+       *   // 目标组织 ID
+       *   orgId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = Array<{
+       *   // 角色 ID
+       *   roleId: string
+       *   // 角色名
+       *   roleName: string
+       *   // 授权绑定的组织 ID
+       *   orgId: string
+       *   // 过期时间(ISO 8601),null 表示永不过期
+       *   expiresAt: string | null
+       * }>
+       * ```
+       */
+      listUserRoles<
+        Config extends Alova2MethodConfig<UserRoleAssignment[]> & {
+          pathParams: {
+            userId: string;
+          };
+          params: {
+            /**
+             * 目标组织 ID
+             */
+            orgId: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<UserRoleAssignment[], 'IAM.listUserRoles', Config>;
+      /**
+       * ---
+       *
+       * [GET] 列出用户在某组织的直接授权记录
+       *
+       * **path:** /api/v1/users/{userId}/direct-permissions
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   userId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Query Parameters**
+       * ```ts
+       * type QueryParameters = {
+       *   // 目标组织 ID
+       *   orgId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = Array<{
+       *   // 权限名 <resource>.<action>
+       *   permission: string
+       *   // 允许或拒绝
+       *   effect: 'allow' | 'deny'
+       *   // 授权绑定的组织 ID
+       *   orgId: string
+       *   // 过期时间(ISO 8601),null 表示永不过期
+       *   expiresAt: string | null
+       * }>
+       * ```
+       */
+      listUserDirectPermissions<
+        Config extends Alova2MethodConfig<UserDirectPermission[]> & {
+          pathParams: {
+            userId: string;
+          };
+          params: {
+            /**
+             * 目标组织 ID
+             */
+            orgId: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<UserDirectPermission[], 'IAM.listUserDirectPermissions', Config>;
       /**
        * ---
        *
