@@ -100,3 +100,12 @@ export const UpdateOrganizationSchema = z.object({
 export const OrganizationIdParamSchema = z.object({
   orgId: z.string().openapi({ description: "组织 ID", example: "org-south" }),
 });
+
+/** 用户摘要(列表展示用)。 */
+export const UserSummarySchema = z.object({
+  id: z.string().openapi({ description: "用户 ID", example: "user-1" }),
+  name: z.string().openapi({ description: "用户名", example: "张三" }),
+  email: z.string().openapi({ description: "邮箱", example: "zhangsan@example.com" }),
+  orgId: z.string().nullable().openapi({ description: "归属组织 ID", example: "org-root" }),
+  createdAt: z.iso.datetime().openapi({ description: "创建时间(ISO 8601)" }),
+}).openapi("UserSummary");

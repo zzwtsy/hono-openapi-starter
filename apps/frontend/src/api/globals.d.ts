@@ -185,6 +185,28 @@ export interface Permission {
    */
   updatedAt: string;
 }
+export interface UserSummary {
+  /**
+   * 用户 ID
+   */
+  id: string;
+  /**
+   * 用户名
+   */
+  name: string;
+  /**
+   * 邮箱
+   */
+  email: string;
+  /**
+   * 归属组织 ID
+   */
+  orgId: string | null;
+  /**
+   * 创建时间(ISO 8601)
+   */
+  createdAt: string;
+}
 export interface Role {
   /**
    * 角色 ID
@@ -448,6 +470,34 @@ declare global {
       listPermissions<Config extends Alova2MethodConfig<Permission[]>>(
         config?: Config
       ): Alova2Method<Permission[], 'IAM.listPermissions', Config>;
+      /**
+       * ---
+       *
+       * [GET] 列出当前用户组织下的用户
+       *
+       * **path:** /api/v1/users
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = Array<{
+       *   // 用户 ID
+       *   id: string
+       *   // 用户名
+       *   name: string
+       *   // 邮箱
+       *   email: string
+       *   // 归属组织 ID
+       *   orgId: string | null
+       *   // 创建时间(ISO 8601)
+       *   createdAt: string
+       * }>
+       * ```
+       */
+      listUsers<Config extends Alova2MethodConfig<UserSummary[]>>(
+        config?: Config
+      ): Alova2Method<UserSummary[], 'IAM.listUsers', Config>;
       /**
        * ---
        *

@@ -49,6 +49,7 @@ lastReviewedAt: 2026-07-10
 | 新增前端 feature | `architecture/frontend/directory-structure.md`、`conventions/frontend/development-workflow.md`、`features/frontend/_template.md` |
 | 新增后端 API | `conventions/backend/api-openapi.md`、`conventions/backend/response-envelope.md`、`conventions/backend/error-code-system.md`、`conventions/backend/testing-strategy.md` |
 | 前端调用 API | `conventions/frontend/api-alova.md`、`conventions/frontend/routing.md` |
+| 修改前端 IAM | `features/frontend/iam.md`、`conventions/frontend/routing.md`、`conventions/frontend/state-cache.md` |
 | 修改认证或权限 | `conventions/backend/auth-better-auth.md`、`conventions/backend/authorization.md`、`conventions/frontend/auth.md`、`adr/0003-keep-better-auth-native.md`、`adr/0004-authorization-layer.md` |
 | 修改数据库 | `conventions/backend/database-drizzle.md`、`conventions/backend/development-workflow.md` |
 | 前端路由守卫 | `conventions/frontend/routing.md`、`architecture/frontend/request-lifecycle.md` |
@@ -79,7 +80,7 @@ docs/
 
   features/
     backend/{_template, iam, projects}.md
-    frontend/_template.md
+    frontend/{_template, iam}.md
 
   packages/_template.md
 

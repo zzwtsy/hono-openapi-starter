@@ -15,11 +15,13 @@ import type {
   ListRolePermissionsRoute,
   ListRolesRoute,
   ListUserPermissionsRoute,
+  ListUsersRoute,
   UpdateOrganizationRoute,
   UpdateRoleRoute,
 } from "./routes.js";
 
 import type { AppRouteHandler } from "@/core/http/context.js";
+import { requireOrgUser } from "@/core/auth/context.js";
 import { successResponse } from "@/core/http/response.js";
 import { IamService } from "./service.js";
 
@@ -72,6 +74,13 @@ export const deleteRolePermissionHandler: AppRouteHandler<DeleteRolePermissionRo
   const { roleId, permission } = c.req.valid("param");
   await IamService.deleteRolePermission(roleId, permission);
   return successResponse(c, { permission });
+};
+
+// --- 用户 ---
+export const listUsersHandler: AppRouteHandler<ListUsersRoute> = async (c) => {
+  const { orgId } = requireOrgUser(c);
+  const items = await IamService.listUsers(orgId);
+  return successResponse(c, items);
 };
 
 // --- 用户授权 ---

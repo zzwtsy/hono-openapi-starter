@@ -5,7 +5,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
-import { organizations, permissions, rolePermissions, roles, userPermissions, userRoles } from "@/db/schema/index.js";
+import { organizations, permissions, rolePermissions, roles, user, userPermissions, userRoles } from "@/db/schema/index.js";
 
 /**
  * iam feature service:权限管理的数据访问。
@@ -123,6 +123,22 @@ export const IamService = {
     await db
       .delete(rolePermissions)
       .where(and(eq(rolePermissions.roleId, id), eq(rolePermissions.permission, permission)));
+  },
+
+  // --- 用户 ---
+  /** 列出某组织下的用户(按创建时间、id 确定性排序)。 */
+  async listUsers(orgId: string) {
+    return db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        orgId: user.orgId,
+        createdAt: user.createdAt,
+      })
+      .from(user)
+      .where(eq(user.orgId, orgId))
+      .orderBy(asc(user.createdAt), asc(user.id));
   },
 
   // --- 用户授权 ---

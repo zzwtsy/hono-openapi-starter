@@ -20,6 +20,7 @@ import {
   UserPermissionParamSchema,
   UserRoleBodySchema,
   UserRoleParamSchema,
+  UserSummarySchema,
 } from "./schemas.js";
 
 /** iam feature 共享:认证 + 权限 + 401/403 响应。 */
@@ -161,6 +162,22 @@ export const deleteRolePermissionRoute = createRoute({
     200: jsonSuccessResponse(z.object({ permission: z.string() }), "已撤销"),
     ...authErrorResponses,
     404: jsonErrorResponse("角色不存在"),
+  },
+});
+
+// --- 用户 ---
+export const listUsersRoute = createRoute({
+  method: "get",
+  path: "/users",
+  tags: ["IAM"],
+  operationId: "listUsers",
+  summary: "列出当前用户组织下的用户",
+  description: "返回当前用户所属组织(orgId)下的所有用户,供管理端授权时选择目标用户。",
+  middleware: iamReadMiddleware,
+  security: authedSecurity,
+  responses: {
+    200: jsonSuccessResponse(z.array(UserSummarySchema), "用户列表"),
+    ...authErrorResponses,
   },
 });
 
@@ -335,6 +352,7 @@ export const deleteOrganizationRoute = createRoute({
 });
 
 export type ListPermissionsRoute = typeof listPermissionsRoute;
+export type ListUsersRoute = typeof listUsersRoute;
 export type ListRolesRoute = typeof listRolesRoute;
 export type CreateRoleRoute = typeof createRoleRoute;
 export type UpdateRoleRoute = typeof updateRoleRoute;

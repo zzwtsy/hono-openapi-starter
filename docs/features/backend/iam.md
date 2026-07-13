@@ -40,6 +40,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | GET | `/api/v1/roles/{roleId}/permissions` | `listRolePermissions` | iam.read | 角色含的权限 |
 | POST | `/api/v1/roles/{roleId}/permissions` | `assignRolePermissions` | iam.manage | 给角色配权限 |
 | DELETE | `/api/v1/roles/{roleId}/permissions/{permission}` | `deleteRolePermission` | iam.manage | 撤角色权限 |
+| GET | `/api/v1/users` | `listUsers` | iam.read | 列出当前用户组织下的用户 |
 | POST | `/api/v1/users/{userId}/roles/{roleId}` | `assignUserRole` | iam.manage | 授用户角色 |
 | DELETE | `/api/v1/users/{userId}/roles/{roleId}` | `deleteUserRole` | iam.manage | 撤用户角色（query orgId） |
 | POST | `/api/v1/users/{userId}/permissions/{permission}` | `assignUserPermission` | iam.manage | 直接授权 allow/deny |
@@ -57,7 +58,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 ## 6. Auth & Permissions
 
-`features/iam/permissions.ts` 声明 `iam.read` / `iam.manage`，展开到 `APP_PERMISSIONS`。admin 角色（代码同步）含全部权限（含 iam.*）。
+`features/iam/permissions.ts` 声明 `iam.read` / `iam.manage`，展开到 `permissions-catalog.ts` 的 `allPermissions`。admin 角色（代码同步）含全部权限（含 iam.*）。
 
 | Permission | Description |
 | --- | --- |
@@ -112,7 +113,7 @@ sequenceDiagram
 
 ## 11. Test Cases
 
-- unit：`features/iam/iam.test.ts`（路由鉴权 401/403/200/404/409 + handler 调 service）、`features/me/me.test.ts`
+- unit：`features/iam/iam.test.ts`（19 路由全覆盖鉴权 403 + handler→service 接线 + 错误码 404/409 映射）、`features/me/me.test.ts`
 - integration：`tests/integration/authorization/iam-roles.test.ts`（source 保护、cascade）、`iam-assignments.test.ts`（授角色/deny/祖先/过期/撤销全语义）、`iam-organizations.test.ts`（建树/防环/删除约束）、`list-effective.test.ts`（全集算法）
 
 ## 12. Rollout / Migration Notes

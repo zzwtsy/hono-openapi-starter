@@ -23,6 +23,7 @@ export default {
   'Projects.listProjects': ['GET', '/api/v1/projects'],
   'Projects.getProjectById': ['GET', '/api/v1/projects/{projectId}'],
   'IAM.listPermissions': ['GET', '/api/v1/permissions'],
+  'IAM.listUsers': ['GET', '/api/v1/users'],
   'IAM.listRoles': ['GET', '/api/v1/roles'],
   'IAM.createRole': ['POST', '/api/v1/roles'],
   'IAM.updateRole': ['PATCH', '/api/v1/roles/{roleId}'],

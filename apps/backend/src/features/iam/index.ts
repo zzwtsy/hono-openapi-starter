@@ -5,6 +5,7 @@ import * as routes from "./routes.js";
 
 const router = createRouter()
   .openapi(routes.listPermissionsRoute, handlers.listPermissionsHandler)
+  .openapi(routes.listUsersRoute, handlers.listUsersHandler)
   .openapi(routes.listRolesRoute, handlers.listRolesHandler)
   .openapi(routes.createRoleRoute, handlers.createRoleHandler)
   .openapi(routes.updateRoleRoute, handlers.updateRoleHandler)

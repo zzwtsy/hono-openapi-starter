@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { AuthState } from "@/routes/__root";
 import type { AppPermission } from "@/types/permissions";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
+import { Building2, ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, ShieldCheck, Users } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -44,7 +44,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: "/dashboard", title: "概览", icon: LayoutDashboard, match: p => p === "/dashboard" },
-  { to: "/iam/roles", title: "角色", icon: ShieldCheck, permission: "iam.read", match: p => p.startsWith("/iam") },
+  { to: "/iam/roles", title: "角色", icon: ShieldCheck, permission: "iam.read", match: p => p.startsWith("/iam/roles") },
+  { to: "/iam/organizations", title: "组织", icon: Building2, permission: "iam.read", match: p => p.startsWith("/iam/organizations") },
+  { to: "/iam/users", title: "用户", icon: Users, permission: "iam.read", match: p => p.startsWith("/iam/users") },
   { to: "/projects", title: "项目", icon: FolderKanban, permission: "projects.read", match: p => p.startsWith("/projects") },
 ];
 
