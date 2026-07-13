@@ -16,8 +16,10 @@ import {
   RoleSchema,
   UpdateOrganizationSchema,
   UpdateRoleSchema,
+  UserDirectPermissionSchema,
   UserPermissionBodySchema,
   UserPermissionParamSchema,
+  UserRoleAssignmentSchema,
   UserRoleBodySchema,
   UserRoleParamSchema,
   UserSummarySchema,
@@ -267,6 +269,38 @@ export const listUserPermissionsRoute = createRoute({
   },
 });
 
+export const listUserRolesRoute = createRoute({
+  method: "get",
+  path: "/users/{userId}/roles",
+  tags: ["IAM"],
+  operationId: "listUserRoles",
+  summary: "列出用户在某组织已授的角色记录",
+  description: "返回用户在目标组织**直接授予**的角色记录(非祖先继承),含过期时间。供管理端撤销授权用。",
+  middleware: iamReadMiddleware,
+  security: authedSecurity,
+  request: { params: z.object({ userId: z.string() }), query: OrgIdQuerySchema },
+  responses: {
+    200: jsonSuccessResponse(z.array(UserRoleAssignmentSchema), "已授角色记录列表"),
+    ...authErrorResponses,
+  },
+});
+
+export const listUserDirectPermissionsRoute = createRoute({
+  method: "get",
+  path: "/users/{userId}/direct-permissions",
+  tags: ["IAM"],
+  operationId: "listUserDirectPermissions",
+  summary: "列出用户在某组织的直接授权记录",
+  description: "返回用户在目标组织**直接授予**的权限记录(allow/deny,非祖先继承),含 effect 与过期。供管理端撤销授权用。与有效全集 `listUserPermissions`(含祖先继承、CTE 计算)区分。",
+  middleware: iamReadMiddleware,
+  security: authedSecurity,
+  request: { params: z.object({ userId: z.string() }), query: OrgIdQuerySchema },
+  responses: {
+    200: jsonSuccessResponse(z.array(UserDirectPermissionSchema), "直接授权记录列表"),
+    ...authErrorResponses,
+  },
+});
+
 // --- 组织 ---
 export const listOrganizationsRoute = createRoute({
   method: "get",
@@ -365,6 +399,8 @@ export type DeleteUserRoleRoute = typeof deleteUserRoleRoute;
 export type AssignUserPermissionRoute = typeof assignUserPermissionRoute;
 export type DeleteUserPermissionRoute = typeof deleteUserPermissionRoute;
 export type ListUserPermissionsRoute = typeof listUserPermissionsRoute;
+export type ListUserRolesRoute = typeof listUserRolesRoute;
+export type ListUserDirectPermissionsRoute = typeof listUserDirectPermissionsRoute;
 export type ListOrganizationsRoute = typeof listOrganizationsRoute;
 export type CreateOrganizationRoute = typeof createOrganizationRoute;
 export type GetOrganizationRoute = typeof getOrganizationRoute;

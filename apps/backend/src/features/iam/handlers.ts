@@ -14,7 +14,9 @@ import type {
   ListPermissionsRoute,
   ListRolePermissionsRoute,
   ListRolesRoute,
+  ListUserDirectPermissionsRoute,
   ListUserPermissionsRoute,
+  ListUserRolesRoute,
   ListUsersRoute,
   UpdateOrganizationRoute,
   UpdateRoleRoute,
@@ -116,6 +118,20 @@ export const listUserPermissionsHandler: AppRouteHandler<ListUserPermissionsRout
   const { userId } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
   const perms = await IamService.listUserEffectivePermissions(userId, orgId);
+  return successResponse(c, perms);
+};
+
+export const listUserRolesHandler: AppRouteHandler<ListUserRolesRoute> = async (c) => {
+  const { userId } = c.req.valid("param");
+  const { orgId } = c.req.valid("query");
+  const roles = await IamService.listUserRoles(userId, orgId);
+  return successResponse(c, roles);
+};
+
+export const listUserDirectPermissionsHandler: AppRouteHandler<ListUserDirectPermissionsRoute> = async (c) => {
+  const { userId } = c.req.valid("param");
+  const { orgId } = c.req.valid("query");
+  const perms = await IamService.listUserDirectPermissions(userId, orgId);
   return successResponse(c, perms);
 };
 

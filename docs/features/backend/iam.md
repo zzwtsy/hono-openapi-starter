@@ -45,7 +45,9 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | DELETE | `/api/v1/users/{userId}/roles/{roleId}` | `deleteUserRole` | iam.manage | 撤用户角色（query orgId） |
 | POST | `/api/v1/users/{userId}/permissions/{permission}` | `assignUserPermission` | iam.manage | 直接授权 allow/deny |
 | DELETE | `/api/v1/users/{userId}/permissions/{permission}` | `deleteUserPermission` | iam.manage | 撤直接权限（query orgId） |
-| GET | `/api/v1/users/{userId}/permissions` | `listUserPermissions` | iam.read | 用户有效权限全集（query orgId） |
+| GET | `/api/v1/users/{userId}/permissions` | `listUserPermissions` | iam.read | 用户有效权限全集（query orgId，含祖先继承，CTE 计算） |
+| GET | `/api/v1/users/{userId}/roles` | `listUserRoles` | iam.read | 用户在某组织已授的角色记录（query orgId，原始授权非继承，含 expiresAt，撤销用） |
+| GET | `/api/v1/users/{userId}/direct-permissions` | `listUserDirectPermissions` | iam.read | 用户在某组织的直接授权记录（query orgId，原始授权非继承，含 effect/expiresAt，撤销用） |
 | GET | `/api/v1/organizations` | `listOrganizations` | iam.read | 组织列表（扁平） |
 | POST | `/api/v1/organizations` | `createOrganization` | iam.manage | 建组织 |
 | GET | `/api/v1/organizations/{orgId}` | `getOrganization` | iam.read | 组织详情 |
@@ -55,6 +57,8 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 ## 5. Request / Response
 
 统一 envelope（`success` / `code` / `data` / `error` / `meta.requestId`）。列表不分页（第一版全量返回，按 name/createdAt 确定性排序）。`DELETE` 撤销类用 query `orgId` 定位（user_roles/user_permissions PK 含 orgId）。
+
+`listUserRoles` / `listUserDirectPermissions` 返回**原始授权记录**（`orgId` 直接相等，非祖先继承），供管理端撤销用；`listUserPermissions` 返回**有效权限全集**（含祖先继承 + deny 减法 + 过期过滤，CTE 计算）。两者职责区分：撤销看前者，展示"用户最终能干什么"看后者。两者查无记录返回空数组，不抛 404。
 
 ## 6. Auth & Permissions
 
@@ -113,7 +117,7 @@ sequenceDiagram
 
 ## 11. Test Cases
 
-- unit：`features/iam/iam.test.ts`（19 路由全覆盖鉴权 403 + handler→service 接线 + 错误码 404/409 映射）、`features/me/me.test.ts`
+- unit：`features/iam/iam.test.ts`（21 路由全覆盖鉴权 403 + handler→service 接线 + 错误码 404/409 映射）、`features/me/me.test.ts`
 - integration：`tests/integration/authorization/iam-roles.test.ts`（source 保护、cascade）、`iam-assignments.test.ts`（授角色/deny/祖先/过期/撤销全语义）、`iam-organizations.test.ts`（建树/防环/删除约束）、`list-effective.test.ts`（全集算法）
 
 ## 12. Rollout / Migration Notes

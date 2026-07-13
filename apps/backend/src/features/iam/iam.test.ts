@@ -25,6 +25,8 @@ const {
   mockAssignUserPermission,
   mockDeleteUserPermission,
   mockListUserEffectivePermissions,
+  mockListUserRoles,
+  mockListUserDirectPermissions,
   mockListOrganizations,
   mockCreateOrganization,
   mockGetOrganizationById,
@@ -47,6 +49,8 @@ const {
   mockAssignUserPermission: vi.fn(),
   mockDeleteUserPermission: vi.fn(),
   mockListUserEffectivePermissions: vi.fn(),
+  mockListUserRoles: vi.fn(),
+  mockListUserDirectPermissions: vi.fn(),
   mockListOrganizations: vi.fn(),
   mockCreateOrganization: vi.fn(),
   mockGetOrganizationById: vi.fn(),
@@ -72,6 +76,8 @@ vi.mock("./service.js", () => ({
     assignUserPermission: mockAssignUserPermission,
     deleteUserPermission: mockDeleteUserPermission,
     listUserEffectivePermissions: mockListUserEffectivePermissions,
+    listUserRoles: mockListUserRoles,
+    listUserDirectPermissions: mockListUserDirectPermissions,
     listOrganizations: mockListOrganizations,
     createOrganization: mockCreateOrganization,
     getOrganizationById: mockGetOrganizationById,
@@ -120,6 +126,8 @@ function buildApp() {
   app.openapi(routes.assignUserPermissionRoute, handlers.assignUserPermissionHandler);
   app.openapi(routes.deleteUserPermissionRoute, handlers.deleteUserPermissionHandler);
   app.openapi(routes.listUserPermissionsRoute, handlers.listUserPermissionsHandler);
+  app.openapi(routes.listUserRolesRoute, handlers.listUserRolesHandler);
+  app.openapi(routes.listUserDirectPermissionsRoute, handlers.listUserDirectPermissionsHandler);
   app.openapi(routes.listOrganizationsRoute, handlers.listOrganizationsHandler);
   app.openapi(routes.createOrganizationRoute, handlers.createOrganizationHandler);
   app.openapi(routes.getOrganizationRoute, handlers.getOrganizationHandler);
@@ -499,6 +507,58 @@ describe("iam routes", () => {
     const body = await res.json() as { data: string[] };
     expect(body.data).toEqual(["projects.read", "iam.read"]);
     expect(mockListUserEffectivePermissions).toHaveBeenCalledWith("u-2", "org-1");
+  });
+
+  // --- 用户已授角色记录(原始授权,撤销用) ---
+  it("listUserRoles 无 iam.read 返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/users/u-2/roles?orgId=org-1");
+    expect(res.status).toBe(403);
+  });
+
+  it("listUserRoles 有 iam.read 调 service 返回 200", async () => {
+    authed();
+    const assignment = {
+      roleId: "r-1",
+      roleName: "viewer",
+      orgId: "org-1",
+      expiresAt: new Date("2026-12-31T00:00:00.000Z"),
+    };
+    mockListUserRoles.mockResolvedValue([assignment]);
+
+    const res = await buildApp().request("/users/u-2/roles?orgId=org-1");
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: { roleId: string; roleName: string }[] };
+    expect(body.data[0].roleName).toBe("viewer");
+    expect(mockListUserRoles).toHaveBeenCalledWith("u-2", "org-1");
+  });
+
+  // --- 用户直接授权记录(原始授权,撤销用) ---
+  it("listUserDirectPermissions 无 iam.read 返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/users/u-2/direct-permissions?orgId=org-1");
+    expect(res.status).toBe(403);
+  });
+
+  it("listUserDirectPermissions 有 iam.read 调 service 返回 200", async () => {
+    authed();
+    const direct = {
+      permission: "projects.read",
+      effect: "deny" as const,
+      orgId: "org-1",
+      expiresAt: null,
+    };
+    mockListUserDirectPermissions.mockResolvedValue([direct]);
+
+    const res = await buildApp().request("/users/u-2/direct-permissions?orgId=org-1");
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: { permission: string; effect: string }[] };
+    expect(body.data[0]).toEqual({ permission: "projects.read", effect: "deny", orgId: "org-1", expiresAt: null });
+    expect(mockListUserDirectPermissions).toHaveBeenCalledWith("u-2", "org-1");
   });
 
   // --- 组织列表 ---
