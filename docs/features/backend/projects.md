@@ -42,7 +42,7 @@ lastReviewedAt: 2026-07-07
 | --- | --- |
 | `projects.read` | 查看项目 |
 
-权限在 `features/projects/permissions.ts` 用 `as const satisfies` 声明权限数组,由 `permissions-manifest.ts` 汇总为 `APP_PERMISSIONS`(`AppPermission` 从它推导)。
+权限在 `features/projects/permissions.ts` 用 `as const satisfies` 声明权限数组,由 `permissions-catalog.ts` 汇总为 `allPermissions`(`AppPermission` 从它推导)。
 
 - `requireAuth()` 校验 Better Auth session,注入 `user`
 - `requirePermission("projects.read")` 检查用户在 `user.orgId` 是否有 `projects.read`(考虑组织树祖先继承)

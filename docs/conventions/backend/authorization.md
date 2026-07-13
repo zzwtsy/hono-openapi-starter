@@ -27,7 +27,7 @@ lastReviewedAt: 2026-07-04
 | Port（接口） | `core/authorization/permission-checker.ts` | `PermissionChecker` 接口 + holder + `setPermissionChecker` |
 | memoize 装饰 | `core/authorization/permission-service.ts` | 读 ALS 缓存，miss 调 holder |
 | ALS 缓存机制 | `core/authorization/permission-cache.ts` | 请求级缓存，纯横切基础设施 |
-| 启动同步 | `core/authorization/sync.ts` | 读代码 `APP_PERMISSIONS` 写 db 镜像，无策略 |
+| 启动同步 | `core/authorization/sync.ts` | 接收组装点传入的权限定义数组，upsert 到 db 镜像，无策略 |
 | PDP Adapter | `features/iam/permission-checker.ts` | `IamPermissionChecker`，递归 CTE 算法 + db 查询 |
 | PAP（管理） | `features/iam/service.ts` | 角色/授权/组织管理 API |
 
@@ -125,19 +125,19 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 
 | 数据 | 表 | 真相来源 | 生产怎么来 |
 | --- | --- | --- | --- |
-| ① 权限目录 | `permissions` | 代码（各 feature `permissions.ts` 声明 + `declare module` 注册类型；组装点 `index.ts` 汇总） | 组装点汇总传 `syncAuthorizationCatalog`，app 启动时同步 |
+| ① 权限目录 | `permissions` | 代码（各 feature `permissions.ts` 声明 + `declare module` 注册类型；`permissions-catalog.ts` 汇总） | `index.ts` 启动时把 catalog 汇总的 `allPermissions` 传 `syncAuthorizationCatalog` 同步 |
 | ② 角色定义 | `roles` + `role_permissions` | 代码（`admin` 角色，`source='code'`）+ 管理 API（其他角色，`source='instance'`） | `admin` 启动同步；其他角色管理 API 建 |
 | ③ 实例数据 | `organizations` / `users` / `user_roles` / `user_permissions` | 每个 deployment 自己 | 管理 API + 一次性 bootstrap（`pnpm db:bootstrap`） |
 
 ### 代码同步（①②）
 
-`core/authorization/sync.ts` 的 `syncAuthorizationCatalog()`：把 `APP_PERMISSIONS` 数组里的权限定义 upsert 进 `permissions` 表（含 `description`），并 upsert 标准 `admin` 角色（`role_permissions` 给 admin 授全部权限）。单事务原子完成，幂等 upsert，代码是真相来源，DB 是镜像。
+`core/authorization/sync.ts` 的 `syncAuthorizationCatalog(defs)`：把组装点传入的权限定义数组 upsert 进 `permissions` 表（含 `description`），并 upsert 标准 `admin` 角色（`role_permissions` 给 admin 授全部权限）。单事务原子完成，幂等 upsert，代码是真相来源，DB 是镜像。
 
 - **app 启动时自动跑**（`index.ts` 在 `serve` 前），dev/prod 都同步，生产免人肉。sync 假设 schema 已就位，部署需先 `db:migrate` 再 start。
 - `seed.ts`（dev/demo）也复用它，保证本地目录就位。
 - Upsert-only：从代码移除权限不会自动删库行，需手动清理 `role_permissions` + `permissions`。
 
-各 feature 在 `permissions.ts` 用 `as const satisfies readonly PermissionDefinition[]` 声明权限数组（类型与运行时同源）；`core/auth/permissions-manifest.ts` 汇总所有 feature 的数组为 `APP_PERMISSIONS`，`AppPermission` union 从它推导。新增 feature 时在 manifest 追加 import + 展开到数组--漏登记会导致 `requirePermission("x")` 编译报错。
+各 feature 在 `permissions.ts` 用 `as const satisfies readonly PermissionDefinition[]` 声明权限数组（类型与运行时同源）；`permissions-catalog.ts` 汇总所有 feature 的数组为 `allPermissions`，`AppPermission` union 从它推导。新增 feature 时在 catalog 追加 import + 展开到数组——漏登记会导致 `requirePermission("x")` 编译报错。
 
 ### 实例数据（③）
 

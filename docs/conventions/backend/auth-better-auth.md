@@ -114,7 +114,7 @@ betterAuth({
 - `requirePermission` 的参数类型必须是 `AppPermission` 字面量 union，不能放宽成 `string` 或仅使用 `` `${string}.${string}` ``。
 - 权限字符串格式必须是 `<resource>.<action>`。
 - `core/auth` 只提供权限类型和 `requirePermission` 中间件，检查逻辑在 `core/authorization/`，不硬编码业务权限。
-- 各 feature 在自己的 `permissions.ts` 中用 `as const satisfies` 声明权限数组，由 `permissions-manifest.ts` 汇总为 `APP_PERMISSIONS`，`AppPermission` 从它推导（类型与运行时同源，不靠 module augmentation）。
+- 各 feature 在自己的 `permissions.ts` 中用 `as const satisfies` 声明权限数组，并用 `declare module` 把权限名 push 到 `core/auth/permissions.ts` 的 `AppPermissionRegistry`（module augmentation）；`AppPermission` 是 `keyof AppPermissionRegistry & PermissionName` 的联合，类型层与运行时数组同源，漏登记编译报错。
 
 `core/auth/permissions.ts` 示例：
 
@@ -141,7 +141,7 @@ export const projectPermissions = [
 export type ProjectPermission = (typeof projectPermissions)[number]["name"];
 ```
 
-`core/auth/permissions-manifest.ts` 汇总所有 feature 的权限数组为 `APP_PERMISSIONS`（同样 `as const satisfies`），`AppPermission` union 从它推导。多权限 feature 在数组里加多行即可；新增 feature 时追加 import + 展开到数组——漏登记会导致 `AppPermission` 缺该权限，`requirePermission("x")` 编译报错。
+`permissions-catalog.ts` 汇总所有 feature 的权限数组为 `allPermissions`（运行时目录，供 `syncAuthorizationCatalog` 同步进 DB）。类型层的 `AppPermission` union 从 `core/auth/permissions.ts` 的 `AppPermissionRegistry` 推导（各 feature 用 `declare module` 扩展）。新增 feature 时在 catalog 追加 import + 展开到数组——漏登记会导致 `AppPermission` 缺该权限，`requirePermission("x")` 编译报错。
 
 `core/auth/require-permission.ts` 示例：
 
@@ -149,7 +149,7 @@ export type ProjectPermission = (typeof projectPermissions)[number]["name"];
 import { createMiddleware } from "hono/factory";
 import { PermissionService } from "@/core/authorization";
 import { AppError } from "@/core/errors/app-error";
-import type { AppPermission } from "@/core/auth/permissions-manifest";
+import type { AppPermission } from "@/core/auth/permissions";
 
 export const requirePermission = (permission: AppPermission, options?: { orgId?: string }) =>
   createMiddleware(async (c, next) => {
