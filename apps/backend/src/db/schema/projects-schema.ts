@@ -8,7 +8,6 @@ import { createdAtColumn, idColumn, updatedAtColumn } from "./shared/index.js";
  * projects 表:业务项目,属于某组织。
  *
  * `org_id` 外键引用 organizations,按组织查询(索引)。
- * 只读 feature 先支持 list/detail,create/update/delete 后续扩展。
  */
 export const projects = pgTable("projects", {
   id: idColumn(),
