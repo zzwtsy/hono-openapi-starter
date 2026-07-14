@@ -139,7 +139,14 @@ export interface Me {
   /**
    * 当前组织下的有效权限名列表(空数组表示未绑定组织或无权限)
    */
-  permissions: ('projects.read' | 'iam.read' | 'iam.manage')[];
+  permissions: (
+    | 'projects.read'
+    | 'projects.create'
+    | 'projects.update'
+    | 'projects.delete'
+    | 'iam.read'
+    | 'iam.manage'
+  )[];
 }
 export interface Project {
   /**
@@ -254,6 +261,10 @@ export interface Organization {
    * 更新时间(ISO 8601)
    */
   updatedAt: string;
+}
+export interface UpdateProject {
+  name?: string;
+  description?: string | null;
 }
 export interface UpdateRole {
   name?: string;
@@ -392,7 +403,14 @@ declare global {
        *   // 当前组织下的有效权限名列表(空数组表示未绑定组织或无权限)
        *   // [items] start
        *   // [items] end
-       *   permissions: ('projects.read' | 'iam.read' | 'iam.manage')[]
+       *   permissions: (
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'iam.read'
+       *     | 'iam.manage'
+       *   )[]
        * }
        * ```
        */
@@ -429,6 +447,61 @@ declare global {
       listProjects<Config extends Alova2MethodConfig<Project[]>>(
         config?: Config
       ): Alova2Method<Project[], 'Projects.listProjects', Config>;
+      /**
+       * ---
+       *
+       * [POST] 创建项目
+       *
+       * **path:** /api/v1/projects
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   // 项目名(同组织内唯一)
+       *   name: string
+       *   // 项目描述,可不填
+       *   description?: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 项目 ID
+       *   id: string
+       *   // 项目名称
+       *   name: string
+       *   // 项目描述,可为空
+       *   description: string | null
+       *   // 所属组织 ID
+       *   orgId: string
+       *   // 创建时间(ISO 8601)
+       *   createdAt: string
+       *   // 更新时间(ISO 8601)
+       *   updatedAt: string
+       * }
+       * ```
+       */
+      createProject<
+        Config extends Alova2MethodConfig<Project> & {
+          data: {
+            /**
+             * 项目名(同组织内唯一)
+             */
+            name: string;
+            /**
+             * 项目描述,可不填
+             */
+            description?: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<Project, 'Projects.createProject', Config>;
       /**
        * ---
        *
@@ -478,6 +551,112 @@ declare global {
       >(
         config: Config
       ): Alova2Method<Project, 'Projects.getProjectById', Config>;
+      /**
+       * ---
+       *
+       * [PATCH] 修改项目
+       *
+       * **path:** /api/v1/projects/{projectId}
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 项目 ID
+       *   projectId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   name?: string
+       *   description?: string | null
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 项目 ID
+       *   id: string
+       *   // 项目名称
+       *   name: string
+       *   // 项目描述,可为空
+       *   description: string | null
+       *   // 所属组织 ID
+       *   orgId: string
+       *   // 创建时间(ISO 8601)
+       *   createdAt: string
+       *   // 更新时间(ISO 8601)
+       *   updatedAt: string
+       * }
+       * ```
+       */
+      updateProject<
+        Config extends Alova2MethodConfig<Project> & {
+          pathParams: {
+            /**
+             * 项目 ID
+             */
+            projectId: string;
+          };
+          data: UpdateProject;
+        }
+      >(
+        config: Config
+      ): Alova2Method<Project, 'Projects.updateProject', Config>;
+      /**
+       * ---
+       *
+       * [DELETE] 删除项目
+       *
+       * **path:** /api/v1/projects/{projectId}
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 项目 ID
+       *   projectId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   id: string
+       * }
+       * ```
+       */
+      deleteProject<
+        Config extends Alova2MethodConfig<{
+          id: string;
+        }> & {
+          pathParams: {
+            /**
+             * 项目 ID
+             */
+            projectId: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<
+        {
+          id: string;
+        },
+        'Projects.deleteProject',
+        Config
+      >;
     };
     IAM: {
       /**
