@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-12
+lastReviewedAt: 2026-07-15
 ---
 
 # 前端 IAM
@@ -12,9 +12,9 @@ IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 
 
 ## 范围
 
-- 包含：角色 CRUD 与权限分配、组织树 CRUD、用户授权。
+- 包含：角色 CRUD 与权限分配、组织树 CRUD、用户授权、用户管理（代创建/编辑/重置密码/禁用·启用）。
 - 组织树包含：展开/收起、单选、搜索定位、URL 状态、桌面详情面板和移动端 Sheet。
-- 不包含：拖拽移动组织、按任意组织筛选用户、服务端组织搜索和懒加载。
+- 不包含：拖拽移动组织、按任意组织筛选用户、服务端组织搜索和懒加载、硬删除用户（用禁用替代）。
 
 ## 路由
 
@@ -38,6 +38,8 @@ features/iam/
     organization-form.tsx               # 创建、编辑与移动组织
     RoleList.tsx
     UserList.tsx
+    user-form.tsx                        # 创建/编辑用户(TanStack Form + zod)
+    reset-password-dialog.tsx            # 重置密码弹窗
     role-permissions-dialog.tsx         # 角色权限分配(批量编辑 + diff)
     user-authorization-dialog.tsx       # 用户授权(角色 + 直接 allow/deny + 撤销 + 过期)
 ```
@@ -52,6 +54,18 @@ features/iam/
 - **直接授权**：列出已授直接权限(`listUserDirectPermissions`，含 effect/过期) + 逐条撤销(`deleteUserPermission`) + 授直接权限表单(权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`)。deny = 阻止部分权限。
 
 过期用 DatePicker(react-day-picker v10 + Base UI Popover 薄包装)，日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET + `send` 手动刷新(双保险)。`iam.manage` 才显示授权入口。
+
+## 用户管理
+
+`UserList` 扩展为完整用户管理（参照 ProjectList 范式）：
+
+- **代创建**：顶部"新建用户"按钮（`useCan("iam.manage")` 守卫）打开 `user-form.tsx` Dialog（email/password/name，TanStack Form + zod）。
+- **编辑**：操作列 DropdownMenu"编辑"打开 `user-form.tsx`（预填 name/email，不显示 password，改密码走重置入口）。
+- **重置密码**：操作列"重置密码"打开 `reset-password-dialog.tsx`（单字段 newPassword，min 8）。
+- **禁用·启用**：操作列根据 `disabled` 状态显示"禁用"或"启用"，禁用时后端删 session 立即下线。
+- **disabled badge**：列表显示禁用状态标记。
+- 细粒度权限：`iam.manage` 控操作列入口（参照 ProjectList 的 `canManage = canUpdate || canDelete` 模式）。
+- 缓存失效：`IAM.listUsers` hitSource 配 `[createUser, updateUser, resetUserPassword, disableUser, enableUser]`，mutation 成功后 `send()` 双保险刷新。
 
 ## 组织树数据
 
@@ -87,3 +101,5 @@ features/iam/
 
 - 后端 feature 文档：[`docs/features/backend/iam.md`](../backend/iam.md)
 - 组织 API：`GET/POST /api/v1/organizations`、`PATCH/DELETE /api/v1/organizations/{orgId}`
+- 用户管理 API：`POST /api/v1/users`、`PATCH /api/v1/users/{userId}`、`POST /api/v1/users/{userId}/reset-password`、`POST /api/v1/users/{userId}/disable`、`POST /api/v1/users/{userId}/enable`
+- 运行时配置控制决策：[ADR-0007](../../adr/0007-runtime-config-control.md)

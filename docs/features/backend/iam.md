@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-08
+lastReviewedAt: 2026-07-15
 ---
 
 # Feature: iam（权限管理）
@@ -18,6 +18,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - 角色 CRUD（实例角色，`source` 区分代码/实例）。
 - 用户授权（授角色 / 直接授权 allow|deny / 撤销 / 查全集），支持组织 scope + 过期。
 - 组织树 CRUD（防环）。
+- 用户身份管理（管理员代创建 / 改资料 / 重置密码 / 禁用·启用），走自建业务端点（ADR-0007，不引 BA admin 插件）。
 
 ## 3. Non-goals
 
@@ -25,7 +26,9 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - Redis 权限缓存 + 事件失效（第一版 ALS 请求级 memoize 足够）。
 - 自定义角色之外的实例角色复杂策略；过期记录 housekeeping。
 - audit log（关键写操作审计，独立 feature 推进）。
-- 用户身份 CRUD（走 Better Auth 原生 sign-up/sign-in；管理员代创建账号按需另建）。
+- 硬删除用户（用禁用替代，涉及权限/项目归属 cascade，延后）。
+- 邮件验证 + 找回密码邮件（走管理员代重置，不发邮件；邮件基础设施延后）。
+- 用户多组织 + 切换组织（保持单组织，`user.orgId` 不变）。
 
 ## 4. API Surface
 
@@ -41,6 +44,11 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | POST | `/api/v1/roles/{roleId}/permissions` | `assignRolePermissions` | iam.manage | 给角色配权限 |
 | DELETE | `/api/v1/roles/{roleId}/permissions/{permission}` | `deleteRolePermission` | iam.manage | 撤角色权限 |
 | GET | `/api/v1/users` | `listUsers` | iam.read | 列出当前用户组织下的用户 |
+| POST | `/api/v1/users` | `createUser` | iam.manage | 管理员代创建用户（email+password+name，orgId 取自当前管理员） |
+| PATCH | `/api/v1/users/{userId}` | `updateUser` | iam.manage | 改用户资料（name/email，不改 orgId） |
+| POST | `/api/v1/users/{userId}/reset-password` | `resetUserPassword` | iam.manage | 重置密码（hashPassword+update account+删 session） |
+| POST | `/api/v1/users/{userId}/disable` | `disableUser` | iam.manage | 禁用用户（set disabled=true+删所有 session） |
+| POST | `/api/v1/users/{userId}/enable` | `enableUser` | iam.manage | 启用用户（清 disabled） |
 | POST | `/api/v1/users/{userId}/roles/{roleId}` | `assignUserRole` | iam.manage | 授用户角色 |
 | DELETE | `/api/v1/users/{userId}/roles/{roleId}` | `deleteUserRole` | iam.manage | 撤用户角色（query orgId） |
 | POST | `/api/v1/users/{userId}/permissions/{permission}` | `assignUserPermission` | iam.manage | 直接授权 allow/deny |
@@ -78,6 +86,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - `organizations`：树形（parentId 自引用，CYCLE 兜底）。
 - `permissions`：代码同步目录，管理 API 只读。
 - `IamPermissionChecker`（`features/iam/permission-checker.ts`）：`PermissionChecker` 的本地 Adapter（PDP），实现 check/list-effective 的递归 CTE；不含 memoize（由 core `PermissionService` 装饰）。可整体替换为外部 PDP（见 [authorization.md 边界划分](../../conventions/backend/authorization.md)）。
+- `user.disabled`：Better Auth additionalField（经 `auth:generate` 写入 auth-schema），`requireAuth` 检查，禁用时返 `AUTH_ACCOUNT_DISABLED` + 删 session。
 
 ## 8. Error Codes
 
@@ -88,6 +97,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | `COMMON_NOT_FOUND` | 404 | 角色/组织/权限/授权不存在，或对 code 角色改删 |
 | `COMMON_CONFLICT` | 409 | 角色名重复；组织形成环；删有子组织 |
 | `COMMON_FORBIDDEN` | 403 | 无 iam.read/iam.manage |
+| `AUTH_ACCOUNT_DISABLED` | 403 | 用户已禁用（requireAuth 检查 disabled） |
 | `COMMON_UNAUTHORIZED` | 401 | 未认证 |
 
 ## 9. Request Flow
@@ -123,5 +133,7 @@ sequenceDiagram
 ## 12. Rollout / Migration Notes
 
 - migration `0003`：`roles` 加 `source` 列（default `instance`）。`sync.ts` 用 `onConflictDoUpdate` 强制 admin `source='code'`（修正旧库被 default 覆盖的情况）。
+- migration `0004`：`user` 加 `disabled` 列（经 `auth:generate` 自动生成）；新建 `system_settings` 表。
 - 部署顺序：`db:migrate` -> `db:bootstrap`（造第一个 admin）-> start（sync 同步目录 + admin 角色）。
 - `bootstrap` 幂等：组织已存在跳过；admin email 已存在报错（不覆盖密码）。
+- 用户管理端点复用 `bootstrap.ts` 原语（`hashPassword` from `better-auth/crypto` + `db.insert` user/account），不引 BA admin 插件（ADR-0007）。
