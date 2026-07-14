@@ -51,3 +51,5 @@ Desktop.ini
 # Claude Code
 .claude/*
 !.claude/skills/
+
+.zcode/*
