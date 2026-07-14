@@ -80,7 +80,7 @@ docs/
 
   features/
     backend/{_template, iam, projects}.md
-    frontend/{_template, iam}.md
+    frontend/{_template, iam, projects}.md
 
   packages/_template.md
 
