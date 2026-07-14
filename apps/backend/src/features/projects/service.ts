@@ -1,15 +1,32 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
-import { projects } from "@/db/schema/index.js";
+import { generateId, projects } from "@/db/schema/index.js";
 
 /**
  * projects feature service:数据访问 + 业务规则。
  *
  * 中等 feature 直接用全局 `db`(见 [开发流程](../../../docs/conventions/development-workflow.md))。
- * 权限检查由 `requirePermission` 中间件完成,service 只管数据查询。
+ * 权限检查由 `requirePermission` 中间件完成,service 只管数据查询与写操作的归属/重名校验。
+ *
+ * 归属 scope:所有写操作只作用于 `orgId` 本组织项目;跨组织一律 NOT_FOUND(不泄露存在性)。
+ * 重名:同组织内 `name` 唯一,service 层软校验(抛 COMMON_CONFLICT),不加 DB unique 约束,
+ * 与 iam `createRole` 风格一致;不同组织允许重名。
  */
+
+/** 取项目(带归属校验);不存在或不属于该组织抛 COMMON_NOT_FOUND。 */
+async function getOwnedProject(id: string, orgId: string) {
+  const [project] = await db
+    .select()
+    .from(projects)
+    .where(and(eq(projects.id, id), eq(projects.orgId, orgId)));
+  if (project == null) {
+    throw new AppError("COMMON_NOT_FOUND");
+  }
+  return project;
+}
+
 export const ProjectService = {
   /** 列出某组织下的所有项目(按创建时间、id 确定性排序,避免堆顺序不确定)。 */
   async list(orgId: string) {
@@ -22,15 +39,59 @@ export const ProjectService = {
 
   /** 获取项目详情;不存在或不属于该组织抛 COMMON_NOT_FOUND。 */
   async getById(id: string, orgId: string) {
-    const [project] = await db
-      .select()
-      .from(projects)
-      .where(and(eq(projects.id, id), eq(projects.orgId, orgId)));
+    return getOwnedProject(id, orgId);
+  },
 
-    if (project == null) {
+  /** 创建项目;同组织内重名抛 COMMON_CONFLICT。 */
+  async create(orgId: string, input: { name: string; description?: string }) {
+    const [existing] = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.orgId, orgId), eq(projects.name, input.name)));
+    if (existing != null) {
+      throw new AppError("COMMON_CONFLICT", { message: "项目名已存在" });
+    }
+    const [project] = await db
+      .insert(projects)
+      .values({ id: generateId(), name: input.name, description: input.description, orgId })
+      .returning();
+    return project;
+  },
+
+  /**
+   * 修改项目;不存在/不属于本组织抛 COMMON_NOT_FOUND,同组织改名重名抛 COMMON_CONFLICT。
+   * `description` 传 null 清空;`updatedAt` 由 schema `$onUpdate` 自动刷新,无需手动 set。
+   */
+  async update(id: string, orgId: string, input: { name?: string; description?: string | null }) {
+    const current = await getOwnedProject(id, orgId);
+    if (input.name === undefined && input.description === undefined) {
+      return current;
+    }
+    if (input.name !== undefined) {
+      const [conflict] = await db
+        .select({ id: projects.id })
+        .from(projects)
+        .where(and(eq(projects.orgId, orgId), eq(projects.name, input.name), ne(projects.id, id)));
+      if (conflict != null) {
+        throw new AppError("COMMON_CONFLICT", { message: "项目名已存在" });
+      }
+    }
+    const [project] = await db
+      .update(projects)
+      .set(input)
+      .where(and(eq(projects.id, id), eq(projects.orgId, orgId)))
+      .returning();
+    return project;
+  },
+
+  /** 删除项目;不存在/不属于本组织抛 COMMON_NOT_FOUND。 */
+  async remove(id: string, orgId: string) {
+    const [row] = await db
+      .delete(projects)
+      .where(and(eq(projects.id, id), eq(projects.orgId, orgId)))
+      .returning({ id: projects.id });
+    if (row == null) {
       throw new AppError("COMMON_NOT_FOUND");
     }
-
-    return project;
   },
 };

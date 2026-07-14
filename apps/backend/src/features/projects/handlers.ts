@@ -1,4 +1,10 @@
-import type { GetProjectRoute, ListProjectsRoute } from "./routes.js";
+import type {
+  CreateProjectRoute,
+  DeleteProjectRoute,
+  GetProjectRoute,
+  ListProjectsRoute,
+  UpdateProjectRoute,
+} from "./routes.js";
 
 import type { AppRouteHandler } from "@/core/http/context.js";
 import { requireOrgUser } from "@/core/auth/context.js";
@@ -20,4 +26,32 @@ export const getProjectHandler: AppRouteHandler<GetProjectRoute> = async (c) => 
   const project = await ProjectService.getById(projectId, orgId);
 
   return successResponse(c, project);
+};
+
+/** 创建项目。 */
+export const createProjectHandler: AppRouteHandler<CreateProjectRoute> = async (c) => {
+  const { orgId } = requireOrgUser(c);
+  const body = c.req.valid("json");
+  const project = await ProjectService.create(orgId, body);
+
+  return successResponse(c, project);
+};
+
+/** 修改项目。 */
+export const updateProjectHandler: AppRouteHandler<UpdateProjectRoute> = async (c) => {
+  const { orgId } = requireOrgUser(c);
+  const { projectId } = c.req.valid("param");
+  const body = c.req.valid("json");
+  const project = await ProjectService.update(projectId, orgId, body);
+
+  return successResponse(c, project);
+};
+
+/** 删除项目。 */
+export const deleteProjectHandler: AppRouteHandler<DeleteProjectRoute> = async (c) => {
+  const { orgId } = requireOrgUser(c);
+  const { projectId } = c.req.valid("param");
+  await ProjectService.remove(projectId, orgId);
+
+  return successResponse(c, { id: projectId });
 };
