@@ -35,3 +35,15 @@ export const ProjectIdParamSchema = z.object({
     example: "proj-1",
   }),
 });
+
+/** 建项目入参(同组织内名称唯一,service 层软校验)。 */
+export const CreateProjectSchema = z.object({
+  name: z.string().min(1).openapi({ description: "项目名(同组织内唯一)", example: "官网改版" }),
+  description: z.string().optional().openapi({ description: "项目描述,可不填" }),
+});
+
+/** 改项目入参;`description` 传 null 清空,全部字段可选。 */
+export const UpdateProjectSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().nullable().optional(),
+}).openapi("UpdateProject");
