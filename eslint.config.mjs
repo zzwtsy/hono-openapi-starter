@@ -96,6 +96,12 @@ export default antfu({
     "ts/promise-function-async": "off",
   },
 }).append({
+  files: ["apps/frontend/src/**/*.{test,spec}.{ts,tsx}"],
+  rules: {
+    // 测试文件导出 describe/fixture 非常规组件,豁免 react-refresh
+    "react-refresh/only-export-components": "off",
+  },
+}).append({
   files: ["apps/frontend/src/**/*.{ts,tsx}"],
   plugins: { boundaries },
   settings: {
