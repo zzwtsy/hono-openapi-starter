@@ -86,7 +86,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - `organizations`：树形（parentId 自引用，CYCLE 兜底）。
 - `permissions`：代码同步目录，管理 API 只读。
 - `IamPermissionChecker`（`features/iam/permission-checker.ts`）：`PermissionChecker` 的本地 Adapter（PDP），实现 check/list-effective 的递归 CTE；不含 memoize（由 core `PermissionService` 装饰）。可整体替换为外部 PDP（见 [authorization.md 边界划分](../../conventions/backend/authorization.md)）。
-- `user.disabled`：Better Auth additionalField（经 `auth:generate` 写入 auth-schema），`requireAuth` 检查，禁用时返 `AUTH_ACCOUNT_DISABLED` + 删 session。
+- `user.disabled`：Better Auth additionalField（经 `auth:generate` 写入 auth-schema），`databaseHooks.session.create.before` 检查 disabled 阻止 session 创建（同时阻止登录和续期），禁用时主动删 session 立即下线。见 ADR-0007。
 
 ## 8. Error Codes
 
@@ -97,7 +97,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | `COMMON_NOT_FOUND` | 404 | 角色/组织/权限/授权不存在，或对 code 角色改删 |
 | `COMMON_CONFLICT` | 409 | 角色名重复；组织形成环；删有子组织 |
 | `COMMON_FORBIDDEN` | 403 | 无 iam.read/iam.manage |
-| `AUTH_ACCOUNT_DISABLED` | 403 | 用户已禁用（requireAuth 检查 disabled） |
+| `AUTH_ACCOUNT_DISABLED` | 403 | 用户已禁用（`databaseHooks.session.create.before` 检查 disabled，阻止 session 创建） |
 | `COMMON_UNAUTHORIZED` | 401 | 未认证 |
 
 ## 9. Request Flow

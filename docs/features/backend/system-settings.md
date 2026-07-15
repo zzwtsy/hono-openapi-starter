@@ -14,7 +14,7 @@ lastReviewedAt: 2026-07-15
 
 - `system_settings` 表存储运行时可编辑配置（key-value JSON 模式）。
 - `GET/PATCH /api/v1/settings` 提供配置读写 API（settings.read/settings.update 权限）。
-- sign-up 路由前拦截 middleware 读 DB 配置控制注册开关。
+- sign-up 注册开关用 Better Auth `hooks.before` 拦截（读 DB 配置，关闭时抛 APIError）。
 
 ## 3. Non-goals
 
@@ -29,7 +29,7 @@ lastReviewedAt: 2026-07-15
 | GET | `/api/v1/settings` | `listSettings` | settings.read | 列出全部配置 |
 | PATCH | `/api/v1/settings/{key}` | `updateSetting` | settings.update | upsert 一条配置 |
 
-sign-up 拦截 middleware 在 `create-app.ts` 内部直调 `SystemSettingService.get("signUp")`，不暴露独立端点。
+sign-up 拦截在 `better-auth.ts` 的 `hooks.before` 配置里声明，拦截 `/sign-up/email` 路径，读 `SystemSettingService.get("signUp")`，关闭时抛 `APIError`。不暴露独立端点。
 
 ## 5. Request / Response
 
@@ -76,22 +76,22 @@ sequenceDiagram
   API-->>Client: envelope
 ```
 
-sign-up 拦截流程（不经 requirePermission，是全局 middleware）：
+sign-up 拦截流程（Better Auth `hooks.before`，不经 requirePermission）：
 
 ```mermaid
 sequenceDiagram
   participant Client as 注册请求
-  participant MW as sign-up middleware
+  participant Hook as hooks.before
   participant Service as SystemSettingService
   participant BA as Better Auth handler
 
-  Client->>MW: POST /api/auth/sign-up
-  MW->>Service: get("signUp")
-  Service-->>MW: { enabled: true/false } 或 null
+  Client->>Hook: POST /api/auth/sign-up/email
+  Hook->>Service: get("signUp")
+  Service-->>Hook: { enabled: true/false } 或 null
   alt enabled !== true
-    MW-->>Client: 403 { message: "注册已关闭" }
+    Hook-->>Client: APIError(403, "注册已关闭")
   else enabled === true
-    MW->>BA: 放行到 Better Auth 原生 handler
+    Hook->>BA: 放行到 Better Auth 原生 handler
     BA-->>Client: 原生响应
   end
 ```
@@ -103,7 +103,7 @@ sequenceDiagram
 ## 11. Test Cases
 
 - unit：`features/system-settings/system-settings.test.ts`（鉴权 403 + handler->service 接线 + upsert 语义）
-- integration：`tests/integration/system-settings/settings.test.ts`（写入读取 + sign-up middleware 生效/失效两个状态）
+- integration：`tests/integration/system-settings/settings.test.ts`（写入读取 + sign-up hooks.before 生效/失效两个状态）
 
 ## 12. Rollout / Migration Notes
 
