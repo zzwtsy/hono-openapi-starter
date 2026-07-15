@@ -4,7 +4,7 @@ owner: backend-platform
 lastReviewedAt: 2026-07-15
 ---
 
-# Feature: iam（权限管理）
+# Feature: iam（权限管理 + 用户身份）
 
 ## 1. Background
 
