@@ -27,6 +27,11 @@ export default {
   'Projects.deleteProject': ['DELETE', '/api/v1/projects/{projectId}'],
   'IAM.listPermissions': ['GET', '/api/v1/permissions'],
   'IAM.listUsers': ['GET', '/api/v1/users'],
+  'IAM.createUser': ['POST', '/api/v1/users'],
+  'IAM.updateUser': ['PATCH', '/api/v1/users/{userId}'],
+  'IAM.resetUserPassword': ['POST', '/api/v1/users/{userId}/reset-password'],
+  'IAM.disableUser': ['POST', '/api/v1/users/{userId}/disable'],
+  'IAM.enableUser': ['POST', '/api/v1/users/{userId}/enable'],
   'IAM.listRoles': ['GET', '/api/v1/roles'],
   'IAM.createRole': ['POST', '/api/v1/roles'],
   'IAM.updateRole': ['PATCH', '/api/v1/roles/{roleId}'],
@@ -45,5 +50,7 @@ export default {
   'IAM.createOrganization': ['POST', '/api/v1/organizations'],
   'IAM.getOrganization': ['GET', '/api/v1/organizations/{orgId}'],
   'IAM.updateOrganization': ['PATCH', '/api/v1/organizations/{orgId}'],
-  'IAM.deleteOrganization': ['DELETE', '/api/v1/organizations/{orgId}']
+  'IAM.deleteOrganization': ['DELETE', '/api/v1/organizations/{orgId}'],
+  'Settings.listSettings': ['GET', '/api/v1/settings'],
+  'Settings.updateSetting': ['PATCH', '/api/v1/settings/{key}']
 };
