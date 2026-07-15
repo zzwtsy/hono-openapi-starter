@@ -1,17 +1,31 @@
 import type { PermissionDefinition } from "@/core/auth/permissions.js";
 
 /**
- * iam feature 权限定义:权限管理本身的管理权限。
+ * iam feature 权限定义:权限管理本身 + 用户身份生命周期。
  *
+ * **iam.*** — 组织/角色/授权/权限目录:
  * - iam.read:查询组织/角色/授权/权限目录
  * - iam.manage:管理(建/改/删)组织/角色/授权
  *
- * admin 角色(代码同步)含全部权限,包括这两个。第一版全局 admin:根组织 admin 对任意子组织
- * `iam.manage` 通过(祖先遍历)。分级管理员(对目标 org 二次检查)留后续。
+ * **users.*** — 用户身份生命周期(细粒度,对齐 projects.* 范式,不塞进 iam.manage):
+ * - users.read:列出组织内用户
+ * - users.create:管理员代创建用户
+ * - users.update:改 name/email
+ * - users.reset-password:重置密码
+ * - users.disable / users.enable:禁用·启用
+ *
+ * admin 角色(代码同步)含全部权限。第一版全局 admin:根组织 admin 对任意子组织
+ * 检查通过(祖先遍历)。分级管理员(对目标 org 二次检查)留后续。
  */
 export const iamPermissions = [
   { name: "iam.read", description: "查看权限管理信息" },
   { name: "iam.manage", description: "管理组织/角色/授权" },
+  { name: "users.read", description: "查看用户" },
+  { name: "users.create", description: "创建用户" },
+  { name: "users.update", description: "修改用户资料" },
+  { name: "users.reset-password", description: "重置用户密码" },
+  { name: "users.disable", description: "禁用用户" },
+  { name: "users.enable", description: "启用用户" },
 ] as const satisfies readonly PermissionDefinition[];
 
 export type IamPermission = (typeof iamPermissions)[number]["name"];
@@ -22,5 +36,11 @@ declare module "@/core/auth/permissions.js" {
   interface AppPermissionRegistry {
     "iam.read": true;
     "iam.manage": true;
+    "users.read": true;
+    "users.create": true;
+    "users.update": true;
+    "users.reset-password": true;
+    "users.disable": true;
+    "users.enable": true;
   }
 }

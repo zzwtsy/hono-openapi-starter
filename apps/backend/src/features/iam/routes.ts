@@ -8,15 +8,19 @@ import {
   AssignRolePermissionsSchema,
   CreateOrganizationSchema,
   CreateRoleSchema,
+  CreateUserSchema,
   OrganizationIdParamSchema,
   OrganizationSchema,
   OrgIdQuerySchema,
   PermissionSchema,
+  ResetPasswordSchema,
   RoleIdParamSchema,
   RoleSchema,
   UpdateOrganizationSchema,
   UpdateRoleSchema,
+  UpdateUserSchema,
   UserDirectPermissionSchema,
+  UserIdParamSchema,
   UserPermissionBodySchema,
   UserPermissionParamSchema,
   UserRoleAssignmentSchema,
@@ -28,6 +32,12 @@ import {
 /** iam feature 共享:认证 + 权限 + 401/403 响应。 */
 const iamReadMiddleware = [requireAuth(), requirePermission("iam.read")];
 const iamManageMiddleware = [requireAuth(), requirePermission("iam.manage")];
+const usersReadMiddleware = [requireAuth(), requirePermission("users.read")];
+const usersCreateMiddleware = [requireAuth(), requirePermission("users.create")];
+const usersUpdateMiddleware = [requireAuth(), requirePermission("users.update")];
+const usersResetPasswordMiddleware = [requireAuth(), requirePermission("users.reset-password")];
+const usersDisableMiddleware = [requireAuth(), requirePermission("users.disable")];
+const usersEnableMiddleware = [requireAuth(), requirePermission("users.enable")];
 const authErrorResponses = {
   401: jsonErrorResponse("未认证"),
   403: jsonErrorResponse("无权限"),
@@ -174,12 +184,107 @@ export const listUsersRoute = createRoute({
   tags: ["IAM"],
   operationId: "listUsers",
   summary: "列出当前用户组织下的用户",
-  description: "返回当前用户所属组织(orgId)下的所有用户,供管理端授权时选择目标用户。",
-  middleware: iamReadMiddleware,
+  description: "返回当前用户所属组织(orgId)下的所有用户。需 users.read 权限。",
+  middleware: usersReadMiddleware,
   security: authedSecurity,
   responses: {
     200: jsonSuccessResponse(z.array(UserSummarySchema), "用户列表"),
     ...authErrorResponses,
+  },
+});
+
+// --- 用户管理 ---
+export const createUserRoute = createRoute({
+  method: "post",
+  path: "/users",
+  tags: ["IAM"],
+  operationId: "createUser",
+  summary: "管理员代创建用户",
+  description: "email+password+name;orgId 取自当前管理员。同 email 返回 409。需 users.create。",
+  middleware: usersCreateMiddleware,
+  security: authedSecurity,
+  request: {
+    body: { content: { "application/json": { schema: CreateUserSchema } } },
+  },
+  responses: {
+    200: jsonSuccessResponse(UserSummarySchema, "创建成功"),
+    ...authErrorResponses,
+    409: jsonErrorResponse("邮箱已存在"),
+  },
+});
+
+export const updateUserRoute = createRoute({
+  method: "patch",
+  path: "/users/{userId}",
+  tags: ["IAM"],
+  operationId: "updateUser",
+  summary: "修改用户资料",
+  description: "改 name/email,不改 orgId。目标须本组织,否则 404。需 users.update。",
+  middleware: usersUpdateMiddleware,
+  security: authedSecurity,
+  request: {
+    params: UserIdParamSchema,
+    body: { content: { "application/json": { schema: UpdateUserSchema } } },
+  },
+  responses: {
+    200: jsonSuccessResponse(UserSummarySchema, "修改成功"),
+    ...authErrorResponses,
+    404: jsonErrorResponse("用户不存在"),
+    409: jsonErrorResponse("邮箱已存在"),
+  },
+});
+
+export const resetUserPasswordRoute = createRoute({
+  method: "post",
+  path: "/users/{userId}/reset-password",
+  tags: ["IAM"],
+  operationId: "resetUserPassword",
+  summary: "重置用户密码",
+  description: "hashPassword + update account;删该用户全部 session。需 users.reset-password。",
+  middleware: usersResetPasswordMiddleware,
+  security: authedSecurity,
+  request: {
+    params: UserIdParamSchema,
+    body: { content: { "application/json": { schema: ResetPasswordSchema } } },
+  },
+  responses: {
+    200: jsonSuccessResponse(z.object({ userId: z.string() }), "重置成功"),
+    ...authErrorResponses,
+    404: jsonErrorResponse("用户不存在或无密码账号"),
+  },
+});
+
+export const disableUserRoute = createRoute({
+  method: "post",
+  path: "/users/{userId}/disable",
+  tags: ["IAM"],
+  operationId: "disableUser",
+  summary: "禁用用户",
+  description: "set disabled=true + 删全部 session。禁止禁用自己。需 users.disable。",
+  middleware: usersDisableMiddleware,
+  security: authedSecurity,
+  request: { params: UserIdParamSchema },
+  responses: {
+    200: jsonSuccessResponse(UserSummarySchema, "已禁用"),
+    ...authErrorResponses,
+    404: jsonErrorResponse("用户不存在"),
+  },
+});
+
+export const enableUserRoute = createRoute({
+  method: "post",
+  path: "/users/{userId}/enable",
+  tags: ["IAM"],
+  operationId: "enableUser",
+  summary: "启用用户",
+  description: "清 disabled。需 users.enable。",
+  middleware: usersEnableMiddleware,
+  security: authedSecurity,
+  request: { params: UserIdParamSchema },
+  responses: {
+    200: jsonSuccessResponse(UserSummarySchema, "已启用"),
+    ...authErrorResponses,
+    404: jsonErrorResponse("用户不存在"),
   },
 });
 
@@ -387,6 +492,11 @@ export const deleteOrganizationRoute = createRoute({
 
 export type ListPermissionsRoute = typeof listPermissionsRoute;
 export type ListUsersRoute = typeof listUsersRoute;
+export type CreateUserRoute = typeof createUserRoute;
+export type UpdateUserRoute = typeof updateUserRoute;
+export type ResetUserPasswordRoute = typeof resetUserPasswordRoute;
+export type DisableUserRoute = typeof disableUserRoute;
+export type EnableUserRoute = typeof enableUserRoute;
 export type ListRolesRoute = typeof listRolesRoute;
 export type CreateRoleRoute = typeof createRoleRoute;
 export type UpdateRoleRoute = typeof updateRoleRoute;

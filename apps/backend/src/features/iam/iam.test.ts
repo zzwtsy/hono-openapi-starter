@@ -14,6 +14,11 @@ const {
   mockListPermissions,
   mockListRoles,
   mockListUsers,
+  mockCreateUser,
+  mockUpdateUser,
+  mockResetPassword,
+  mockDisableUser,
+  mockEnableUser,
   mockCreateRole,
   mockUpdateRole,
   mockDeleteRole,
@@ -38,6 +43,11 @@ const {
   mockListPermissions: vi.fn(),
   mockListRoles: vi.fn(),
   mockListUsers: vi.fn(),
+  mockCreateUser: vi.fn(),
+  mockUpdateUser: vi.fn(),
+  mockResetPassword: vi.fn(),
+  mockDisableUser: vi.fn(),
+  mockEnableUser: vi.fn(),
   mockCreateRole: vi.fn(),
   mockUpdateRole: vi.fn(),
   mockDeleteRole: vi.fn(),
@@ -65,6 +75,11 @@ vi.mock("./service.js", () => ({
     listPermissions: mockListPermissions,
     listRoles: mockListRoles,
     listUsers: mockListUsers,
+    createUser: mockCreateUser,
+    updateUser: mockUpdateUser,
+    resetPassword: mockResetPassword,
+    disableUser: mockDisableUser,
+    enableUser: mockEnableUser,
     createRole: mockCreateRole,
     updateRole: mockUpdateRole,
     deleteRole: mockDeleteRole,
@@ -114,6 +129,11 @@ function buildApp() {
   const app = new OpenAPIHono<AppBindings>();
   app.openapi(routes.listPermissionsRoute, handlers.listPermissionsHandler);
   app.openapi(routes.listUsersRoute, handlers.listUsersHandler);
+  app.openapi(routes.createUserRoute, handlers.createUserHandler);
+  app.openapi(routes.updateUserRoute, handlers.updateUserHandler);
+  app.openapi(routes.resetUserPasswordRoute, handlers.resetUserPasswordHandler);
+  app.openapi(routes.disableUserRoute, handlers.disableUserHandler);
+  app.openapi(routes.enableUserRoute, handlers.enableUserHandler);
   app.openapi(routes.listRolesRoute, handlers.listRolesHandler);
   app.openapi(routes.createRoleRoute, handlers.createRoleHandler);
   app.openapi(routes.updateRoleRoute, handlers.updateRoleHandler);
@@ -328,7 +348,7 @@ describe("iam routes", () => {
   });
 
   // --- 用户列表 ---
-  it("listUsers 无 iam.read 返回 403", async () => {
+  it("listUsers 无 users.read 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -336,15 +356,153 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("listUsers 有 iam.read 返回用户列表", async () => {
+  it("listUsers 有 users.read 返回用户列表", async () => {
     authed();
-    mockListUsers.mockResolvedValue([{ id: "u-1", name: "a", email: "a@b.c", orgId: "org-1", createdAt: new Date() }]);
+    mockListUsers.mockResolvedValue([{
+      id: "u-1",
+      name: "a",
+      email: "a@b.c",
+      orgId: "org-1",
+      disabled: false,
+      createdAt: new Date(),
+    }]);
 
     const res = await buildApp().request("/users");
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { id: string }[] };
     expect(body.data[0].id).toBe("u-1");
     expect(mockListUsers).toHaveBeenCalledWith("org-1");
+  });
+
+  // --- 用户管理 ---
+  const mockUserSummary = {
+    id: "u-2",
+    name: "b",
+    email: "b@b.c",
+    orgId: "org-1",
+    disabled: false,
+    createdAt: new Date("2026-07-15T00:00:00.000Z"),
+  };
+
+  it("createUser 无 users.create 返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/users", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "new@example.com", password: "password-123", name: "b" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("createUser 有权限时按 orgId+body 调 service", async () => {
+    authed();
+    mockCreateUser.mockResolvedValue(mockUserSummary);
+
+    const res = await buildApp().request("/users", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "new@example.com", password: "password-123", name: "b" }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockCreateUser).toHaveBeenCalledWith("org-1", {
+      email: "new@example.com",
+      password: "password-123",
+      name: "b",
+    });
+  });
+
+  it("updateUser 无 users.update 返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/users/u-2", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "bb" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("updateUser 有权限时按 orgId+userId+body 调 service", async () => {
+    authed();
+    mockUpdateUser.mockResolvedValue({ ...mockUserSummary, name: "bb" });
+
+    const res = await buildApp().request("/users/u-2", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "bb" }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockUpdateUser).toHaveBeenCalledWith("org-1", "u-2", { name: "bb" });
+  });
+
+  it("resetUserPassword 无 users.reset-password 返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/users/u-2/reset-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ newPassword: "new-password-123" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("resetUserPassword 有权限时按 orgId+userId+password 调 service", async () => {
+    authed();
+    mockResetPassword.mockResolvedValue(undefined);
+
+    const res = await buildApp().request("/users/u-2/reset-password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ newPassword: "new-password-123" }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockResetPassword).toHaveBeenCalledWith("org-1", "u-2", "new-password-123");
+  });
+
+  it("disableUser 无 users.disable 返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/users/u-2/disable", { method: "POST" });
+    expect(res.status).toBe(403);
+  });
+
+  it("disableUser 有权限时传 actorUserId 调 service", async () => {
+    authed();
+    mockDisableUser.mockResolvedValue({ ...mockUserSummary, disabled: true });
+
+    const res = await buildApp().request("/users/u-2/disable", { method: "POST" });
+    expect(res.status).toBe(200);
+    expect(mockDisableUser).toHaveBeenCalledWith("org-1", "u-1", "u-2");
+  });
+
+  it("disableUser service 抛 FORBIDDEN(自禁用)返回 403", async () => {
+    authed();
+    mockDisableUser.mockRejectedValue(new AppError("COMMON_FORBIDDEN", { message: "不能禁用自己" }));
+
+    const res = await buildApp().request("/users/u-1/disable", { method: "POST" });
+    expect(res.status).toBe(403);
+  });
+
+  it("enableUser 无 users.enable 返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/users/u-2/enable", { method: "POST" });
+    expect(res.status).toBe(403);
+  });
+
+  it("enableUser 有权限时按 orgId+userId 调 service", async () => {
+    authed();
+    mockEnableUser.mockResolvedValue(mockUserSummary);
+
+    const res = await buildApp().request("/users/u-2/enable", { method: "POST" });
+    expect(res.status).toBe(200);
+    expect(mockEnableUser).toHaveBeenCalledWith("org-1", "u-2");
   });
 
   // --- 授用户角色 ---
