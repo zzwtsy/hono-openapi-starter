@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { AuthState } from "@/routes/__root";
 import type { AppPermission } from "@/types/permissions";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Building2, ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, ShieldCheck, Users } from "lucide-react";
+import { Building2, ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, Settings, ShieldCheck, Users } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -48,6 +48,7 @@ const navItems: NavItem[] = [
   { to: "/iam/organizations", title: "组织", icon: Building2, permission: "iam.read", match: p => p.startsWith("/iam/organizations") },
   { to: "/iam/users", title: "用户", icon: Users, permission: "iam.read", match: p => p.startsWith("/iam/users") },
   { to: "/projects", title: "项目", icon: FolderKanban, permission: "projects.read", match: p => p.startsWith("/projects") },
+  { to: "/settings", title: "系统设置", icon: Settings, permission: "settings.read", match: p => p.startsWith("/settings") },
 ];
 
 interface AppSidebarProps {
