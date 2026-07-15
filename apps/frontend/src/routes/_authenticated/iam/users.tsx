@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/require-permission";
 
 export const Route = createFileRoute("/_authenticated/iam/users")({
   beforeLoad: ({ context }) => {
-    requirePermission(context.auth.permissions, "iam.read");
+    requirePermission(context.auth.permissions, "users.read");
   },
   loader: async () => {
     await Apis.IAM.listUsers();
@@ -17,11 +17,12 @@ export const Route = createFileRoute("/_authenticated/iam/users")({
 function UsersPage() {
   const { auth } = Route.useRouteContext();
   const orgId = auth.user?.orgId ?? "";
+  const currentUserId = auth.user?.id ?? "";
 
   return (
     <div className="flex flex-col gap-4 p-6">
       <PageHeader title="用户管理" description="管理组织内的用户及其权限。" />
-      <UserList orgId={orgId} />
+      <UserList orgId={orgId} currentUserId={currentUserId} />
     </div>
   );
 }
