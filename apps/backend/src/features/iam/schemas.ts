@@ -107,8 +107,29 @@ export const UserSummarySchema = z.object({
   name: z.string().openapi({ description: "用户名", example: "张三" }),
   email: z.string().openapi({ description: "邮箱", example: "zhangsan@example.com" }),
   orgId: z.string().nullable().openapi({ description: "归属组织 ID", example: "org-root" }),
+  disabled: z.boolean().nullable().openapi({ description: "是否禁用(null/false=启用)", example: false }),
   createdAt: z.iso.datetime().openapi({ description: "创建时间(ISO 8601)" }),
 }).openapi("UserSummary");
+
+/** 管理员代创建用户入参。 */
+export const CreateUserSchema = z.object({
+  email: z.email().openapi({ description: "邮箱(唯一)", example: "new@example.com" }),
+  password: z.string().min(8).openapi({ description: "初始密码(至少 8 位)", example: "password-123" }),
+  name: z.string().min(1).openapi({ description: "显示名", example: "李四" }),
+}).openapi("CreateUser");
+
+/** 改用户资料入参(null-patch;不改 orgId)。至少一项。 */
+export const UpdateUserSchema = z.object({
+  name: z.string().min(1).optional().openapi({ description: "显示名" }),
+  email: z.email().optional().openapi({ description: "邮箱(唯一)" }),
+}).refine(v => v.name !== undefined || v.email !== undefined, {
+  message: "至少提供 name 或 email 之一",
+}).openapi("UpdateUser");
+
+/** 重置密码入参。 */
+export const ResetPasswordSchema = z.object({
+  newPassword: z.string().min(8).openapi({ description: "新密码(至少 8 位)", example: "new-password-123" }),
+}).openapi("ResetPassword");
 
 /** 用户在某组织已授的角色记录(原始授权,非祖先继承)。 */
 export const UserRoleAssignmentSchema = z.object({

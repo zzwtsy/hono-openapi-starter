@@ -43,12 +43,12 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | GET | `/api/v1/roles/{roleId}/permissions` | `listRolePermissions` | iam.read | 角色含的权限 |
 | POST | `/api/v1/roles/{roleId}/permissions` | `assignRolePermissions` | iam.manage | 给角色配权限 |
 | DELETE | `/api/v1/roles/{roleId}/permissions/{permission}` | `deleteRolePermission` | iam.manage | 撤角色权限 |
-| GET | `/api/v1/users` | `listUsers` | iam.read | 列出当前用户组织下的用户 |
-| POST | `/api/v1/users` | `createUser` | iam.manage | 管理员代创建用户（email+password+name，orgId 取自当前管理员） |
-| PATCH | `/api/v1/users/{userId}` | `updateUser` | iam.manage | 改用户资料（name/email，不改 orgId） |
-| POST | `/api/v1/users/{userId}/reset-password` | `resetUserPassword` | iam.manage | 重置密码（hashPassword+update account+删 session） |
-| POST | `/api/v1/users/{userId}/disable` | `disableUser` | iam.manage | 禁用用户（set disabled=true+删所有 session） |
-| POST | `/api/v1/users/{userId}/enable` | `enableUser` | iam.manage | 启用用户（清 disabled） |
+| GET | `/api/v1/users` | `listUsers` | users.read | 列出当前用户组织下的用户 |
+| POST | `/api/v1/users` | `createUser` | users.create | 管理员代创建用户（email+password+name，orgId 取自当前管理员） |
+| PATCH | `/api/v1/users/{userId}` | `updateUser` | users.update | 改用户资料（name/email，不改 orgId） |
+| POST | `/api/v1/users/{userId}/reset-password` | `resetUserPassword` | users.reset-password | 重置密码（hashPassword+update account+删 session） |
+| POST | `/api/v1/users/{userId}/disable` | `disableUser` | users.disable | 禁用用户（set disabled=true+删所有 session；禁止自禁用） |
+| POST | `/api/v1/users/{userId}/enable` | `enableUser` | users.enable | 启用用户（清 disabled） |
 | POST | `/api/v1/users/{userId}/roles/{roleId}` | `assignUserRole` | iam.manage | 授用户角色 |
 | DELETE | `/api/v1/users/{userId}/roles/{roleId}` | `deleteUserRole` | iam.manage | 撤用户角色（query orgId） |
 | POST | `/api/v1/users/{userId}/permissions/{permission}` | `assignUserPermission` | iam.manage | 直接授权 allow/deny |
@@ -70,14 +70,20 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 ## 6. Auth & Permissions
 
-`features/iam/permissions.ts` 声明 `iam.read` / `iam.manage`，展开到 `permissions-catalog.ts` 的 `allPermissions`。admin 角色（代码同步）含全部权限（含 iam.*）。
+`features/iam/permissions.ts` 声明 `iam.*`（组织/角色/授权）与细粒度 `users.*`（用户身份生命周期，对齐 projects.* 范式），展开到 `permissions-catalog.ts` 的 `allPermissions`。admin 角色（代码同步）含全部权限。
 
 | Permission | Description |
 | --- | --- |
 | `iam.read` | 查看组织/角色/授权/权限目录 |
 | `iam.manage` | 管理（建/改/删）组织/角色/授权 |
+| `users.read` | 查看用户列表 |
+| `users.create` | 代创建用户 |
+| `users.update` | 修改用户资料 |
+| `users.reset-password` | 重置用户密码 |
+| `users.disable` | 禁用用户 |
+| `users.enable` | 启用用户 |
 
-第一版全局 admin：根组织 admin 因祖先遍历对任意子组织 `iam.manage` 通过。`/api/v1/me` 仅需认证（看自己）。
+第一版全局 admin：根组织 admin 因祖先遍历对任意子组织检查通过。`/api/v1/me` 仅需认证（看自己）。
 
 ## 7. Data Model
 
@@ -95,8 +101,8 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | Code | HTTP Status | Description |
 | --- | --- | --- |
 | `COMMON_NOT_FOUND` | 404 | 角色/组织/权限/授权不存在，或对 code 角色改删 |
-| `COMMON_CONFLICT` | 409 | 角色名重复；组织形成环；删有子组织 |
-| `COMMON_FORBIDDEN` | 403 | 无 iam.read/iam.manage |
+| `COMMON_CONFLICT` | 409 | 角色名重复；组织形成环；删有子组织；用户邮箱重复 |
+| `COMMON_FORBIDDEN` | 403 | 无对应权限；禁止禁用自己 |
 | `AUTH_ACCOUNT_DISABLED` | 403 | 用户已禁用（`databaseHooks.session.create.before` 检查 disabled，阻止 session 创建） |
 | `COMMON_UNAUTHORIZED` | 401 | 未认证 |
 
@@ -127,8 +133,8 @@ sequenceDiagram
 
 ## 11. Test Cases
 
-- unit：`features/iam/iam.test.ts`（21 路由全覆盖鉴权 403 + handler→service 接线 + 错误码 404/409 映射）、`features/me/me.test.ts`
-- integration：`tests/integration/authorization/iam-roles.test.ts`（source 保护、cascade）、`iam-assignments.test.ts`（授角色/deny/祖先/过期/撤销全语义）、`iam-organizations.test.ts`（建树/防环/删除约束）、`list-effective.test.ts`（全集算法）
+- unit：`features/iam/iam.test.ts`（路由全覆盖鉴权 403 + handler→service 接线 + 错误码 404/409 映射，含 users.* 用户管理）、`features/me/me.test.ts`
+- integration：`tests/integration/authorization/iam-roles.test.ts`（source 保护、cascade）、`iam-assignments.test.ts`（授角色/deny/祖先/过期/撤销全语义）、`iam-organizations.test.ts`（建树/防环/删除约束）、`list-effective.test.ts`（全集算法）、`iam-users.test.ts`（代创建 409、reset 后旧密码失效、disable 拦登录 + enable 恢复、自禁用 403）
 
 ## 12. Rollout / Migration Notes
 

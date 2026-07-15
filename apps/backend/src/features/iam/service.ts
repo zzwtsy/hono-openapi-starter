@@ -1,11 +1,23 @@
 import { randomUUID } from "node:crypto";
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { hashPassword } from "better-auth/crypto";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 
 import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
-import { organizations, permissions, rolePermissions, roles, user, userPermissions, userRoles } from "@/db/schema/index.js";
+import {
+  account,
+  generateId,
+  organizations,
+  permissions,
+  rolePermissions,
+  roles,
+  session,
+  user,
+  userPermissions,
+  userRoles,
+} from "@/db/schema/index.js";
 
 /**
  * iam feature service:权限管理的数据访问。
@@ -51,6 +63,28 @@ async function requireExistingPermission(name: string) {
   if (perm == null) {
     throw new AppError("COMMON_NOT_FOUND", { message: "权限不存在" });
   }
+}
+
+/**
+ * 校验用户存在且归属本组织,否则 404(不暴露跨组织是否存在)。
+ * 返回 UserSummary 形状,供 update/disable/enable 返回。
+ */
+async function requireUserInOrg(userId: string, orgId: string) {
+  const [row] = await db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      orgId: user.orgId,
+      disabled: user.disabled,
+      createdAt: user.createdAt,
+    })
+    .from(user)
+    .where(and(eq(user.id, userId), eq(user.orgId, orgId)));
+  if (row == null) {
+    throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
+  }
+  return row;
 }
 
 export const IamService = {
@@ -134,11 +168,122 @@ export const IamService = {
         name: user.name,
         email: user.email,
         orgId: user.orgId,
+        disabled: user.disabled,
         createdAt: user.createdAt,
       })
       .from(user)
       .where(eq(user.orgId, orgId))
       .orderBy(asc(user.createdAt), asc(user.id));
+  },
+
+  /**
+   * 管理员代创建用户:email+password+name,orgId 取自管理员。
+   * 同 email → 409。复用 bootstrap 原语(hashPassword + insert user/account)。
+   */
+  async createUser(orgId: string, input: { email: string; password: string; name: string }) {
+    const [existing] = await db.select({ id: user.id }).from(user).where(eq(user.email, input.email));
+    if (existing != null) {
+      throw new AppError("COMMON_CONFLICT", { message: "邮箱已存在" });
+    }
+    const userId = generateId();
+    const passwordHash = await hashPassword(input.password);
+    await db.insert(user).values({
+      id: userId,
+      name: input.name,
+      email: input.email,
+      orgId,
+    });
+    await db.insert(account).values({
+      id: generateId(),
+      accountId: userId,
+      providerId: "credential",
+      userId,
+      password: passwordHash,
+    });
+    const [created] = await db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        orgId: user.orgId,
+        disabled: user.disabled,
+        createdAt: user.createdAt,
+      })
+      .from(user)
+      .where(eq(user.id, userId));
+    return created;
+  },
+
+  /**
+   * 改用户资料(name/email);不改 orgId。目标须本组织,否则 404。
+   * email 冲突 → 409。
+   */
+  async updateUser(
+    actorOrgId: string,
+    userId: string,
+    input: { name?: string; email?: string },
+  ) {
+    await requireUserInOrg(userId, actorOrgId);
+    if (input.email !== undefined) {
+      const [clash] = await db
+        .select({ id: user.id })
+        .from(user)
+        .where(and(eq(user.email, input.email), ne(user.id, userId)));
+      if (clash != null) {
+        throw new AppError("COMMON_CONFLICT", { message: "邮箱已存在" });
+      }
+    }
+    const patch: { name?: string; email?: string } = {};
+    if (input.name !== undefined) {
+      patch.name = input.name;
+    }
+    if (input.email !== undefined) {
+      patch.email = input.email;
+    }
+    if (Object.keys(patch).length === 0) {
+      return requireUserInOrg(userId, actorOrgId);
+    }
+    await db.update(user).set(patch).where(eq(user.id, userId));
+    return requireUserInOrg(userId, actorOrgId);
+  },
+
+  /**
+   * 重置密码:hashPassword + update credential account;删该用户全部 session 立即下线。
+   * 无 credential account → 404。
+   */
+  async resetPassword(actorOrgId: string, userId: string, newPassword: string) {
+    await requireUserInOrg(userId, actorOrgId);
+    const passwordHash = await hashPassword(newPassword);
+    const [updated] = await db
+      .update(account)
+      .set({ password: passwordHash })
+      .where(and(eq(account.userId, userId), eq(account.providerId, "credential")))
+      .returning({ id: account.id });
+    if (updated == null) {
+      throw new AppError("COMMON_NOT_FOUND", { message: "用户无密码账号" });
+    }
+    await db.delete(session).where(eq(session.userId, userId));
+  },
+
+  /**
+   * 禁用用户:set disabled=true + 删全部 session。
+   * 禁止禁用自己 → 403。
+   */
+  async disableUser(actorOrgId: string, actorUserId: string, userId: string) {
+    if (userId === actorUserId) {
+      throw new AppError("COMMON_FORBIDDEN", { message: "不能禁用自己" });
+    }
+    await requireUserInOrg(userId, actorOrgId);
+    await db.update(user).set({ disabled: true }).where(eq(user.id, userId));
+    await db.delete(session).where(eq(session.userId, userId));
+    return requireUserInOrg(userId, actorOrgId);
+  },
+
+  /** 启用用户:清 disabled。 */
+  async enableUser(actorOrgId: string, userId: string) {
+    await requireUserInOrg(userId, actorOrgId);
+    await db.update(user).set({ disabled: false }).where(eq(user.id, userId));
+    return requireUserInOrg(userId, actorOrgId);
   },
 
   // --- 用户授权 ---
