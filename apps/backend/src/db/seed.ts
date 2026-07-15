@@ -7,7 +7,7 @@ import { logger } from "../core/logger/index.js";
 import env from "../env.js";
 import { allPermissions } from "../permissions-catalog.js";
 import { closeDb, db } from "./client.js";
-import { account, organizations, projects, user, userRoles } from "./schema/index.js";
+import { account, organizations, projects, systemSettings, user, userRoles } from "./schema/index.js";
 
 /**
  * dev 环境演示数据:dev 组织 + 可登录的 dev 用户(授标准 admin 角色)+ 样例项目。
@@ -61,6 +61,11 @@ async function main() {
   await db
     .insert(projects)
     .values({ id: DEV.project, name: "示例项目", orgId: DEV.org })
+    .onConflictDoNothing();
+  // 系统设置:dev 默认开启注册(env.DISABLE_SIGN_UP 是 BA 层二次防御,实际生效的是 middleware 读 DB)
+  await db
+    .insert(systemSettings)
+    .values({ key: "signUp", value: { enabled: true } })
     .onConflictDoNothing();
 
   logger.withMetadata({ email: DEV.email, password: DEV.password }).info("seeded dev demo data");

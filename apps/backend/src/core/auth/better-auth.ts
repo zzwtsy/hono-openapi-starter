@@ -33,6 +33,8 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       orgId: { type: "string", required: false },
+      /** 账号禁用标记：requireAuth 检查，禁用时拒绝并删 session（自建，不用 BA admin 插件，见 ADR-0007）。 */
+      disabled: { type: "boolean", required: false },
     },
   },
 });
