@@ -7,6 +7,7 @@ import iamRouter from "./features/iam/index.js";
 import { IamPermissionChecker } from "./features/iam/permission-checker.js";
 import meRouter from "./features/me/index.js";
 import projectsRouter from "./features/projects/index.js";
+import systemSettingsRouter from "./features/system-settings/index.js";
 
 // 装配权限检查 Adapter(Port/Adapter):IamPermissionChecker 提供递归 CTE 实现,
 // core 的 PermissionService 经 holder 调用,不直接依赖 features(见 ADR-0004)。
@@ -21,6 +22,7 @@ app.route("/api/v1", healthRouter);
 app.route("/api/v1", meRouter);
 app.route("/api/v1", projectsRouter);
 app.route("/api/v1", iamRouter);
+app.route("/api/v1", systemSettingsRouter);
 configureOpenApi(app);
 
 export { app };

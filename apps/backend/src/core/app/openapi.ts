@@ -20,6 +20,8 @@ export function configureOpenApi(app: AppOpenAPI) {
         version: "1.0.0",
         description: "面向生产环境的 Hono 后端模板 API。",
       },
+    }, {
+      unionPreferredType: "oneOf",
     });
   }
 
