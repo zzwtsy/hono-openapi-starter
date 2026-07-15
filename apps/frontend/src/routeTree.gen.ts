@@ -9,16 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as R403RouteImport } from './routes/403'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
 import { Route as AuthenticatedIamUsersRouteImport } from './routes/_authenticated/iam/users'
 import { Route as AuthenticatedIamRolesRouteImport } from './routes/_authenticated/iam/roles'
 import { Route as AuthenticatedIamOrganizationsRouteImport } from './routes/_authenticated/iam/organizations'
 
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -37,6 +44,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
@@ -70,7 +82,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/403': typeof R403Route
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
   '/iam/roles': typeof AuthenticatedIamRolesRoute
   '/iam/users': typeof AuthenticatedIamUsersRoute
@@ -80,7 +94,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/403': typeof R403Route
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
   '/iam/roles': typeof AuthenticatedIamRolesRoute
   '/iam/users': typeof AuthenticatedIamUsersRoute
@@ -92,7 +108,9 @@ export interface FileRoutesById {
   '/403': typeof R403Route
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
   '/_authenticated/iam/roles': typeof AuthenticatedIamRolesRoute
   '/_authenticated/iam/users': typeof AuthenticatedIamUsersRoute
@@ -104,7 +122,9 @@ export interface FileRouteTypes {
     | '/'
     | '/403'
     | '/login'
+    | '/register'
     | '/dashboard'
+    | '/settings'
     | '/iam/organizations'
     | '/iam/roles'
     | '/iam/users'
@@ -114,7 +134,9 @@ export interface FileRouteTypes {
     | '/'
     | '/403'
     | '/login'
+    | '/register'
     | '/dashboard'
+    | '/settings'
     | '/iam/organizations'
     | '/iam/roles'
     | '/iam/users'
@@ -125,7 +147,9 @@ export interface FileRouteTypes {
     | '/403'
     | '/_authenticated'
     | '/login'
+    | '/register'
     | '/_authenticated/dashboard'
+    | '/_authenticated/settings'
     | '/_authenticated/iam/organizations'
     | '/_authenticated/iam/roles'
     | '/_authenticated/iam/users'
@@ -137,10 +161,18 @@ export interface RootRouteChildren {
   R403Route: typeof R403Route
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -168,6 +200,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -209,6 +248,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIamOrganizationsRoute: typeof AuthenticatedIamOrganizationsRoute
   AuthenticatedIamRolesRoute: typeof AuthenticatedIamRolesRoute
   AuthenticatedIamUsersRoute: typeof AuthenticatedIamUsersRoute
@@ -217,6 +257,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIamOrganizationsRoute: AuthenticatedIamOrganizationsRoute,
   AuthenticatedIamRolesRoute: AuthenticatedIamRolesRoute,
   AuthenticatedIamUsersRoute: AuthenticatedIamUsersRoute,
@@ -232,6 +273,7 @@ const rootRouteChildren: RootRouteChildren = {
   R403Route: R403Route,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

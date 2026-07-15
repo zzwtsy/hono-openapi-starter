@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { signIn, signOut, useSession } from "@/lib/auth-client";
+import { signIn, signOut, signUp, useSession } from "@/lib/auth-client";
 import { safeRedirect } from "@/lib/safe-redirect";
 
 // 登录:signIn 成功后 navigate 到回跳目标(或 /dashboard),触发 _authenticated beforeLoad 取 permissions。
@@ -16,6 +16,20 @@ export function useLogin() {
         throw new Error(error.message ?? "登录失败");
       }
       await router.navigate({ to: safeRedirect(redirectTo) });
+    },
+  };
+}
+
+/** 自助注册:signUp.email 成功后跳 /login(管理员可关注册;关闭时 BA hooks 返回错误文案)。 */
+export function useRegister() {
+  const router = useRouter();
+  return {
+    register: async (input: { email: string; password: string; name: string }) => {
+      const { error } = await signUp.email(input);
+      if (error) {
+        throw new Error(error.message ?? "注册失败");
+      }
+      await router.navigate({ to: "/login" });
     },
   };
 }

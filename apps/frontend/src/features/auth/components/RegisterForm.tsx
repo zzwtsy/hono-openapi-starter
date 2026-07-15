@@ -8,22 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { useLogin } from "../hooks";
+import { useRegister } from "../hooks";
 
-// 登录表单:Field 模式 + a11y(label/autocomplete/aria-invalid)+ zod safeParse(不引表单库)+
-// Spinner loading 防重复提交。表单级错误(signIn 失败)用 Alert,per-field 错误用 FieldDescription。
-const loginSchema = z.object({
+// 注册表单:Field 模式 + zod safeParse;关闭注册时 BA hooks 返回错误文案走 formError Alert。
+const registerSchema = z.object({
+  name: z.string().min(1, "请输入显示名"),
   email: z.email("请输入有效邮箱"),
-  password: z.string().min(1, "请输入密码"),
+  password: z.string().min(8, "密码至少 8 位"),
 });
 
-interface LoginFormProps {
-  /** 登录成功后回跳目标(由 /login route 从 search.redirect 传入,safeRedirect 兜底)。 */
-  redirectTo?: string;
-}
-
-export function LoginForm({ redirectTo }: LoginFormProps) {
-  const { login } = useLogin();
+export function RegisterForm() {
+  const { register } = useRegister();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -32,7 +28,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const result = loginSchema.safeParse({ email, password });
+    const result = registerSchema.safeParse({ name, email, password });
     if (!result.success) {
       const errors: Record<string, string> = {};
       for (const issue of result.error.issues) {
@@ -48,10 +44,10 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
     setFormError(null);
     setLoading(true);
     try {
-      await login(email, password, redirectTo);
-      // 成功 -> login navigate -> 组件卸载,无需 setLoading(false)
+      await register(result.data);
+      // 成功 -> navigate /login -> 组件卸载
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "登录失败");
+      setFormError(err instanceof Error ? err.message : "注册失败");
       setLoading(false);
     }
   };
@@ -61,11 +57,27 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       {formError !== null && (
         <Alert variant="destructive">
           <CircleAlert />
-          <AlertTitle>登录失败</AlertTitle>
+          <AlertTitle>注册失败</AlertTitle>
           <AlertDescription>{formError}</AlertDescription>
         </Alert>
       )}
       <FieldGroup>
+        <Field data-invalid={fieldErrors.name !== undefined}>
+          <FieldLabel htmlFor="name">显示名</FieldLabel>
+          <Input
+            id="name"
+            type="text"
+            autoComplete="name"
+            required
+            placeholder="张三"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            aria-invalid={fieldErrors.name !== undefined}
+          />
+          {fieldErrors.name !== undefined && (
+            <FieldDescription>{fieldErrors.name}</FieldDescription>
+          )}
+        </Field>
         <Field data-invalid={fieldErrors.email !== undefined}>
           <FieldLabel htmlFor="email">邮箱</FieldLabel>
           <Input
@@ -87,7 +99,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
           <Input
             id="password"
             type="password"
-            autoComplete="current-password"
+            autoComplete="new-password"
             required
             value={password}
             onChange={e => setPassword(e.target.value)}
@@ -100,13 +112,13 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       </FieldGroup>
       <Button type="submit" disabled={loading}>
         {loading && <Spinner data-icon="inline-start" />}
-        登录
+        注册
       </Button>
       <p className="text-center text-sm text-muted-foreground">
-        没有账号？
+        已有账号？
         {" "}
-        <Link to="/register" className="font-medium text-foreground underline-offset-4 hover:underline">
-          去注册
+        <Link to="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+          去登录
         </Link>
       </p>
     </form>
