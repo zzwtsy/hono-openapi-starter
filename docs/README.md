@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: platform
-lastReviewedAt: 2026-07-10
+lastReviewedAt: 2026-07-15
 ---
 
 # 全栈模板工程文档
@@ -50,7 +50,9 @@ lastReviewedAt: 2026-07-10
 | 新增后端 API | `conventions/backend/api-openapi.md`、`conventions/backend/response-envelope.md`、`conventions/backend/error-code-system.md`、`conventions/backend/testing-strategy.md` |
 | 前端调用 API | `conventions/frontend/api-alova.md`、`conventions/frontend/routing.md` |
 | 修改前端 IAM | `features/frontend/iam.md`、`conventions/frontend/routing.md`、`conventions/frontend/state-cache.md` |
-| 修改认证或权限 | `conventions/backend/auth-better-auth.md`、`conventions/backend/authorization.md`、`conventions/frontend/auth.md`、`adr/0003-keep-better-auth-native.md`、`adr/0004-authorization-layer.md` |
+| 改用户管理 UI | `features/frontend/iam.md`（用户管理节）、`features/backend/iam.md`（users.*） |
+| 改系统设置 / 注册开关 | `features/backend/system-settings.md`、`features/frontend/settings.md`、`adr/0007-runtime-config-control.md` |
+| 修改认证或权限 | `conventions/backend/auth-better-auth.md`、`conventions/backend/authorization.md`、`conventions/frontend/auth.md`、`adr/0003-keep-better-auth-native.md`、`adr/0004-authorization-layer.md`、`adr/0007-runtime-config-control.md` |
 | 修改数据库 | `conventions/backend/database-drizzle.md`、`conventions/backend/development-workflow.md` |
 | 前端路由守卫 | `conventions/frontend/routing.md`、`architecture/frontend/request-lifecycle.md` |
 | 排查日志或可观测性 | `conventions/shared/ci-cd-security-observability.md`、`checklists/observability-checklist.md` |
@@ -79,8 +81,8 @@ docs/
     frontend/{api-alova, routing, auth, state-cache, development-workflow, testing}.md
 
   features/
-    backend/{_template, iam, projects}.md
-    frontend/{_template, iam, projects}.md
+    backend/{_template, iam, projects, system-settings}.md
+    frontend/{_template, iam, projects, settings}.md
 
   packages/_template.md
 
@@ -92,6 +94,7 @@ docs/
     0004-authorization-layer.md
     0005-frontend-wormhole-selection.md
     0006-frontend-architecture.md
+    0007-runtime-config-control.md
 
   diagrams/
   checklists/

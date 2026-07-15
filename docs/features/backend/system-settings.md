@@ -1,5 +1,5 @@
 ---
-status: Draft
+status: Active
 owner: backend-platform
 lastReviewedAt: 2026-07-15
 ---
@@ -29,7 +29,7 @@ lastReviewedAt: 2026-07-15
 | GET | `/api/v1/settings` | `listSettings` | settings.read | 列出全部配置 |
 | PATCH | `/api/v1/settings/{key}` | `updateSetting` | settings.update | upsert 一条配置 |
 
-sign-up 拦截在 `better-auth.ts` 的 `hooks.before` 配置里声明：内部判断 `ctx.path === "/sign-up/email"`（BA 用户级 hook 对所有 `/api/auth/*` 触发，需自行判路径），直接查 `system_settings` 表（`core/` 禁止 import `features/`，不经 `SystemSettingService`），`signUp.enabled !== true`（含记录缺失）时抛 `APIError`（`AUTH_SIGNUP_DISABLED`）。不暴露独立端点。
+sign-up 拦截在 `better-auth.ts` 的 `hooks.before` 配置里声明：BA 用户级 hook 对所有 `/api/auth/*` 触发、无路径 matcher；用 `ctx.request?.url` 解析后 `new URL(url).pathname.endsWith("/sign-up/email")` 判断端点（pathname 去 query/fragment，防 `?foo` 绕过）。直接查 `system_settings` 表（`core/` 禁止 import `features/`，不经 `SystemSettingService`）；jsonb value 用本地 zod `safeParse` 窄化，`enabled !== true`（含记录缺失或脏数据）时抛 `APIError`（`AUTH_SIGNUP_DISABLED`）。不暴露独立端点。
 
 ## 5. Request / Response
 
@@ -88,7 +88,7 @@ sequenceDiagram
   participant BA as Better Auth handler
 
   Client->>Hook: POST /api/auth/sign-up/email
-  Hook->>Hook: ctx.path === "/sign-up/email"?
+  Hook->>Hook: pathname.endsWith("/sign-up/email")?
   Hook->>DB: select where key='signUp'
   DB-->>Hook: row 或空
   alt enabled !== true(含缺失)

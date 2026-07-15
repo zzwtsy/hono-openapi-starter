@@ -8,7 +8,7 @@ lastReviewedAt: 2026-07-15
 
 ## 概述
 
-IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 Headless Tree 展示层级，以组织 ID 作为稳定节点 identity，并在同一页面完成节点详情与组织 CRUD。
+IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 Headless Tree 展示层级，以组织 ID 作为稳定节点 identity，并在同一页面完成节点详情与组织 CRUD。用户管理使用细粒度 `users.*` 权限（对齐后端 #14），与 `iam.*`（组织/角色/授权）分离。
 
 ## 范围
 
@@ -22,9 +22,11 @@ IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 
 | --- | --- | --- | --- |
 | `/iam/roles` | `requirePermission("iam.read")` | `listRoles` | `RoleList` |
 | `/iam/organizations?org=<id>` | `requirePermission("iam.read")` | `listOrganizations` | `OrganizationExplorer` |
-| `/iam/users` | `requirePermission("iam.read")` | `listUsers` | `UserList` |
+| `/iam/users` | `requirePermission("users.read")` | `listUsers` | `UserList` |
 
 组织路由的 `org` 搜索参数保存当前选中组织。参数缺失或指向不存在的 ID 时，页面回退到第一个根组织并修正 URL。
+
+侧栏「用户」：`permission: "users.read"`（非 `iam.read`）。
 
 ## 组件结构
 
@@ -37,9 +39,9 @@ features/iam/
     organization-details.tsx            # 节点详情和上下文动作
     organization-form.tsx               # 创建、编辑与移动组织
     RoleList.tsx
-    UserList.tsx
-    user-form.tsx                        # 创建/编辑用户(TanStack Form + zod)
-    reset-password-dialog.tsx            # 重置密码弹窗
+    UserList.tsx                        # 列表 + 新建/操作菜单 + disabled badge
+    user-form.tsx                       # 创建/编辑用户(TanStack Form + zod)
+    reset-password-dialog.tsx           # 重置密码弹窗
     role-permissions-dialog.tsx         # 角色权限分配(批量编辑 + diff)
     user-authorization-dialog.tsx       # 用户授权(角色 + 直接 allow/deny + 撤销 + 过期)
 ```
@@ -53,19 +55,25 @@ features/iam/
 - **角色授权**：列出已授角色(`listUserRoles`，含过期) + 逐条撤销(`deleteUserRole`) + 授角色表单(角色 Select + 过期 DatePicker + `assignUserRole`)。
 - **直接授权**：列出已授直接权限(`listUserDirectPermissions`，含 effect/过期) + 逐条撤销(`deleteUserPermission`) + 授直接权限表单(权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`)。deny = 阻止部分权限。
 
-过期用 DatePicker(react-day-picker v10 + Base UI Popover 薄包装)，日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET + `send` 手动刷新(双保险)。`iam.manage` 才显示授权入口。
+过期用 DatePicker(react-day-picker v10 + Base UI Popover 薄包装)，日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET + `send` 手动刷新(双保险)。**`iam.manage` 才显示授权入口**。
 
 ## 用户管理
 
-`UserList` 扩展为完整用户管理（参照 ProjectList 范式）：
+`UserList` 为完整用户管理（参照 ProjectList 细粒度门控范式）：
 
-- **代创建**：顶部"新建用户"按钮（`useCan("iam.manage")` 守卫）打开 `user-form.tsx` Dialog（email/password/name，TanStack Form + zod）。
-- **编辑**：操作列 DropdownMenu"编辑"打开 `user-form.tsx`（预填 name/email，不显示 password，改密码走重置入口）。
-- **重置密码**：操作列"重置密码"打开 `reset-password-dialog.tsx`（单字段 newPassword，min 8）。
-- **禁用·启用**：操作列根据 `disabled` 状态显示"禁用"或"启用"，禁用时后端删 session 立即下线。
-- **disabled badge**：列表显示禁用状态标记。
-- 细粒度权限：`iam.manage` 控操作列入口（参照 ProjectList 的 `canManage = canUpdate || canDelete` 模式）。
-- 缓存失效：`IAM.listUsers` hitSource 配 `[createUser, updateUser, resetUserPassword, disableUser, enableUser]`，mutation 成功后 `send()` 双保险刷新。
+| 操作 | 权限 | 交互 |
+| --- | --- | --- |
+| 进页 / 列表 | `users.read` | 路由守卫 + 侧栏 |
+| 新建 | `users.create` | 顶部「新建用户」→ Dialog + `user-form`（name/email/password） |
+| 编辑 | `users.update` | 操作菜单「编辑」→ `user-form`（name/email，无密码） |
+| 重置密码 | `users.reset-password` | 「重置密码」→ `reset-password-dialog`（newPassword min 8） |
+| 禁用 | `users.disable` | AlertDialog 确认；**禁止对自己**（菜单隐藏；后端亦 403） |
+| 启用 | `users.enable` | 已禁用行显示「启用」 |
+| 授权 | `iam.manage` | 见上节 |
+
+- **disabled badge**：`disabled === true` → destructive「已禁用」，否则 secondary「正常」。
+- **currentUserId**：由路由 `auth.user.id` 传入，用于自禁用 UX。
+- **缓存**：`IAM.listUsers` hitSource = `[createUser, updateUser, disableUser, enableUser]`（**不含** `resetUserPassword`：重置不改列表字段）；mutation 成功后 `send()` 双保险刷新。
 
 ## 组织树数据
 
@@ -86,20 +94,25 @@ features/iam/
 
 ## API 与缓存
 
-- 列表：`useRequest(() => Apis.IAM.listOrganizations())`。
-- 写操作：直接调用生成的 create/update/delete Method，成功后 `send()` 刷新当前列表状态。
+- 列表：`useRequest(() => Apis.IAM.listOrganizations())` 等。
+- 写操作：直接调用生成的 Method，成功后 `send()` 刷新当前列表状态。
 - `api/index.ts` 已通过 mutation `name` + list `hitSource` 自动失效列表缓存。
-- 路由 loader 预取组织列表，组件首次请求命中 alova cache。
+- 路由 loader 预取列表，组件首次请求命中 alova cache。
 
 ## 权限
 
-- `iam.read`：进入 IAM 路由并查看角色、组织和用户授权。
-- `iam.manage`：显示创建、编辑、删除和授权入口。
-- 前端权限只控制 UX；后端 `PermissionChecker` 才是授权边界。
+| 权限 | UX |
+| --- | --- |
+| `iam.read` | 角色、组织路由与侧栏 |
+| `iam.manage` | 角色/组织写操作 + 用户「授权」 |
+| `users.read` | 用户路由与侧栏「用户」 |
+| `users.create` / `update` / `reset-password` / `disable` / `enable` | 对应用户管理入口 |
+
+前端权限只控制 UX；后端 `PermissionChecker` 才是授权边界。
 
 ## 与后端对应
 
 - 后端 feature 文档：[`docs/features/backend/iam.md`](../backend/iam.md)
 - 组织 API：`GET/POST /api/v1/organizations`、`PATCH/DELETE /api/v1/organizations/{orgId}`
-- 用户管理 API：`POST /api/v1/users`、`PATCH /api/v1/users/{userId}`、`POST /api/v1/users/{userId}/reset-password`、`POST /api/v1/users/{userId}/disable`、`POST /api/v1/users/{userId}/enable`
+- 用户管理 API：`POST /api/v1/users`、`PATCH /api/v1/users/{userId}`、`POST /api/v1/users/{userId}/reset-password`、`POST /api/v1/users/{userId}/disable`、`POST /api/v1/users/{userId}/enable`（权限 `users.*`）
 - 运行时配置控制决策：[ADR-0007](../../adr/0007-runtime-config-control.md)
