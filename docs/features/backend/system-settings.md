@@ -8,13 +8,13 @@ lastReviewedAt: 2026-07-15
 
 ## 1. Background
 
-系统需要部分配置在运行时可编辑（管理员通过 UI 修改），不再依赖改 env 重启。第一个需求是"是否开启用户注册"开关。ADR-0007 决定用 DB `system_settings` 表存运行时配置 + BA 路由前拦截 middleware 控制注册开关。
+系统需要部分配置在运行时可编辑（管理员通过 UI 修改），不再依赖改 env 重启。第一个需求是"是否开启用户注册"开关。ADR-0007 决定用 DB `system_settings` 表存运行时配置 + Better Auth `hooks.before` 控制注册开关（移除 `env.DISABLE_SIGN_UP`，DB 为唯一开关）。
 
 ## 2. Goals
 
 - `system_settings` 表存储运行时可编辑配置（key-value JSON 模式）。
 - `GET/PATCH /api/v1/settings` 提供配置读写 API（settings.read/settings.update 权限）。
-- sign-up 注册开关用 Better Auth `hooks.before` 拦截（读 DB 配置，关闭时抛 APIError）。
+- sign-up 注册开关用 Better Auth `hooks.before` 拦截（直接查 DB `system_settings.signUp.enabled`，关闭或缺失时抛 APIError）。
 
 ## 3. Non-goals
 
@@ -29,11 +29,11 @@ lastReviewedAt: 2026-07-15
 | GET | `/api/v1/settings` | `listSettings` | settings.read | 列出全部配置 |
 | PATCH | `/api/v1/settings/{key}` | `updateSetting` | settings.update | upsert 一条配置 |
 
-sign-up 拦截在 `better-auth.ts` 的 `hooks.before` 配置里声明，拦截 `/sign-up/email` 路径，读 `SystemSettingService.get("signUp")`，关闭时抛 `APIError`。不暴露独立端点。
+sign-up 拦截在 `better-auth.ts` 的 `hooks.before` 配置里声明：内部判断 `ctx.path === "/sign-up/email"`（BA 用户级 hook 对所有 `/api/auth/*` 触发，需自行判路径），直接查 `system_settings` 表（`core/` 禁止 import `features/`，不经 `SystemSettingService`），`signUp.enabled !== true`（含记录缺失）时抛 `APIError`（`AUTH_SIGNUP_DISABLED`）。不暴露独立端点。
 
 ## 5. Request / Response
 
-统一 envelope。`PATCH /settings/{key}` body 为 `{ value: <json> }`，upsert 语义（不存在则创建）。`GET /settings` 返回全部配置数组。
+统一 envelope。`PATCH /settings/{key}` body 为 `{ value: <json> }`，upsert 语义（不存在则创建）。`GET /settings` 返回全部配置数组（仅含 value 符合 registry schema 的行，脏数据降级过滤）。
 
 ## 6. Auth & Permissions
 
@@ -47,6 +47,7 @@ sign-up 拦截在 `better-auth.ts` 的 `hooks.before` 配置里声明，拦截 `
 ## 7. Data Model
 
 - `system_settings`：`key` text PK（配置名，如 `"signUp"`）、`value` jsonb notNull（JSON，如 `{ "enabled": true }`）、`updatedAt` timestamptz、`updatedByUserId` text ->user onDelete set null（审计）。无 id/createdAt（key 天然主键）。
+- sign-up 单开关语义：`signUp.enabled` 唯一控制注册（移除 `env.DISABLE_SIGN_UP`）。`enabled=true` 放行；`enabled=false` 或记录缺失 -> hooks.before 拒绝（未配置即禁，安全默认）。生产 migrate 后无 seed 即禁；dev seed `enabled=true` 开箱允许。
 
 ## 8. Error Codes
 
@@ -54,6 +55,7 @@ sign-up 拦截在 `better-auth.ts` 的 `hooks.before` 配置里声明，拦截 `
 | --- | --- | --- |
 | `COMMON_FORBIDDEN` | 403 | 无 settings.read/settings.update |
 | `COMMON_UNAUTHORIZED` | 401 | 未认证 |
+| `AUTH_SIGNUP_DISABLED` | 403 | 注册已关闭（`hooks.before` 检查 `signUp.enabled !== true`，含记录缺失） |
 
 ## 9. Request Flow
 
@@ -76,20 +78,21 @@ sequenceDiagram
   API-->>Client: envelope
 ```
 
-sign-up 拦截流程（Better Auth `hooks.before`，不经 requirePermission）：
+sign-up 拦截流程（Better Auth `hooks.before`，不经 requirePermission，直接查表不经 service）：
 
 ```mermaid
 sequenceDiagram
   participant Client as 注册请求
   participant Hook as hooks.before
-  participant Service as SystemSettingService
+  participant DB as PG system_settings
   participant BA as Better Auth handler
 
   Client->>Hook: POST /api/auth/sign-up/email
-  Hook->>Service: get("signUp")
-  Service-->>Hook: { enabled: true/false } 或 null
-  alt enabled !== true
-    Hook-->>Client: APIError(403, "注册已关闭")
+  Hook->>Hook: ctx.path === "/sign-up/email"?
+  Hook->>DB: select where key='signUp'
+  DB-->>Hook: row 或空
+  alt enabled !== true(含缺失)
+    Hook-->>Client: APIError(403, AUTH_SIGNUP_DISABLED)
   else enabled === true
     Hook->>BA: 放行到 Better Auth 原生 handler
     BA-->>Client: 原生响应
@@ -102,12 +105,12 @@ sequenceDiagram
 
 ## 11. Test Cases
 
-- unit：`features/system-settings/system-settings.test.ts`（鉴权 403 + handler->service 接线 + upsert 语义）
-- integration：`tests/integration/system-settings/settings.test.ts`（写入读取 + sign-up hooks.before 生效/失效两个状态）
+- unit：`features/system-settings/system-settings.test.ts`（鉴权 403 + handler->service 接线 + upsert 语义 + value 校验）
+- integration：`tests/integration/system-settings/settings.test.ts`（settings 写入读取 + sign-up hooks.before 三态：`enabled=true` 放行 / `enabled=false` 拒绝 403 / 记录缺失拒绝 403）
 
 ## 12. Rollout / Migration Notes
 
 - migration `0004`：新建 `system_settings` 表。
 - `seed.ts` 加 dev 初始 `signUp: { enabled: true }`（开发默认开注册）。
-- `env.DISABLE_SIGN_UP` 保留作 BA 层二次防御（默认 true），实际生效的是 middleware 读 DB。
+- `env.DISABLE_SIGN_UP` 已移除：sign-up 由 DB `signUp.enabled` 唯一控制；生产 migrate 后无 seed 即禁（安全默认）。
 - 配置 key 命名约定：camelCase（如 `signUp`、`passwordPolicy`），value 用 JSON 对象便于扩展字段。

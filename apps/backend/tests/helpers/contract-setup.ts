@@ -7,4 +7,3 @@ process.env.LOG_LEVEL ??= "silent";
 process.env.DATABASE_URL ??= "postgres://fake:fake@localhost:5432/fake";
 process.env.BETTER_AUTH_SECRET ??= "test-secret-at-least-32-characters-long-placeholder";
 process.env.BETTER_AUTH_URL ??= "http://localhost:3001";
-process.env.DISABLE_SIGN_UP ??= "true";

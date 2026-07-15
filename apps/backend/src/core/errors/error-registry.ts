@@ -24,6 +24,11 @@ export const errorRegistry = {
     defaultMessage: "Account is disabled",
     expose: true,
   },
+  AUTH_SIGNUP_DISABLED: {
+    status: 403,
+    defaultMessage: "Sign-up is disabled",
+    expose: true,
+  },
   COMMON_NOT_FOUND: {
     status: 404,
     defaultMessage: "Resource not found",

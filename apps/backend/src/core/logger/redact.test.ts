@@ -17,7 +17,6 @@ vi.mock("../../env.js", () => ({
     DATABASE_URL: "postgres://user:password@localhost:5432/app",
     BETTER_AUTH_SECRET: "test-secret-with-at-least-32-chars",
     BETTER_AUTH_URL: "http://localhost:3001",
-    DISABLE_SIGN_UP: true,
   },
 }));
 
