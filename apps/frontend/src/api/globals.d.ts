@@ -88,6 +88,20 @@ type Alova2Method<
       >
     : never;
 
+export interface CreateUser {
+  /**
+   * 邮箱(唯一)
+   */
+  email: string;
+  /**
+   * 初始密码(至少 8 位)
+   */
+  password: string;
+  /**
+   * 显示名
+   */
+  name: string;
+}
 export interface CreateOrganization {
   /**
    * 组织名
@@ -146,6 +160,14 @@ export interface Me {
     | 'projects.delete'
     | 'iam.read'
     | 'iam.manage'
+    | 'users.read'
+    | 'users.create'
+    | 'users.update'
+    | 'users.reset-password'
+    | 'users.disable'
+    | 'users.enable'
+    | 'settings.read'
+    | 'settings.update'
   )[];
 }
 export interface Project {
@@ -210,6 +232,10 @@ export interface UserSummary {
    */
   orgId: string | null;
   /**
+   * 是否禁用(null/false=启用)
+   */
+  disabled: boolean | null;
+  /**
    * 创建时间(ISO 8601)
    */
   createdAt: string;
@@ -262,9 +288,49 @@ export interface Organization {
    */
   updatedAt: string;
 }
+export interface SignUpValue {
+  /**
+   * 是否开启
+   */
+  enabled: boolean;
+}
+export interface SystemSetting {
+  /**
+   * 配置名
+   */
+  key: string;
+  /**
+   * 配置值(JSON)
+   */
+  value: SignUpValue;
+  /**
+   * 最后修改时间(ISO 8601)
+   */
+  updatedAt: string;
+  /**
+   * 最后修改者用户 ID
+   */
+  updatedByUserId: string | null;
+}
 export interface UpdateProject {
   name?: string;
   description?: string | null;
+}
+export interface UpdateUser {
+  /**
+   * 显示名
+   */
+  name?: string;
+  /**
+   * 邮箱(唯一)
+   */
+  email?: string;
+}
+export interface ResetPassword {
+  /**
+   * 新密码(至少 8 位)
+   */
+  newPassword: string;
 }
 export interface UpdateRole {
   name?: string;
@@ -276,6 +342,12 @@ export interface UpdateOrganization {
    * 新父组织 ID,null 表示改为根组织
    */
   parentId?: string | null;
+}
+export interface UpdateSetting {
+  /**
+   * 配置值(JSON)
+   */
+  value: SignUpValue;
 }
 export interface UserRoleAssignment {
   /**
@@ -410,6 +482,14 @@ declare global {
        *     | 'projects.delete'
        *     | 'iam.read'
        *     | 'iam.manage'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
        *   )[]
        * }
        * ```
@@ -705,6 +785,8 @@ declare global {
        *   email: string
        *   // 归属组织 ID
        *   orgId: string | null
+       *   // 是否禁用(null/false=启用)
+       *   disabled: boolean | null
        *   // 创建时间(ISO 8601)
        *   createdAt: string
        * }>
@@ -713,6 +795,271 @@ declare global {
       listUsers<Config extends Alova2MethodConfig<UserSummary[]>>(
         config?: Config
       ): Alova2Method<UserSummary[], 'IAM.listUsers', Config>;
+      /**
+       * ---
+       *
+       * [POST] 管理员代创建用户
+       *
+       * **path:** /api/v1/users
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   // 邮箱(唯一)
+       *   email: string
+       *   // 初始密码(至少 8 位)
+       *   password: string
+       *   // 显示名
+       *   name: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 用户 ID
+       *   id: string
+       *   // 用户名
+       *   name: string
+       *   // 邮箱
+       *   email: string
+       *   // 归属组织 ID
+       *   orgId: string | null
+       *   // 是否禁用(null/false=启用)
+       *   disabled: boolean | null
+       *   // 创建时间(ISO 8601)
+       *   createdAt: string
+       * }
+       * ```
+       */
+      createUser<
+        Config extends Alova2MethodConfig<UserSummary> & {
+          data: CreateUser;
+        }
+      >(
+        config: Config
+      ): Alova2Method<UserSummary, 'IAM.createUser', Config>;
+      /**
+       * ---
+       *
+       * [PATCH] 修改用户资料
+       *
+       * **path:** /api/v1/users/{userId}
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 用户 ID
+       *   userId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   // 显示名
+       *   name?: string
+       *   // 邮箱(唯一)
+       *   email?: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 用户 ID
+       *   id: string
+       *   // 用户名
+       *   name: string
+       *   // 邮箱
+       *   email: string
+       *   // 归属组织 ID
+       *   orgId: string | null
+       *   // 是否禁用(null/false=启用)
+       *   disabled: boolean | null
+       *   // 创建时间(ISO 8601)
+       *   createdAt: string
+       * }
+       * ```
+       */
+      updateUser<
+        Config extends Alova2MethodConfig<UserSummary> & {
+          pathParams: {
+            /**
+             * 用户 ID
+             */
+            userId: string;
+          };
+          data: UpdateUser;
+        }
+      >(
+        config: Config
+      ): Alova2Method<UserSummary, 'IAM.updateUser', Config>;
+      /**
+       * ---
+       *
+       * [POST] 重置用户密码
+       *
+       * **path:** /api/v1/users/{userId}/reset-password
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 用户 ID
+       *   userId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   // 新密码(至少 8 位)
+       *   newPassword: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   userId: string
+       * }
+       * ```
+       */
+      resetUserPassword<
+        Config extends Alova2MethodConfig<{
+          userId: string;
+        }> & {
+          pathParams: {
+            /**
+             * 用户 ID
+             */
+            userId: string;
+          };
+          data: ResetPassword;
+        }
+      >(
+        config: Config
+      ): Alova2Method<
+        {
+          userId: string;
+        },
+        'IAM.resetUserPassword',
+        Config
+      >;
+      /**
+       * ---
+       *
+       * [POST] 禁用用户
+       *
+       * **path:** /api/v1/users/{userId}/disable
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 用户 ID
+       *   userId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 用户 ID
+       *   id: string
+       *   // 用户名
+       *   name: string
+       *   // 邮箱
+       *   email: string
+       *   // 归属组织 ID
+       *   orgId: string | null
+       *   // 是否禁用(null/false=启用)
+       *   disabled: boolean | null
+       *   // 创建时间(ISO 8601)
+       *   createdAt: string
+       * }
+       * ```
+       */
+      disableUser<
+        Config extends Alova2MethodConfig<UserSummary> & {
+          pathParams: {
+            /**
+             * 用户 ID
+             */
+            userId: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<UserSummary, 'IAM.disableUser', Config>;
+      /**
+       * ---
+       *
+       * [POST] 启用用户
+       *
+       * **path:** /api/v1/users/{userId}/enable
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 用户 ID
+       *   userId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 用户 ID
+       *   id: string
+       *   // 用户名
+       *   name: string
+       *   // 邮箱
+       *   email: string
+       *   // 归属组织 ID
+       *   orgId: string | null
+       *   // 是否禁用(null/false=启用)
+       *   disabled: boolean | null
+       *   // 创建时间(ISO 8601)
+       *   createdAt: string
+       * }
+       * ```
+       */
+      enableUser<
+        Config extends Alova2MethodConfig<UserSummary> & {
+          pathParams: {
+            /**
+             * 用户 ID
+             */
+            userId: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<UserSummary, 'IAM.enableUser', Config>;
       /**
        * ---
        *
@@ -1709,6 +2056,99 @@ declare global {
         'IAM.deleteOrganization',
         Config
       >;
+    };
+    Settings: {
+      /**
+       * ---
+       *
+       * [GET] 列出全部系统配置
+       *
+       * **path:** /api/v1/settings
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = Array<{
+       *   // 配置名
+       *   key: string
+       *   // 配置值(JSON)
+       *   value: {
+       *     // 是否开启
+       *     enabled: boolean
+       *   }
+       *   // 最后修改时间(ISO 8601)
+       *   updatedAt: string
+       *   // 最后修改者用户 ID
+       *   updatedByUserId: string | null
+       * }>
+       * ```
+       */
+      listSettings<Config extends Alova2MethodConfig<SystemSetting[]>>(
+        config?: Config
+      ): Alova2Method<SystemSetting[], 'Settings.listSettings', Config>;
+      /**
+       * ---
+       *
+       * [PATCH] 修改(或创建)一条系统配置
+       *
+       * **path:** /api/v1/settings/{key}
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 配置名
+       *   key: 'signUp'
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   // 配置值(JSON)
+       *   value: {
+       *     // 是否开启
+       *     enabled: boolean
+       *   }
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 配置名
+       *   key: string
+       *   // 配置值(JSON)
+       *   value: {
+       *     // 是否开启
+       *     enabled: boolean
+       *   }
+       *   // 最后修改时间(ISO 8601)
+       *   updatedAt: string
+       *   // 最后修改者用户 ID
+       *   updatedByUserId: string | null
+       * }
+       * ```
+       */
+      updateSetting<
+        Config extends Alova2MethodConfig<SystemSetting> & {
+          pathParams: {
+            /**
+             * 配置名
+             */
+            key: 'signUp';
+          };
+          data: UpdateSetting;
+        }
+      >(
+        config: Config
+      ): Alova2Method<SystemSetting, 'Settings.updateSetting', Config>;
     };
   }
 

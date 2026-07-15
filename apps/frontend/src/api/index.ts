@@ -71,7 +71,11 @@ export const $$userConfigMap = withConfigType({
     cacheFor: 60_000,
     hitSource: ["IAM.createOrganization", "IAM.updateOrganization", "IAM.deleteOrganization"],
   },
-  "IAM.listUsers": { cacheFor: 60_000 },
+  // 用户列表:创建/改资料/禁用·启用后失效(reset 不改列表字段,不进 hitSource)
+  "IAM.listUsers": {
+    cacheFor: 60_000,
+    hitSource: ["IAM.createUser", "IAM.updateUser", "IAM.disableUser", "IAM.enableUser"],
+  },
   // 用户授权:撤销/授予后有效权限全集需自动失效(此前靠手动 send)
   "IAM.listUserPermissions": {
     cacheFor: 60_000,
@@ -85,6 +89,10 @@ export const $$userConfigMap = withConfigType({
   "IAM.listUserDirectPermissions": {
     cacheFor: 60_000,
     hitSource: ["IAM.assignUserPermission", "IAM.deleteUserPermission"],
+  },
+  "Settings.listSettings": {
+    cacheFor: 60_000,
+    hitSource: ["Settings.updateSetting"],
   },
   "Projects.listProjects": {
     cacheFor: 60_000,
@@ -105,6 +113,12 @@ export const $$userConfigMap = withConfigType({
   "IAM.deleteUserRole": { name: "IAM.deleteUserRole" },
   "IAM.assignUserPermission": { name: "IAM.assignUserPermission" },
   "IAM.deleteUserPermission": { name: "IAM.deleteUserPermission" },
+  "IAM.createUser": { name: "IAM.createUser" },
+  "IAM.updateUser": { name: "IAM.updateUser" },
+  "IAM.resetUserPassword": { name: "IAM.resetUserPassword" },
+  "IAM.disableUser": { name: "IAM.disableUser" },
+  "IAM.enableUser": { name: "IAM.enableUser" },
+  "Settings.updateSetting": { name: "Settings.updateSetting" },
 });
 
 const Apis = createApis(alovaInstance, $$userConfigMap);
