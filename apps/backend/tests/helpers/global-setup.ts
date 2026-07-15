@@ -21,7 +21,6 @@ const TEST_ENV = {
   LOG_LEVEL: "silent",
   BETTER_AUTH_SECRET: "test-secret-at-least-32-characters-long-placeholder",
   BETTER_AUTH_URL: "http://localhost:3001",
-  DISABLE_SIGN_UP: "true",
 } as const;
 
 let container: StartedPostgreSqlContainer | undefined;

@@ -28,8 +28,6 @@ export const EnvSchema = z.object({
   BETTER_AUTH_URL: z.url(),
   /** 可信任的来源列表 `,` 逗号分隔 */
   BETTER_AUTH_TRUSTED_ORIGINS: z.string().optional(),
-  /** 禁止注册 */
-  DISABLE_SIGN_UP: z.stringbool().default(true),
 
   // --- API 与文档相关配置 ---
   /** 允许的前端来源列表，逗号分隔；留空则放行所有来源 */
