@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-15
+lastReviewedAt: 2026-07-16
 ---
 
 # Feature: iam（权限管理 + 用户身份）
@@ -9,6 +9,8 @@ lastReviewedAt: 2026-07-15
 ## 1. Background
 
 ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同步 / 请求级 memoize）先行落地，但写侧（管理 API + bootstrap）缺失，导致权限数据无 API 入口，只能 seed/直连 DB。本 feature 补全写侧，让权限层对真实用户可用。
+
+模板 day-0 完成度（成员子树、注册策略、`iam.manage` 拆分、调岗等）见 [IAM 完成度 Checklist](../../checklists/iam-completeness-checklist.md)。
 
 ## 2. Goals
 

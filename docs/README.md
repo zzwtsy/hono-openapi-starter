@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: platform
-lastReviewedAt: 2026-07-15
+lastReviewedAt: 2026-07-16
 ---
 
 # 全栈模板工程文档
@@ -52,10 +52,12 @@ lastReviewedAt: 2026-07-15
 | 修改前端 IAM | `features/frontend/iam.md`、`conventions/frontend/routing.md`、`conventions/frontend/state-cache.md` |
 | 改用户管理 UI | `features/frontend/iam.md`（用户管理节）、`features/backend/iam.md`（users.*） |
 | 改系统设置 / 注册开关 | `features/backend/system-settings.md`、`features/frontend/settings.md`、`adr/0007-runtime-config-control.md` |
-| 修改认证或权限 | `conventions/backend/auth-better-auth.md`、`conventions/backend/authorization.md`、`conventions/frontend/auth.md`、`adr/0003-keep-better-auth-native.md`、`adr/0004-authorization-layer.md`、`adr/0007-runtime-config-control.md` |
+| 修改认证或权限 | `conventions/backend/auth-better-auth.md`、`conventions/backend/authorization.md`、`conventions/frontend/auth.md`、`adr/0003-keep-better-auth-native.md`、`adr/0004-authorization-layer.md`、`adr/0007-runtime-config-control.md`、`checklists/iam-completeness-checklist.md` |
+| 评估 / 演进 IAM 模板完成度 | `checklists/iam-completeness-checklist.md`、`conventions/backend/authorization.md`、`features/backend/iam.md` |
 | 修改数据库 | `conventions/backend/database-drizzle.md`、`conventions/backend/development-workflow.md` |
 | 前端路由守卫 | `conventions/frontend/routing.md`、`architecture/frontend/request-lifecycle.md` |
 | 排查日志或可观测性 | `conventions/shared/ci-cd-security-observability.md`、`checklists/observability-checklist.md` |
+| 安全验收 | `checklists/security-checklist.md` |
 | 修改文档治理 | `AGENTS.md`、`conventions/shared/documentation-system.md`、本文件 |
 
 ## 当前事实、历史决策和验收清单
@@ -97,7 +99,11 @@ docs/
     0007-runtime-config-control.md
 
   diagrams/
+
   checklists/
+    security-checklist.md
+    observability-checklist.md
+    iam-completeness-checklist.md
 ```
 
 ## 规范级别

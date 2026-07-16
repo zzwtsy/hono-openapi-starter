@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-04
+lastReviewedAt: 2026-07-16
 ---
 
 # 权限层规范
@@ -161,3 +161,7 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 - 不要把权限层做成 Better Auth 插件（见 [ADR-0004](../../adr/0004-authorization-layer.md)）。
 - 不要用 Better Auth 的 `hasPermission`（纯角色驱动，无组织树/直接授权/过期/deny）。
 - 不要在 `/api/auth/*` 挂权限管理端点（那是认证原生边界，权限管理走 `/api/v1/*` + envelope）。
+
+## 模板完成度
+
+模板 day-0 默认（成员子树、去注册、拆分 `iam.manage`、调岗等）的勾选清单见 [IAM 完成度 Checklist](../../checklists/iam-completeness-checklist.md)。本规范描述算法与边界；清单跟踪与「目标态」的差距。
