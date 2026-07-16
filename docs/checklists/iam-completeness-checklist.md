@@ -39,7 +39,7 @@ lastReviewedAt: 2026-07-16
 
 - [x] 文档区分认证（Better Auth）与授权（自建权限层）
 - [x] 授权检查算法：祖先集 + 角色∪allow − deny + 过期过滤（PDP）
-- [ ] 文档显式定义 Home org / 管理子树 / Grant org 三词（避免与「切换组织」混淆）
+- [x] 文档显式定义 Home org / 管理子树 / Grant org 三词（避免与「切换组织」混淆）
 - [ ] 成员 CRUD 的管理范围与授权写路径的管理范围 **同一套子树定义**
 
 ---

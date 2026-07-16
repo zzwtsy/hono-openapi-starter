@@ -87,6 +87,16 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 第一版全局 admin：根组织 admin 因祖先遍历对任意子组织检查通过。`/api/v1/me` 仅需认证（看自己）。
 
+### 管理范围(Home / 管理子树 / Grant org)
+
+授权与管理沿三条组织轴(定义见 [authorization.md 组织三轴](../../conventions/backend/authorization.md)):
+
+- **Home org**:`user.orgId`,管理员代建用户时取此值(当前不可选目标 org)。
+- **管理子树**:管理员可写操作的范围 = 自身 + 子孙。`createUser`/`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable`/`assignUserRole`/`assignUserPermission` 的目标组织与目标用户均须落在操作者管理子树内。
+- **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
+
+> 当前实现:`createUser` 仅本 org 不可选目标、`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable` 精确等于本 org(不含子孙)、`assignUserRole`/`assignUserPermission` 仅校验 role/permission/org 存在性不校验子树--均为已知差距,目标态见 [checklist](../../checklists/iam-completeness-checklist.md) §4/§5。
+
 ## 7. Data Model
 
 - `roles`：加 `source` 列（`code` | `instance`，default `instance`）。`code` = 代码同步（admin），`instance` = 管理 API 创建。
