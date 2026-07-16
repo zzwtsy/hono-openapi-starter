@@ -203,8 +203,8 @@ lastReviewedAt: 2026-07-16
 
 - [x] 认证端点 rate limit
 - [x] 敏感日志脱敏
-- [ ] 关键 IAM 写操作 **audit log**（谁给谁在何 org 授了什么）
-- [ ] 认证后日志上下文带 **userId**（见可观测性 checklist）
+- [ ] 关键 IAM 写操作 **audit log**（谁给谁在何 org 授了什么）- 模板默认不做（Non-goal,见 §13;生产按需独立 feature）
+- [ ] 认证后日志上下文带 **userId** - userId 已注入 Hono context（requireAuth c.set）;未注入 LogLayer 日志 context（Hono c.set 与 LogLayer withContext 类型不兼容;contextFn 双查 session 不可接受）。access log 仅带 requestId,按 requestId 关联用户。
 - [ ] 定期核对权限矩阵 / 错误码（与安全 checklist「推荐项」呼应）
 
 ---
@@ -231,6 +231,7 @@ lastReviewedAt: 2026-07-16
 - 硬删除用户
 - 邮件验证 / 魔法链邀请（除非单独 epic）
 - OpenAPI lint 进 CI（项目决策可不做时，不列入本清单强制项）
+- audit log（关键写操作审计,独立载体;生产按需新开 feature,见 iam.md §3）
 
 ---
 

@@ -97,7 +97,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - **管理子树**:管理员可写操作的范围 = 自身 + 子孙。`createUser`/`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable`/`assignUserRole`/`assignUserPermission` 的目标组织与目标用户均须落在操作者管理子树内。
 - **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
 
-> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission` 均已按操作者管理子树(自身+子孙)校验;重复授角色/权限更新 expiresAt/effect(续期)。调岗(PATCH orgId)本期不做。
+> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission` 均已按操作者管理子树(自身+子孙)校验;重复授角色/权限时,提供 `expiresAt` 则更新(续期),省略则保留原过期时间(不清空),`effect` 总以新值为准。调岗(PATCH orgId)本期不做。
 
 ## 7. Data Model
 
@@ -143,7 +143,7 @@ sequenceDiagram
 
 ## 10. Logging & Audit
 
-管理写操作走结构化日志（LogLayer，带 requestId）。关键写操作的 audit log 暂未实现（见 Non-goals）。
+管理写操作走结构化日志（LogLayer，带 requestId）。userId 在 requireAuth 注入 Hono context（`c.set("userId")`），供 handler 读取；未注入 LogLayer 日志 context（Hono c.set 与 LogLayer withContext 类型不兼容，见 checklist §11）。关键写操作的 audit log 暂未实现（见 Non-goals）。
 
 ## 11. Test Cases
 

@@ -10,7 +10,7 @@ lastReviewedAt: 2026-07-08
 
 - [x] request log 包含 method/path/status/durationMs/requestId。
 - [x] error log 包含 code/status/stack/requestId。
-- [ ] userId 在认证后写入日志上下文。
+- [ ] userId 在认证后写入日志上下文 - 部分:userId 注入 Hono context(requireAuth c.set);未注入 LogLayer 日志 context(Hono c.set 与 LogLayer withContext 类型不兼容;contextFn 双查 session 不可接受)。access log 仅带 requestId。
 - [x] JSONL 每行都是合法 JSON。
 - [x] 生产日志按天轮转。
 - [x] 日志脱敏规则有测试覆盖。

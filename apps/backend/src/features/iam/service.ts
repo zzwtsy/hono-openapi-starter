@@ -294,19 +294,26 @@ export const IamService = {
   },
 
   // --- 用户授权 ---
-  /** 授用户角色(在某组织),可指定过期。user 与 grant.orgId 须在操作者管理子树内;重复授更新 expiresAt(续期)。 */
+  /**
+   * 授用户角色(在某组织),可指定过期。user 与 grant.orgId 须在操作者管理子树内。
+   * 重复授(续期):提供 expiresAt -> 更新;省略 -> 保留原过期时间(不清空)。
+   */
   async assignUserRole(actorOrgId: string, userId: string, roleId: string, input: { orgId: string; expiresAt?: string }) {
     await requireExistingRole(roleId);
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, input.orgId);
     const expiresAt = input.expiresAt != null ? new Date(input.expiresAt) : null;
-    await db
-      .insert(userRoles)
-      .values({ userId, roleId, orgId: input.orgId, expiresAt })
-      .onConflictDoUpdate({
+    const insert = db.insert(userRoles).values({ userId, roleId, orgId: input.orgId, expiresAt });
+    // 重复授:提供 expiresAt -> 更新(续期);省略 -> 保留原值(DoNothing 幂等,不清空)。
+    // 不用空 set onConflictDoUpdate(Drizzle 拒绝空 set),省略走 DoNothing。
+    if (input.expiresAt != null) {
+      await insert.onConflictDoUpdate({
         target: [userRoles.userId, userRoles.roleId, userRoles.orgId],
         set: { expiresAt },
       });
+    } else {
+      await insert.onConflictDoNothing();
+    }
   },
 
   /** 撤用户角色(需 roleId + orgId 精确定位);grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
@@ -321,7 +328,10 @@ export const IamService = {
     }
   },
 
-  /** 直接授用户权限(allow/deny,在某组织),可指定过期。user 与 grant.orgId 须在操作者管理子树内;重复授更新 expiresAt+effect。 */
+  /**
+   * 直接授用户权限(allow/deny,在某组织),可指定过期。user 与 grant.orgId 须在操作者管理子树内。
+   * 重复授:effect 总以新值为准(必填,allow↔deny 可切);expiresAt 提供 -> 更新,省略 -> 保留原值(不清空)。
+   */
   async assignUserPermission(
     actorOrgId: string,
     userId: string,
@@ -332,13 +342,19 @@ export const IamService = {
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, input.orgId);
     const expiresAt = input.expiresAt != null ? new Date(input.expiresAt) : null;
-    await db
-      .insert(userPermissions)
-      .values({ userId, permission, orgId: input.orgId, effect: input.effect, expiresAt })
-      .onConflictDoUpdate({
+    const insert = db.insert(userPermissions).values({ userId, permission, orgId: input.orgId, effect: input.effect, expiresAt });
+    // 重复授:effect 总更新(必填);expiresAt 提供 -> 更新(续期),省略 -> 保留原值(仅 set effect,不清空 expiresAt)。
+    if (input.expiresAt != null) {
+      await insert.onConflictDoUpdate({
         target: [userPermissions.userId, userPermissions.permission, userPermissions.orgId],
         set: { expiresAt, effect: input.effect },
       });
+    } else {
+      await insert.onConflictDoUpdate({
+        target: [userPermissions.userId, userPermissions.permission, userPermissions.orgId],
+        set: { effect: input.effect },
+      });
+    }
   },
 
   /** 撤用户直接权限(需 permission + orgId);grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
