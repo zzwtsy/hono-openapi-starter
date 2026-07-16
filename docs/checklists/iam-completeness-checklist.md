@@ -116,7 +116,7 @@ lastReviewedAt: 2026-07-16
 - [ ] **管理员变更归属（调岗）** API：改 `user.orgId`，含子树校验
 - [ ] 调岗时 **grant 清理策略写死**（推荐默认：清旧 home 节点上的 user_roles/user_permissions，或清空全部 grant 后重授——二选一写进 feature 文档）
 - [ ] 所有创建用户路径（bootstrap / seed / createUser；若保留注册则含注册）**禁止**产出 `orgId == null`
-- [ ] `orgId` / `disabled` additionalFields 配置 **`input: false`**（防客户端写入）
+- [x] `orgId` / `disabled` additionalFields 配置 **`input: false`**（防客户端写入）
 
 **Non-goals（不算失败）**
 
@@ -164,12 +164,12 @@ lastReviewedAt: 2026-07-16
 | bootstrap 首管 | 有 home + admin 角色 | [x] |
 | seed 演示用户 | 有 home + 角色 | [x] |
 | 管理员代建 | 有 home（目标子树内） | [ ] 仅本 org、不可选 |
-| 公开自助注册 | **模板默认不提供** | [ ] 仍存在 UI + 运行时开关，且可产生无 home 用户 |
+| 公开自助注册 | **模板默认不提供** | [x] 已移除(路由/表单/登录链/设置开关/hooks 恒拒) |
 
-- [ ] 移除公开注册产品面（路由/表单/登录链/设置开关）
-- [ ] 后端对 `/api/auth/sign-up/*` **永久拒绝**（不依赖 DB 开关）
-- [ ] `system_settings` 退役 `signUp` key（或文档声明无内置 key）
-- [ ] ADR-0007 / feature 文档与「不提供自助注册」一致（历史决策可注记 superseded 片段）
+- [x] 移除公开注册产品面（路由/表单/登录链/设置开关）
+- [x] 后端对 `/api/auth/sign-up/*` **永久拒绝**（不依赖 DB 开关）
+- [x] `system_settings` 退役 `signUp` key（或文档声明无内置 key）
+- [x] ADR-0007 / feature 文档与「不提供自助注册」一致（历史决策可注记 superseded 片段）
 
 **Non-goals**
 
@@ -195,7 +195,7 @@ lastReviewedAt: 2026-07-16
 - [x] 前端仅 UX，后端 PermissionChecker 为权威
 - [ ] 去掉 `iam.manage` 后 UI 全量改为三分 manage
 - [ ] 用户列表/表单与「子树管理范围」一致（创建选 org、列表见子树用户）
-- [ ] 无公开注册入口
+- [x] 无公开注册入口
 
 ---
 
@@ -217,7 +217,7 @@ lastReviewedAt: 2026-07-16
 - [x] 前端 hasPermission / requirePermission / Can 等单测
 - [ ] 子树 create/list/assign 越权用例（实现后补）
 - [ ] 调岗 + grant 清理用例（实现后补）
-- [ ] 无公开注册 / sign-up 恒拒绝（实现后补）
+- [x] 无公开注册 / sign-up 恒拒绝（实现后补）
 
 ---
 

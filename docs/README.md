@@ -51,7 +51,7 @@ lastReviewedAt: 2026-07-16
 | 前端调用 API | `conventions/frontend/api-alova.md`、`conventions/frontend/routing.md` |
 | 修改前端 IAM | `features/frontend/iam.md`、`conventions/frontend/routing.md`、`conventions/frontend/state-cache.md` |
 | 改用户管理 UI | `features/frontend/iam.md`（用户管理节）、`features/backend/iam.md`（users.*） |
-| 改系统设置 / 注册开关 | `features/backend/system-settings.md`、`features/frontend/settings.md`、`adr/0007-runtime-config-control.md` |
+| 改系统设置 | `features/backend/system-settings.md`、`features/frontend/settings.md`、`adr/0007-runtime-config-control.md` |
 | 修改认证或权限 | `conventions/backend/auth-better-auth.md`、`conventions/backend/authorization.md`、`conventions/frontend/auth.md`、`adr/0003-keep-better-auth-native.md`、`adr/0004-authorization-layer.md`、`adr/0007-runtime-config-control.md`、`checklists/iam-completeness-checklist.md` |
 | 评估 / 演进 IAM 模板完成度 | `checklists/iam-completeness-checklist.md`、`conventions/backend/authorization.md`、`features/backend/iam.md` |
 | 修改数据库 | `conventions/backend/database-drizzle.md`、`conventions/backend/development-workflow.md` |

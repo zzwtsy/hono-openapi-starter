@@ -7,7 +7,7 @@ import { logger } from "../core/logger/index.js";
 import env from "../env.js";
 import { allPermissions } from "../permissions-catalog.js";
 import { closeDb, db } from "./client.js";
-import { account, organizations, projects, systemSettings, user, userRoles } from "./schema/index.js";
+import { account, organizations, projects, user, userRoles } from "./schema/index.js";
 
 /**
  * dev 环境演示数据:dev 组织 + 可登录的 dev 用户(授标准 admin 角色)+ 样例项目。
@@ -15,7 +15,7 @@ import { account, organizations, projects, systemSettings, user, userRoles } fro
  *
  * 权限目录 + 标准 admin 角色由 `syncAuthorizationCatalog` 保证就位(复用启动同步逻辑)。
  * dev 用户用 `better-auth/crypto` 的 `hashPassword` 生成兼容密码,直接 insert `user`+`account`
- * (绕过 hooks.before 注册开关),之后走正常 `/api/auth/sign-in/email` 登录。
+ * (绕过 hooks.before 的 sign-up 闸门),之后走正常 `/api/auth/sign-in/email` 登录。
  */
 
 const DEV = {
@@ -36,7 +36,7 @@ async function main() {
   await syncAuthorizationCatalog(allPermissions);
   // dev 组织
   await db.insert(organizations).values({ id: DEV.org, name: "Dev Org" }).onConflictDoNothing();
-  // dev 用户(带 orgId)+ 账号(better-auth 兼容哈希,绕过 hooks.before 注册开关,登录走正常端点)
+  // dev 用户(带 orgId)+ 账号(better-auth 兼容哈希,绕过 hooks.before 的 sign-up 闸门,登录走正常端点)
   await db
     .insert(user)
     .values({ id: DEV.userId, name: "Dev User", email: DEV.email, orgId: DEV.org })
@@ -61,11 +61,6 @@ async function main() {
   await db
     .insert(projects)
     .values({ id: DEV.project, name: "示例项目", orgId: DEV.org })
-    .onConflictDoNothing();
-  // 系统设置:dev 默认开启注册(hooks.before 读此配置控制 /sign-up/email)
-  await db
-    .insert(systemSettings)
-    .values({ key: "signUp", value: { enabled: true } })
     .onConflictDoNothing();
 
   logger.withMetadata({ email: DEV.email, password: DEV.password }).info("seeded dev demo data");

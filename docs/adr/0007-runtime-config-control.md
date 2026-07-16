@@ -11,6 +11,8 @@ lastReviewedAt: 2026-07-15
 
 Accepted
 
+> **Superseded 片段（2026-07-16）**：Decision 2 中「signUp 运行时注册开关」已退役——模板移除自助注册，`hooks.before` 改为永久拒绝 `/sign-up/email`（不查 DB，不依赖 `system_settings.signUp`）。`system_settings` 表与 API 保留供后续配置。Decision 2 的 `hooks.before` 机制仍有效（现用于永久拒绝 sign-up）；Decision 3/4 不变。见 [system-settings feature](../features/backend/system-settings.md)。
+
 ## Context
 
 系统需要部分配置在运行时可编辑（管理员通过 UI 修改），不再依赖改 env 重启。第一个需求是"是否开启用户注册"开关。同时需要用户身份管理（代创建/禁用/重置密码）。

@@ -27,8 +27,9 @@ vi.mock("./service.js", () => ({
 
 const mockUser = { id: "u-1", orgId: "org-1", email: "a@b.c", name: "a" };
 const mockSession = { id: "s-1", userId: "u-1", token: "t" };
+// mock 数据(仅测路由接线;registry 当前空,实际 service.list 会过滤,此处 mock 绕过 service)
 const mockSetting = {
-  key: "signUp",
+  key: "example",
   value: { enabled: true },
   updatedAt: new Date("2026-07-15T00:00:00.000Z"),
   updatedByUserId: "u-1",
@@ -87,45 +88,24 @@ describe("system-settings routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { success: boolean; data: { key: string }[] };
     expect(body.data).toHaveLength(1);
-    expect(body.data[0].key).toBe("signUp");
+    expect(body.data[0].key).toBe("example");
     expect(mockList).toHaveBeenCalledWith();
   });
 
-  // --- update ---
+  // --- update(registry 当前空:无可用配置项,任意 key 被 schema 拒) ---
   it("无权限时 update 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
-    const res = await buildApp().request("/settings/signUp", { ...jsonInit({ value: { enabled: false } }), method: "PATCH" });
+    const res = await buildApp().request("/settings/example", { ...jsonInit({ value: { enabled: false } }), method: "PATCH" });
 
     expect(res.status).toBe(403);
   });
 
-  it("有权限时 update 走 upsert 并按 key+value+userId 调用 service", async () => {
-    authed();
-    mockUpsert.mockResolvedValue({ ...mockSetting, value: { enabled: false } });
-
-    const res = await buildApp().request("/settings/signUp", { ...jsonInit({ value: { enabled: false } }), method: "PATCH" });
-
-    expect(res.status).toBe(200);
-    const body = await res.json() as { success: boolean; data: { value: { enabled: boolean } } };
-    expect(body.data.value.enabled).toBe(false);
-    expect(mockUpsert).toHaveBeenCalledWith("signUp", { enabled: false }, "u-1");
-  });
-
-  it("传错误结构 value(enabled 为字符串)时返回 400", async () => {
+  it("registry 无配置项时 update 任意 key 返回 400(不调 upsert)", async () => {
     authed();
 
-    const res = await buildApp().request("/settings/signUp", { ...jsonInit({ value: { enabled: "yes" } }), method: "PATCH" });
-
-    expect(res.status).toBe(400);
-    expect(mockUpsert).not.toHaveBeenCalled();
-  });
-
-  it("传未知 key 时返回 400", async () => {
-    authed();
-
-    const res = await buildApp().request("/settings/unknownKey", { ...jsonInit({ value: { enabled: true } }), method: "PATCH" });
+    const res = await buildApp().request("/settings/example", { ...jsonInit({ value: { enabled: false } }), method: "PATCH" });
 
     expect(res.status).toBe(400);
     expect(mockUpsert).not.toHaveBeenCalled();

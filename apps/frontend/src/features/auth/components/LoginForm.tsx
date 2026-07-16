@@ -1,5 +1,4 @@
 import type { FormEvent } from "react";
-import { Link } from "@tanstack/react-router";
 import { CircleAlert } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
@@ -102,13 +101,6 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
         {loading && <Spinner data-icon="inline-start" />}
         登录
       </Button>
-      <p className="text-center text-sm text-muted-foreground">
-        没有账号？
-        {" "}
-        <Link to="/register" className="font-medium text-foreground underline-offset-4 hover:underline">
-          去注册
-        </Link>
-      </p>
     </form>
   );
 }

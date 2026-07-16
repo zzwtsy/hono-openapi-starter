@@ -2,28 +2,19 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
 import { bearer } from "better-auth/plugins/bearer";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
 
 import { db } from "../../db/client.js";
 import * as authSchema from "../../db/schema/auth-schema.js";
-import { systemSettings } from "../../db/schema/index.js";
 import env from "../../env.js";
-
-/**
- * signUp 注册值 schema:core 层本地定义(守 architecture/backend.md 边界,不 import features)。
- * 与 features/system-settings/schemas.ts 的 signUpValueSchema 同构,改值结构时两处同步。
- */
-const signUpValueSchema = z.object({ enabled: z.boolean() });
 
 /**
  * Better Auth 实例。
  *
  * - drizzle adapter(postgres-js,显式传 auth 4 表 schema)
  * - bearer 插件:让 getSession 同时接受 `Authorization: Bearer`(默认只读 cookie)
- * - email/password 认证,sign-up 注册开关由 `hooks.before` 读 DB `system_settings.signUp.enabled` 控制(脱离 env,见 ADR-0007)
- * - user.orgId additionalField:权限层用,认证层不读不写
- * - user.disabled additionalField:databaseHooks.session.create.before 检查,禁用时阻止 session 创建
+ * - email/password 认证;**不提供自助注册**(hooks.before 永久拒绝 /sign-up/email,见 ADR-0007 superseded 注记)
+ * - user.orgId additionalField:权限层用,认证层不读不写;`input: false` 防客户端写入
+ * - user.disabled additionalField:databaseHooks.session.create.before 检查,禁用时阻止 session 创建;`input: false` 防客户端写入
  *
  * `/api/auth/*` 原生端点不包业务 envelope(见 ADR-0003)。
  */
@@ -42,31 +33,24 @@ export const auth = betterAuth({
   },
   user: {
     additionalFields: {
-      orgId: { type: "string", required: false },
+      // input: false 防客户端经 /api/auth/sign-up、/api/auth/update-user 写入 orgId/disabled
+      // (BA 文档:input 默认 true,不设是安全漏洞)。自建 createUser 走业务端点,不受此限。
+      orgId: { type: "string", required: false, input: false },
       /** 账号禁用标记：databaseHooks.session.create.before 检查，禁用时阻止 session 创建（自建，不用 BA admin 插件，见 ADR-0007）。 */
-      disabled: { type: "boolean", required: false },
+      disabled: { type: "boolean", required: false, input: false },
     },
   },
   hooks: {
-    // hooks.before 对所有 /api/auth/* 端点触发(BA 用户级 hook 无路径 matcher)。ctx 类型(MiddlewareInputContext)
-    // 不暴露 path(运行时由 dispatch 注入),但暴露 request,故用 request.url 判断端点。
-    // sign-up 注册开关:直接查 DB system_settings.signUp.enabled(不经 SystemSettingService:core 禁止 import
-    // features,见 architecture/backend.md 边界),未配置或非 true 一律拒绝(缺失即禁,安全默认)。
+    // 模板不提供自助注册:hooks.before 对所有 /api/auth/* 触发(BA 用户级 hook 无路径 matcher),
+    // 命中 /sign-up/email 一律拒绝(不依赖 DB 开关)。ctx 不暴露 path(运行时由 dispatch 注入),
+    // 用 request.url 的 pathname 判断端点(见 ADR-0007 superseded 注记:原运行时 signUp 开关已取消)。
     before: async (ctx) => {
-      // 用 pathname 判断端点(去 query/fragment),防带参 URL 绕过 endsWith 整个 url 的漏洞
+      // pathname 判断(去 query/fragment),防带参 URL 绕过 endsWith 整个 url
       // (如 /sign-up/email?foo=bar 的 url.endsWith("/sign-up/email") 为 false 会放行)。
       const url = ctx.request?.url;
-      if (url == null || !new URL(url).pathname.endsWith("/sign-up/email")) {
-        return;
-      }
-      const [row] = await db
-        .select()
-        .from(systemSettings)
-        .where(eq(systemSettings.key, "signUp"));
-      // safeParse 窄化 jsonb value(unknown)并校验;parse 失败按未配置处理(拒绝注册,安全默认)。
-      if (signUpValueSchema.safeParse(row?.value).data?.enabled !== true) {
+      if (url != null && new URL(url).pathname.endsWith("/sign-up/email")) {
         throw APIError.from("FORBIDDEN", {
-          message: "注册已关闭",
+          message: "不支持自助注册",
           code: "AUTH_SIGNUP_DISABLED",
         });
       }

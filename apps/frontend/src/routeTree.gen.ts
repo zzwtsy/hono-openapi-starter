@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as R403RouteImport } from './routes/403'
@@ -21,11 +20,6 @@ import { Route as AuthenticatedIamUsersRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedIamRolesRouteImport } from './routes/_authenticated/iam/roles'
 import { Route as AuthenticatedIamOrganizationsRouteImport } from './routes/_authenticated/iam/organizations'
 
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -82,7 +76,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/403': typeof R403Route
   '/login': typeof LoginRoute
-  '/register': typeof RegisterRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
@@ -94,7 +87,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/403': typeof R403Route
   '/login': typeof LoginRoute
-  '/register': typeof RegisterRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
@@ -108,7 +100,6 @@ export interface FileRoutesById {
   '/403': typeof R403Route
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/register': typeof RegisterRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
@@ -122,7 +113,6 @@ export interface FileRouteTypes {
     | '/'
     | '/403'
     | '/login'
-    | '/register'
     | '/dashboard'
     | '/settings'
     | '/iam/organizations'
@@ -134,7 +124,6 @@ export interface FileRouteTypes {
     | '/'
     | '/403'
     | '/login'
-    | '/register'
     | '/dashboard'
     | '/settings'
     | '/iam/organizations'
@@ -147,7 +136,6 @@ export interface FileRouteTypes {
     | '/403'
     | '/_authenticated'
     | '/login'
-    | '/register'
     | '/_authenticated/dashboard'
     | '/_authenticated/settings'
     | '/_authenticated/iam/organizations'
@@ -161,18 +149,10 @@ export interface RootRouteChildren {
   R403Route: typeof R403Route
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
-  RegisterRoute: typeof RegisterRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -273,7 +253,6 @@ const rootRouteChildren: RootRouteChildren = {
   R403Route: R403Route,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
-  RegisterRoute: RegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

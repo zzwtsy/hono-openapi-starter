@@ -8,7 +8,7 @@ export const authClient = createAuthClient({
   fetchOptions: { credentials: "include" },
 });
 
-export const { useSession, signIn, signOut, signUp } = authClient;
+export const { useSession, signIn, signOut } = authClient;
 
 /** Better Auth session 类型(供 router context 复用)。 */
 export type Session = NonNullable<ReturnType<typeof authClient.useSession>["data"]>;
