@@ -11,6 +11,8 @@ export default defineConfig({
     tanstackRouter({
       target: "react",
       autoCodeSplitting: true,
+      // 忽略测试文件(routes 目录下的 *.test.tsx 不作为路由,避免 router plugin warning)
+      routeFileIgnorePattern: "\\.test\\.",
     }),
     react(),
     tailwindcss(),

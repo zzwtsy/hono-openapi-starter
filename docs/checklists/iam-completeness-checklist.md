@@ -182,7 +182,7 @@ lastReviewedAt: 2026-07-16
 
 - [x] 禁用用户：disabled + 拦 session + 可清 session
 - [x] 管理员重置密码
-- [ ] 新用户「有 home、无业务权限」的空状态或默认 member 角色（二选一写死）
+- [x] 新用户「有 home、无业务权限」的空状态或默认 member 角色（二选一写死）
 - [ ] `/api/v1/me` PATCH（自助改资料，可选）
 - [ ] 用户查看自己的 grants（可选；管理端已有按 userId 查询）
 
