@@ -143,7 +143,7 @@ sequenceDiagram
 
 ## 10. Logging & Audit
 
-管理写操作走结构化日志（LogLayer，带 requestId）。关键写操作的 audit log 暂未实现（见 Non-goals）。
+管理写操作走结构化日志（LogLayer，带 requestId）。userId 在 requireAuth 注入 Hono context（`c.set("userId")`），供 handler 读取；未注入 LogLayer 日志 context（Hono c.set 与 LogLayer withContext 类型不兼容，见 checklist §11）。关键写操作的 audit log 暂未实现（见 Non-goals）。
 
 ## 11. Test Cases
 
