@@ -25,8 +25,12 @@ async function setup() {
   await db.insert(organizations).values([
     { id: "org-root", name: "Root" },
     { id: "org-south", name: "South", parentId: "org-root" },
+    { id: "org-other", name: "Other" },
   ]);
-  await db.insert(user).values({ id: "u-1", name: "U1", email: "u1@x.com", orgId: "org-root" });
+  await db.insert(user).values([
+    { id: "u-1", name: "U1", email: "u1@x.com", orgId: "org-root" },
+    { id: "u-2", name: "U2", email: "u2@x.com", orgId: "org-other" },
+  ]);
 }
 
 describe("iam user assignments", () => {
@@ -34,14 +38,14 @@ describe("iam user assignments", () => {
     await setup();
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
-    await IamService.assignUserRole("u-1", role.id, { orgId: "org-root" });
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
 
     expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
   });
 
   it("直接 allow 后 checkPermission 通过", async () => {
     await setup();
-    await IamService.assignUserPermission("u-1", "iam.read", { orgId: "org-root", effect: "allow" });
+    await IamService.assignUserPermission("org-root", "u-1", "iam.read", { orgId: "org-root", effect: "allow" });
 
     expect(await checker.check("u-1", "iam.read", "org-root")).toBe(true);
   });
@@ -50,8 +54,8 @@ describe("iam user assignments", () => {
     await setup();
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
-    await IamService.assignUserRole("u-1", role.id, { orgId: "org-root" });
-    await IamService.assignUserPermission("u-1", "projects.read", { orgId: "org-root", effect: "deny" });
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "deny" });
 
     expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
   });
@@ -60,7 +64,7 @@ describe("iam user assignments", () => {
     await setup();
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
-    await IamService.assignUserRole("u-1", role.id, { orgId: "org-root" });
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
 
     expect(await checker.check("u-1", "projects.read", "org-south")).toBe(true);
   });
@@ -69,7 +73,7 @@ describe("iam user assignments", () => {
     await setup();
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
-    await IamService.assignUserRole("u-1", role.id, { orgId: "org-root", expiresAt: "2020-01-01T00:00:00Z" });
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root", expiresAt: "2020-01-01T00:00:00Z" });
 
     expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
   });
@@ -78,24 +82,67 @@ describe("iam user assignments", () => {
     await setup();
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
-    await IamService.assignUserRole("u-1", role.id, { orgId: "org-root" });
-    await IamService.deleteUserRole("u-1", role.id, "org-root");
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
+    await IamService.deleteUserRole("org-root", "u-1", role.id, "org-root");
 
     expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
   });
 
   it("授角色到不存在的角色抛错", async () => {
     await setup();
-    await expect(IamService.assignUserRole("u-1", "role-nope", { orgId: "org-root" })).rejects.toThrow();
+    await expect(IamService.assignUserRole("org-root", "u-1", "role-nope", { orgId: "org-root" })).rejects.toThrow();
   });
 
   it("授角色到不存在的组织抛错", async () => {
     await setup();
-    await expect(IamService.assignUserRole("u-1", "role-admin", { orgId: "org-nope" })).rejects.toThrow();
+    await expect(IamService.assignUserRole("org-root", "u-1", "role-admin", { orgId: "org-nope" })).rejects.toThrow();
   });
 
   it("撤不存在的授权抛 NOT_FOUND", async () => {
     await setup();
-    await expect(IamService.deleteUserRole("u-1", "role-admin", "org-root")).rejects.toThrow();
+    await expect(IamService.deleteUserRole("org-root", "u-1", "role-admin", "org-root")).rejects.toThrow();
+  });
+
+  it("授角色到子树外 grant.orgId -> 404(不暴露)", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await expect(
+      IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-other" }),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+  });
+
+  it("授角色给子树外 user -> 404(不暴露)", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await expect(
+      IamService.assignUserRole("org-root", "u-2", role.id, { orgId: "org-root" }),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+  });
+
+  it("重复授角色更新 expiresAt(续期)", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root", expiresAt: "2020-01-01T00:00:00Z" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root", expiresAt: "2099-01-01T00:00:00Z" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
+  });
+
+  it("重复授直接权限更新 effect(allow->deny)", async () => {
+    await setup();
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "allow" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "deny" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
+  });
+
+  it("撤子树外 grant -> 404", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
+    await expect(
+      IamService.deleteUserRole("org-root", "u-1", role.id, "org-other"),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
   });
 });

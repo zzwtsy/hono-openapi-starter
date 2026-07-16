@@ -95,7 +95,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - **管理子树**:管理员可写操作的范围 = 自身 + 子孙。`createUser`/`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable`/`assignUserRole`/`assignUserPermission` 的目标组织与目标用户均须落在操作者管理子树内。
 - **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
 
-> 当前实现:`createUser` 可选目标 org(子树内校验)、`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable` 已改为操作者管理子树(自身+子孙);`assignUserRole`/`assignUserPermission` 仅校验存在性不校验子树--授权写路径子树校验随 [checklist](../../checklists/iam-completeness-checklist.md) §5 推进。
+> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission` 均已按操作者管理子树(自身+子孙)校验;重复授角色/权限更新 expiresAt/effect(续期)。调岗(PATCH orgId)本期不做。
 
 ## 7. Data Model
 

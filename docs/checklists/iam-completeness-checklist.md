@@ -131,9 +131,9 @@ lastReviewedAt: 2026-07-16
 - [x] grant 绑定 org + 可选 expiresAt
 - [x] 直接权限 allow | deny
 - [x] 校验 role / permission / org **存在性**
-- [ ] 校验目标 **user 存在**且在操作者**管理范围内**（当前主要依赖 FK）
-- [ ] 校验 **grant.orgId** 在操作者管理子树内（禁止任意 org 乱授）
-- [ ] 重复授角色时 **续期/更新 expiresAt** 语义明确（今日 `onConflictDoNothing` 会静默忽略续期）
+- [x] 校验目标 **user 存在**且在操作者**管理范围内**（当前主要依赖 FK）
+- [x] 校验 **grant.orgId** 在操作者管理子树内（禁止任意 org 乱授）
+- [x] 重复授角色时 **续期/更新 expiresAt** 语义明确（今日 `onConflictDoNothing` 会静默忽略续期）
 
 ---
 

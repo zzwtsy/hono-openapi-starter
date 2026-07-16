@@ -130,30 +130,34 @@ export const enableUserHandler: AppRouteHandler<EnableUserRoute> = async (c) => 
 
 // --- 用户授权 ---
 export const assignUserRoleHandler: AppRouteHandler<AssignUserRoleRoute> = async (c) => {
+  const { orgId: actorOrgId } = requireOrgUser(c);
   const { userId, roleId } = c.req.valid("param");
   const body = c.req.valid("json");
-  await IamService.assignUserRole(userId, roleId, body);
+  await IamService.assignUserRole(actorOrgId, userId, roleId, body);
   return successResponse(c, { userId, roleId, orgId: body.orgId });
 };
 
 export const deleteUserRoleHandler: AppRouteHandler<DeleteUserRoleRoute> = async (c) => {
+  const { orgId: actorOrgId } = requireOrgUser(c);
   const { userId, roleId } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
-  await IamService.deleteUserRole(userId, roleId, orgId);
+  await IamService.deleteUserRole(actorOrgId, userId, roleId, orgId);
   return successResponse(c, { userId, roleId, orgId });
 };
 
 export const assignUserPermissionHandler: AppRouteHandler<AssignUserPermissionRoute> = async (c) => {
+  const { orgId: actorOrgId } = requireOrgUser(c);
   const { userId, permission } = c.req.valid("param");
   const body = c.req.valid("json");
-  await IamService.assignUserPermission(userId, permission, body);
+  await IamService.assignUserPermission(actorOrgId, userId, permission, body);
   return successResponse(c, { userId, permission, orgId: body.orgId, effect: body.effect });
 };
 
 export const deleteUserPermissionHandler: AppRouteHandler<DeleteUserPermissionRoute> = async (c) => {
+  const { orgId: actorOrgId } = requireOrgUser(c);
   const { userId, permission } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
-  await IamService.deleteUserPermission(userId, permission, orgId);
+  await IamService.deleteUserPermission(actorOrgId, userId, permission, orgId);
   return successResponse(c, { userId, permission, orgId });
 };
 

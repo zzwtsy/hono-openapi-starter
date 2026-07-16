@@ -294,23 +294,24 @@ export const IamService = {
   },
 
   // --- 用户授权 ---
-  /** 授用户角色(在某组织),可指定过期。重复授幂等(onConflictDoNothing)。 */
-  async assignUserRole(userId: string, roleId: string, input: { orgId: string; expiresAt?: string }) {
+  /** 授用户角色(在某组织),可指定过期。user 与 grant.orgId 须在操作者管理子树内;重复授更新 expiresAt(续期)。 */
+  async assignUserRole(actorOrgId: string, userId: string, roleId: string, input: { orgId: string; expiresAt?: string }) {
     await requireExistingRole(roleId);
-    await requireExistingOrg(input.orgId);
+    await requireUserInSubtree(actorOrgId, userId);
+    await assertOrgInSubtree(actorOrgId, input.orgId);
+    const expiresAt = input.expiresAt != null ? new Date(input.expiresAt) : null;
     await db
       .insert(userRoles)
-      .values({
-        userId,
-        roleId,
-        orgId: input.orgId,
-        expiresAt: input.expiresAt != null ? new Date(input.expiresAt) : null,
-      })
-      .onConflictDoNothing();
+      .values({ userId, roleId, orgId: input.orgId, expiresAt })
+      .onConflictDoUpdate({
+        target: [userRoles.userId, userRoles.roleId, userRoles.orgId],
+        set: { expiresAt },
+      });
   },
 
-  /** 撤用户角色(需 roleId + orgId 精确定位);不存在抛 NOT_FOUND。 */
-  async deleteUserRole(userId: string, roleId: string, orgId: string) {
+  /** 撤用户角色(需 roleId + orgId 精确定位);grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
+  async deleteUserRole(actorOrgId: string, userId: string, roleId: string, orgId: string) {
+    await assertOrgInSubtree(actorOrgId, orgId);
     const [row] = await db
       .delete(userRoles)
       .where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, roleId), eq(userRoles.orgId, orgId)))
@@ -320,28 +321,29 @@ export const IamService = {
     }
   },
 
-  /** 直接授用户权限(allow/deny,在某组织),可指定过期。重复幂等。 */
+  /** 直接授用户权限(allow/deny,在某组织),可指定过期。user 与 grant.orgId 须在操作者管理子树内;重复授更新 expiresAt+effect。 */
   async assignUserPermission(
+    actorOrgId: string,
     userId: string,
     permission: string,
     input: { orgId: string; effect: "allow" | "deny"; expiresAt?: string },
   ) {
     await requireExistingPermission(permission);
-    await requireExistingOrg(input.orgId);
+    await requireUserInSubtree(actorOrgId, userId);
+    await assertOrgInSubtree(actorOrgId, input.orgId);
+    const expiresAt = input.expiresAt != null ? new Date(input.expiresAt) : null;
     await db
       .insert(userPermissions)
-      .values({
-        userId,
-        permission,
-        orgId: input.orgId,
-        effect: input.effect,
-        expiresAt: input.expiresAt != null ? new Date(input.expiresAt) : null,
-      })
-      .onConflictDoNothing();
+      .values({ userId, permission, orgId: input.orgId, effect: input.effect, expiresAt })
+      .onConflictDoUpdate({
+        target: [userPermissions.userId, userPermissions.permission, userPermissions.orgId],
+        set: { expiresAt, effect: input.effect },
+      });
   },
 
-  /** 撤用户直接权限(需 permission + orgId);不存在抛 NOT_FOUND。 */
-  async deleteUserPermission(userId: string, permission: string, orgId: string) {
+  /** 撤用户直接权限(需 permission + orgId);grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
+  async deleteUserPermission(actorOrgId: string, userId: string, permission: string, orgId: string) {
+    await assertOrgInSubtree(actorOrgId, orgId);
     const [row] = await db
       .delete(userPermissions)
       .where(and(eq(userPermissions.userId, userId), eq(userPermissions.permission, permission), eq(userPermissions.orgId, orgId)))

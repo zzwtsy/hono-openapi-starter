@@ -531,7 +531,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { userId: string; roleId: string; orgId: string } };
     expect(body.data).toEqual({ userId: "u-2", roleId: "r-1", orgId: "org-1" });
-    expect(mockAssignUserRole).toHaveBeenCalledWith("u-2", "r-1", {
+    expect(mockAssignUserRole).toHaveBeenCalledWith("org-1", "u-2", "r-1", {
       orgId: "org-1",
       expiresAt: "2026-12-31T00:00:00.000Z",
     });
@@ -566,7 +566,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { userId: string; roleId: string; orgId: string } };
     expect(body.data).toEqual({ userId: "u-2", roleId: "r-1", orgId: "org-1" });
-    expect(mockDeleteUserRole).toHaveBeenCalledWith("u-2", "r-1", "org-1");
+    expect(mockDeleteUserRole).toHaveBeenCalledWith("org-1", "u-2", "r-1", "org-1");
   });
 
   it("deleteUserRole service 抛 NOT_FOUND 返回 404", async () => {
@@ -602,7 +602,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { userId: string; permission: string; orgId: string; effect: string } };
     expect(body.data).toEqual({ userId: "u-2", permission: "projects.read", orgId: "org-1", effect: "deny" });
-    expect(mockAssignUserPermission).toHaveBeenCalledWith("u-2", "projects.read", {
+    expect(mockAssignUserPermission).toHaveBeenCalledWith("org-1", "u-2", "projects.read", {
       orgId: "org-1",
       effect: "deny",
     });
@@ -637,7 +637,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { userId: string; permission: string; orgId: string } };
     expect(body.data).toEqual({ userId: "u-2", permission: "projects.read", orgId: "org-1" });
-    expect(mockDeleteUserPermission).toHaveBeenCalledWith("u-2", "projects.read", "org-1");
+    expect(mockDeleteUserPermission).toHaveBeenCalledWith("org-1", "u-2", "projects.read", "org-1");
   });
 
   it("deleteUserPermission service 抛 NOT_FOUND 返回 404", async () => {
