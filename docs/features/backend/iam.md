@@ -45,8 +45,8 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | GET | `/api/v1/roles/{roleId}/permissions` | `listRolePermissions` | iam.read | 角色含的权限 |
 | POST | `/api/v1/roles/{roleId}/permissions` | `assignRolePermissions` | iam.manage | 给角色配权限 |
 | DELETE | `/api/v1/roles/{roleId}/permissions/{permission}` | `deleteRolePermission` | iam.manage | 撤角色权限 |
-| GET | `/api/v1/users` | `listUsers` | users.read | 列出当前用户组织下的用户 |
-| POST | `/api/v1/users` | `createUser` | users.create | 管理员代创建用户（email+password+name，orgId 取自当前管理员） |
+| GET | `/api/v1/users` | `listUsers` | users.read | 列出管理子树(自身+子孙)下的用户 |
+| POST | `/api/v1/users` | `createUser` | users.create | 管理员代创建用户（email+password+name+orgId，目标 org 须在管理子树内） |
 | PATCH | `/api/v1/users/{userId}` | `updateUser` | users.update | 改用户资料（name/email，不改 orgId） |
 | POST | `/api/v1/users/{userId}/reset-password` | `resetUserPassword` | users.reset-password | 重置密码（hashPassword+update account+删 session） |
 | POST | `/api/v1/users/{userId}/disable` | `disableUser` | users.disable | 禁用用户（set disabled=true+删所有 session；禁止自禁用） |
@@ -95,7 +95,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - **管理子树**:管理员可写操作的范围 = 自身 + 子孙。`createUser`/`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable`/`assignUserRole`/`assignUserPermission` 的目标组织与目标用户均须落在操作者管理子树内。
 - **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
 
-> 当前实现:`createUser` 仅本 org 不可选目标、`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable` 精确等于本 org(不含子孙)、`assignUserRole`/`assignUserPermission` 仅校验 role/permission/org 存在性不校验子树--均为已知差距,目标态见 [checklist](../../checklists/iam-completeness-checklist.md) §4/§5。
+> 当前实现:`createUser` 可选目标 org(子树内校验)、`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable` 已改为操作者管理子树(自身+子孙);`assignUserRole`/`assignUserPermission` 仅校验存在性不校验子树--授权写路径子树校验随 [checklist](../../checklists/iam-completeness-checklist.md) §5 推进。
 
 ## 7. Data Model
 

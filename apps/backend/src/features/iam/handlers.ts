@@ -92,9 +92,9 @@ export const listUsersHandler: AppRouteHandler<ListUsersRoute> = async (c) => {
 
 // --- 用户管理 ---
 export const createUserHandler: AppRouteHandler<CreateUserRoute> = async (c) => {
-  const { orgId } = requireOrgUser(c);
+  const { orgId: actorOrgId } = requireOrgUser(c);
   const body = c.req.valid("json");
-  const created = await IamService.createUser(orgId, body);
+  const created = await IamService.createUser(actorOrgId, body);
   return successResponse(c, created);
 };
 

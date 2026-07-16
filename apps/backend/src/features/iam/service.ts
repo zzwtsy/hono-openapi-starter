@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { hashPassword } from "better-auth/crypto";
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 
 import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
@@ -18,6 +18,7 @@ import {
   userPermissions,
   userRoles,
 } from "@/db/schema/index.js";
+import { assertOrgInSubtree, getManagedSubtree } from "./org-tree.js";
 
 /**
  * iam feature service:权限管理的数据访问。
@@ -66,10 +67,10 @@ async function requireExistingPermission(name: string) {
 }
 
 /**
- * 校验用户存在且归属本组织,否则 404(不暴露跨组织是否存在)。
+ * 校验用户存在且归属操作者管理子树(自身+子孙),否则 404(不暴露跨组织是否存在)。
  * 返回 UserSummary 形状,供 update/disable/enable 返回。
  */
-async function requireUserInOrg(userId: string, orgId: string) {
+async function requireUserInSubtree(actorOrgId: string, userId: string) {
   const [row] = await db
     .select({
       id: user.id,
@@ -80,10 +81,12 @@ async function requireUserInOrg(userId: string, orgId: string) {
       createdAt: user.createdAt,
     })
     .from(user)
-    .where(and(eq(user.id, userId), eq(user.orgId, orgId)));
-  if (row == null) {
+    .where(eq(user.id, userId));
+  if (row == null || row.orgId == null) {
     throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
   }
+  // 用户 home 不在操作者管理子树 -> 404(不暴露跨组织用户)
+  await assertOrgInSubtree(actorOrgId, row.orgId);
   return row;
 }
 
@@ -160,8 +163,9 @@ export const IamService = {
   },
 
   // --- 用户 ---
-  /** 列出某组织下的用户(按创建时间、id 确定性排序)。 */
-  async listUsers(orgId: string) {
+  /** 列出操作者管理子树(自身+子孙组织)下的用户(按创建时间、id 确定性排序)。 */
+  async listUsers(actorOrgId: string) {
+    const subtree = await getManagedSubtree(actorOrgId);
     return db
       .select({
         id: user.id,
@@ -172,15 +176,18 @@ export const IamService = {
         createdAt: user.createdAt,
       })
       .from(user)
-      .where(eq(user.orgId, orgId))
+      .where(inArray(user.orgId, subtree))
       .orderBy(asc(user.createdAt), asc(user.id));
   },
 
   /**
-   * 管理员代创建用户:email+password+name,orgId 取自管理员。
-   * 同 email → 409。复用 bootstrap 原语(hashPassword + insert user/account)。
+   * 管理员代创建用户:email+password+name+orgId(目标 org,须在操作者管理子树内)。
+   * 目标 org 越权或不存在 -> 404(不暴露树外 org)。同 email -> 409。
+   * 复用 bootstrap 原语(hashPassword + insert user/account)。
    */
-  async createUser(orgId: string, input: { email: string; password: string; name: string }) {
+  async createUser(actorOrgId: string, input: { email: string; password: string; name: string; orgId: string }) {
+    // 目标 org 须在操作者管理子树(自身+子孙);不在或不存在 -> 404
+    await assertOrgInSubtree(actorOrgId, input.orgId);
     const [existing] = await db.select({ id: user.id }).from(user).where(eq(user.email, input.email));
     if (existing != null) {
       throw new AppError("COMMON_CONFLICT", { message: "邮箱已存在" });
@@ -191,7 +198,7 @@ export const IamService = {
       id: userId,
       name: input.name,
       email: input.email,
-      orgId,
+      orgId: input.orgId,
     });
     await db.insert(account).values({
       id: generateId(),
@@ -223,7 +230,7 @@ export const IamService = {
     userId: string,
     input: { name?: string; email?: string },
   ) {
-    await requireUserInOrg(userId, actorOrgId);
+    await requireUserInSubtree(actorOrgId, userId);
     if (input.email !== undefined) {
       const [clash] = await db
         .select({ id: user.id })
@@ -241,10 +248,10 @@ export const IamService = {
       patch.email = input.email;
     }
     if (Object.keys(patch).length === 0) {
-      return requireUserInOrg(userId, actorOrgId);
+      return requireUserInSubtree(actorOrgId, userId);
     }
     await db.update(user).set(patch).where(eq(user.id, userId));
-    return requireUserInOrg(userId, actorOrgId);
+    return requireUserInSubtree(actorOrgId, userId);
   },
 
   /**
@@ -252,7 +259,7 @@ export const IamService = {
    * 无 credential account → 404。
    */
   async resetPassword(actorOrgId: string, userId: string, newPassword: string) {
-    await requireUserInOrg(userId, actorOrgId);
+    await requireUserInSubtree(actorOrgId, userId);
     const passwordHash = await hashPassword(newPassword);
     const [updated] = await db
       .update(account)
@@ -273,17 +280,17 @@ export const IamService = {
     if (userId === actorUserId) {
       throw new AppError("COMMON_FORBIDDEN", { message: "不能禁用自己" });
     }
-    await requireUserInOrg(userId, actorOrgId);
+    await requireUserInSubtree(actorOrgId, userId);
     await db.update(user).set({ disabled: true }).where(eq(user.id, userId));
     await db.delete(session).where(eq(session.userId, userId));
-    return requireUserInOrg(userId, actorOrgId);
+    return requireUserInSubtree(actorOrgId, userId);
   },
 
   /** 启用用户:清 disabled。 */
   async enableUser(actorOrgId: string, userId: string) {
-    await requireUserInOrg(userId, actorOrgId);
+    await requireUserInSubtree(actorOrgId, userId);
     await db.update(user).set({ disabled: false }).where(eq(user.id, userId));
-    return requireUserInOrg(userId, actorOrgId);
+    return requireUserInSubtree(actorOrgId, userId);
   },
 
   // --- 用户授权 ---

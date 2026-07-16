@@ -183,8 +183,8 @@ export const listUsersRoute = createRoute({
   path: "/users",
   tags: ["IAM"],
   operationId: "listUsers",
-  summary: "列出当前用户组织下的用户",
-  description: "返回当前用户所属组织(orgId)下的所有用户。需 users.read 权限。",
+  summary: "列出管理子树下的用户",
+  description: "返回操作者管理子树(自身+子孙组织)下的所有用户。需 users.read 权限。",
   middleware: usersReadMiddleware,
   security: authedSecurity,
   responses: {
@@ -200,7 +200,7 @@ export const createUserRoute = createRoute({
   tags: ["IAM"],
   operationId: "createUser",
   summary: "管理员代创建用户",
-  description: "email+password+name;orgId 取自当前管理员。同 email 返回 409。需 users.create。",
+  description: "email+password+name+orgId(目标 org,须在操作者管理子树内)。同 email 返回 409。需 users.create。",
   middleware: usersCreateMiddleware,
   security: authedSecurity,
   request: {

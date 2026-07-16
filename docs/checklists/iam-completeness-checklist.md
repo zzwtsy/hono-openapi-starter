@@ -111,11 +111,11 @@ lastReviewedAt: 2026-07-16
 - [x] `createUser` 能写入 orgId（当前 = 操作者 home）
 - [x] `listUsers` 按 org 过滤（当前 = **精确等于** 操作者 home，**不含子孙**）
 - [x] `updateUser` 不可改 orgId（有意；但导致无调岗能力）
-- [ ] **创建用户**可选目标 org，且目标 ∈ 操作者管理子树（含自身）
-- [ ] **listUsers / 用户写操作**管理范围 = 同一子树（与 create 对称）
+- [x] **创建用户**可选目标 org，且目标 ∈ 操作者管理子树（含自身）
+- [x] **listUsers / 用户写操作**管理范围 = 同一子树（与 create 对称）
 - [ ] **管理员变更归属（调岗）** API：改 `user.orgId`，含子树校验
 - [ ] 调岗时 **grant 清理策略写死**（推荐默认：清旧 home 节点上的 user_roles/user_permissions，或清空全部 grant 后重授——二选一写进 feature 文档）
-- [ ] 所有创建用户路径（bootstrap / seed / createUser；若保留注册则含注册）**禁止**产出 `orgId == null`
+- [x] 所有创建用户路径（bootstrap / seed / createUser；若保留注册则含注册）**禁止**产出 `orgId == null`
 - [x] `orgId` / `disabled` additionalFields 配置 **`input: false`**（防客户端写入）
 
 **Non-goals（不算失败）**
@@ -194,7 +194,7 @@ lastReviewedAt: 2026-07-16
 - [x] 路由/侧栏与后端权限名对齐（users / projects / settings / iam.read）
 - [x] 前端仅 UX，后端 PermissionChecker 为权威
 - [ ] 去掉 `iam.manage` 后 UI 全量改为三分 manage
-- [ ] 用户列表/表单与「子树管理范围」一致（创建选 org、列表见子树用户）
+- [x] 用户列表/表单与「子树管理范围」一致（创建选 org、列表见子树用户）
 - [x] 无公开注册入口
 
 ---
@@ -215,7 +215,7 @@ lastReviewedAt: 2026-07-16
 - [x] iam 路由 unit（鉴权 + 接线）
 - [x] iam-users integration（代建/禁用/重置等，随实现演进）
 - [x] 前端 hasPermission / requirePermission / Can 等单测
-- [ ] 子树 create/list/assign 越权用例（实现后补）
+- [x] 子树 create/list 越权用例（assign 越权随 §5 推进）
 - [ ] 调岗 + grant 清理用例（实现后补）
 - [x] 无公开注册 / sign-up 恒拒绝（实现后补）
 

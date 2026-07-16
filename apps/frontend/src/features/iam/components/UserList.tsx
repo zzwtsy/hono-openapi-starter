@@ -1,3 +1,4 @@
+import type { UserOrgOption } from "./user-form";
 import type { UserSummary } from "@/api/globals";
 import { useRequest } from "alova/client";
 import {
@@ -11,7 +12,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -41,6 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-permissions";
+import { buildOrganizationTree } from "../organization-tree";
 import { ResetPasswordDialog } from "./reset-password-dialog";
 import { UserAuthorizationDialog } from "./user-authorization-dialog";
 import { UserForm } from "./user-form";
@@ -62,6 +64,19 @@ interface UserListProps {
 export function UserList({ orgId, currentUserId }: UserListProps) {
   const { data: users, loading, error, send } = useRequest(() => Apis.IAM.listUsers());
   const { data: roles } = useRequest(() => Apis.IAM.listRoles());
+  const { data: organizations } = useRequest(() => Apis.IAM.listOrganizations());
+
+  // create 用户时选归属组织:操作者管理子树(自身+子孙),复用 organization-tree 的 getDescendantIds。
+  const orgOptions = useMemo<UserOrgOption[]>(() => {
+    if (organizations == null) {
+      return [];
+    }
+    const tree = buildOrganizationTree(organizations);
+    return [
+      { label: tree.getDisplayPath(orgId), value: orgId },
+      ...[...tree.getDescendantIds(orgId)].map(id => ({ label: tree.getDisplayPath(id), value: id })),
+    ];
+  }, [organizations, orgId]);
 
   const canCreate = useCan("users.create");
   const canUpdate = useCan("users.update");
@@ -250,7 +265,7 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
-          {createOpen && <UserForm onSuccess={handleCreated} />}
+          {createOpen && <UserForm onSuccess={handleCreated} orgOptions={orgOptions} defaultOrgId={orgId} />}
         </DialogContent>
       </Dialog>
 

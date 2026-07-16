@@ -116,6 +116,7 @@ export const CreateUserSchema = z.object({
   email: z.email().openapi({ description: "邮箱(唯一)", example: "new@example.com" }),
   password: z.string().min(8).openapi({ description: "初始密码(至少 8 位)", example: "password-123" }),
   name: z.string().min(1).openapi({ description: "显示名", example: "李四" }),
+  orgId: z.string().min(1).openapi({ description: "目标归属组织 ID(须在操作者管理子树内)", example: "org-root" }),
 }).openapi("CreateUser");
 
 /** 改用户资料入参(null-patch;不改 orgId)。至少一项。 */

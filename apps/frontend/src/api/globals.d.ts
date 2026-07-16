@@ -101,6 +101,10 @@ export interface CreateUser {
    * 显示名
    */
   name: string;
+  /**
+   * 目标归属组织 ID(须在操作者管理子树内)
+   */
+  orgId: string;
 }
 export interface CreateOrganization {
   /**
@@ -288,12 +292,6 @@ export interface Organization {
    */
   updatedAt: string;
 }
-export interface SignUpValue {
-  /**
-   * 是否开启
-   */
-  enabled: boolean;
-}
 export interface SystemSetting {
   /**
    * 配置名
@@ -302,7 +300,7 @@ export interface SystemSetting {
   /**
    * 配置值(JSON)
    */
-  value: SignUpValue;
+  value?: null;
   /**
    * 最后修改时间(ISO 8601)
    */
@@ -347,7 +345,7 @@ export interface UpdateSetting {
   /**
    * 配置值(JSON)
    */
-  value: SignUpValue;
+  value?: null;
 }
 export interface UserRoleAssignment {
   /**
@@ -768,7 +766,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出当前用户组织下的用户
+       * [GET] 列出管理子树下的用户
        *
        * **path:** /api/v1/users
        *
@@ -813,6 +811,8 @@ declare global {
        *   password: string
        *   // 显示名
        *   name: string
+       *   // 目标归属组织 ID(须在操作者管理子树内)
+       *   orgId: string
        * }
        * ```
        *
@@ -2073,10 +2073,7 @@ declare global {
        *   // 配置名
        *   key: string
        *   // 配置值(JSON)
-       *   value: {
-       *     // 是否开启
-       *     enabled: boolean
-       *   }
+       *   value?: null
        *   // 最后修改时间(ISO 8601)
        *   updatedAt: string
        *   // 最后修改者用户 ID
@@ -2100,7 +2097,7 @@ declare global {
        * ```ts
        * type PathParameters = {
        *   // 配置名
-       *   key: 'signUp'
+       *   key: string
        * }
        * ```
        *
@@ -2110,10 +2107,7 @@ declare global {
        * ```ts
        * type RequestBody = {
        *   // 配置值(JSON)
-       *   value: {
-       *     // 是否开启
-       *     enabled: boolean
-       *   }
+       *   value?: null
        * }
        * ```
        *
@@ -2125,10 +2119,7 @@ declare global {
        *   // 配置名
        *   key: string
        *   // 配置值(JSON)
-       *   value: {
-       *     // 是否开启
-       *     enabled: boolean
-       *   }
+       *   value?: null
        *   // 最后修改时间(ISO 8601)
        *   updatedAt: string
        *   // 最后修改者用户 ID
@@ -2142,7 +2133,7 @@ declare global {
             /**
              * 配置名
              */
-            key: 'signUp';
+            key: string;
           };
           data: UpdateSetting;
         }

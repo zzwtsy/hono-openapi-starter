@@ -403,13 +403,14 @@ describe("iam routes", () => {
     const res = await buildApp().request("/users", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "new@example.com", password: "password-123", name: "b" }),
+      body: JSON.stringify({ email: "new@example.com", password: "password-123", name: "b", orgId: "org-1" }),
     });
     expect(res.status).toBe(200);
     expect(mockCreateUser).toHaveBeenCalledWith("org-1", {
       email: "new@example.com",
       password: "password-123",
       name: "b",
+      orgId: "org-1",
     });
   });
 

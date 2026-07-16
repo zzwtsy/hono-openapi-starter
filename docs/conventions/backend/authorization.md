@@ -61,7 +61,7 @@ core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `ap
 
 **管理子树(向下)与 Grant 继承(向上)方向相反,不可混用**:管理子树决定「我能管谁」--写操作范围向子孙展开;Grant 继承决定「授在父组织、子组织生效」--检查范围向祖先回溯。例:张三 Home = 华南,管理子树 = {华南, 福建, 深圳}(可在此范围建用户/授 grant);张三在总部授 admin,因福建祖先含总部,张三在福建检查 admin 通过(Grant 继承)。
 
-> 当前实现:Grant org 继承已落地;**管理子树目标态 = 自身+子孙,当前实现 = 精确等于操作者 Home org(不含子孙)**,成员 CRUD 与授权写路径的子树校验随 [IAM 完成度 Checklist](../../checklists/iam-completeness-checklist.md) §4/§5 推进。
+> 当前实现:Grant org 继承已落地;**管理子树已实现**(createUser 选目标 org + listUsers/update/reset/disable/enable 子树校验);授权写路径(assign/revoke)子树校验随 [checklist](../../checklists/iam-completeness-checklist.md) §5 推进。
 
 ## 组织树继承（向下）
 

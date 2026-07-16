@@ -20,6 +20,7 @@ beforeEach(async () => {
   await syncAuthorizationCatalog(allPermissions);
   await db.insert(organizations).values({ id: "org-root", name: "Root" });
   await db.insert(organizations).values({ id: "org-other", name: "Other" });
+  await db.insert(organizations).values({ id: "org-child", name: "Child", parentId: "org-root" });
   // 操作者(管理员身份)在 org-root;不经 createUser,避免测自身路径。
   await db.insert(user).values({
     id: "actor-1",
@@ -30,11 +31,63 @@ beforeEach(async () => {
 });
 
 describe("iam user management", () => {
+  it("createUser 目标 org 在子树内成功(子组织),listUsers 子树含之", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "child@example.com",
+      password: "password-123",
+      name: "Child",
+      orgId: "org-child",
+    });
+    expect(created.orgId).toBe("org-child");
+
+    const list = await IamService.listUsers("org-root");
+    expect(list.some(u => u.id === created.id)).toBe(true);
+    expect(list.some(u => u.id === "actor-1")).toBe(true);
+  });
+
+  it("createUser 目标 org 在子树外 -> 404(不暴露)", async () => {
+    await expect(
+      IamService.createUser("org-root", {
+        email: "outside@example.com",
+        password: "password-123",
+        name: "Outside",
+        orgId: "org-other",
+      }),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+  });
+
+  it("createUser 目标 org 不存在 -> 404", async () => {
+    await expect(
+      IamService.createUser("org-root", {
+        email: "ghost@example.com",
+        password: "password-123",
+        name: "Ghost",
+        orgId: "org-nope",
+      }),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+  });
+
+  it("updateUser 对子树内子组织用户成功;子树外操作者 404", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "sub@example.com",
+      password: "password-123",
+      name: "Sub",
+      orgId: "org-child",
+    });
+    const updated = await IamService.updateUser("org-root", created.id, { name: "Sub2" });
+    expect(updated.name).toBe("Sub2");
+
+    await expect(
+      IamService.updateUser("org-other", created.id, { name: "X" }),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+  });
+
   it("createUser 成功并出现在 listUsers(含 disabled)", async () => {
     const created = await IamService.createUser("org-root", {
       email: "new@example.com",
       password: "password-123",
       name: "New",
+      orgId: "org-root",
     });
 
     expect(created.email).toBe("new@example.com");
@@ -51,6 +104,7 @@ describe("iam user management", () => {
       email: "dup@example.com",
       password: "password-123",
       name: "A",
+      orgId: "org-root",
     });
 
     await expect(
@@ -58,6 +112,7 @@ describe("iam user management", () => {
         email: "dup@example.com",
         password: "password-456",
         name: "B",
+        orgId: "org-root",
       }),
     ).rejects.toMatchObject({ code: "COMMON_CONFLICT" });
   });
@@ -67,6 +122,7 @@ describe("iam user management", () => {
       email: "edit@example.com",
       password: "password-123",
       name: "Before",
+      orgId: "org-root",
     });
 
     const updated = await IamService.updateUser("org-root", created.id, { name: "After" });
@@ -82,6 +138,7 @@ describe("iam user management", () => {
       email: "pwd@example.com",
       password: "old-password-123",
       name: "Pwd",
+      orgId: "org-root",
     });
 
     // 先用旧密码登录造 session
@@ -113,6 +170,7 @@ describe("iam user management", () => {
       email: "ban@example.com",
       password: "password-123",
       name: "Ban",
+      orgId: "org-root",
     });
 
     // 先登录造 session,再禁用应清 session
