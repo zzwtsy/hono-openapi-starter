@@ -85,8 +85,16 @@ async function requireUserInSubtree(actorOrgId: string, userId: string) {
   if (row == null || row.orgId == null) {
     throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
   }
-  // 用户 home 不在操作者管理子树 -> 404(不暴露跨组织用户)
-  await assertOrgInSubtree(actorOrgId, row.orgId);
+  // 用户 home 不在操作者管理子树 -> 统一抛"用户不存在"(不暴露跨组织用户存在性,
+  // 不用 assertOrgInSubtree 的"组织不存在"message,防 foreign-user 与 non-existent 可区分)
+  try {
+    await assertOrgInSubtree(actorOrgId, row.orgId);
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
+    }
+    throw e;
+  }
   return row;
 }
 
@@ -316,8 +324,9 @@ export const IamService = {
     }
   },
 
-  /** 撤用户角色(需 roleId + orgId 精确定位);grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
+  /** 撤用户角色(需 roleId + orgId 精确定位);user 与 grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
   async deleteUserRole(actorOrgId: string, userId: string, roleId: string, orgId: string) {
+    await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, orgId);
     const [row] = await db
       .delete(userRoles)
@@ -357,8 +366,9 @@ export const IamService = {
     }
   },
 
-  /** 撤用户直接权限(需 permission + orgId);grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
+  /** 撤用户直接权限(需 permission + orgId);user 与 grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
   async deleteUserPermission(actorOrgId: string, userId: string, permission: string, orgId: string) {
+    await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, orgId);
     const [row] = await db
       .delete(userPermissions)
