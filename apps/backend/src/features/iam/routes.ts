@@ -31,7 +31,9 @@ import {
 
 /** iam feature 共享:认证 + 权限 + 401/403 响应。 */
 const iamReadMiddleware = [requireAuth(), requirePermission("iam.read")];
-const iamManageMiddleware = [requireAuth(), requirePermission("iam.manage")];
+const rolesManageMiddleware = [requireAuth(), requirePermission("roles.manage")];
+const assignmentsManageMiddleware = [requireAuth(), requirePermission("assignments.manage")];
+const organizationsManageMiddleware = [requireAuth(), requirePermission("organizations.manage")];
 const usersReadMiddleware = [requireAuth(), requirePermission("users.read")];
 const usersCreateMiddleware = [requireAuth(), requirePermission("users.create")];
 const usersUpdateMiddleware = [requireAuth(), requirePermission("users.update")];
@@ -81,7 +83,7 @@ export const createRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "createRole",
   summary: "创建角色(实例角色)",
-  middleware: iamManageMiddleware,
+  middleware: rolesManageMiddleware,
   security: authedSecurity,
   request: { body: { content: { "application/json": { schema: CreateRoleSchema } } } },
   responses: {
@@ -97,7 +99,7 @@ export const updateRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "updateRole",
   summary: "修改角色(仅实例角色)",
-  middleware: iamManageMiddleware,
+  middleware: rolesManageMiddleware,
   security: authedSecurity,
   request: {
     params: RoleIdParamSchema,
@@ -116,7 +118,7 @@ export const deleteRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteRole",
   summary: "删除角色(仅实例角色,cascade 删 role_permissions 与 user_roles)",
-  middleware: iamManageMiddleware,
+  middleware: rolesManageMiddleware,
   security: authedSecurity,
   request: { params: RoleIdParamSchema },
   responses: {
@@ -148,7 +150,7 @@ export const assignRolePermissionsRoute = createRoute({
   tags: ["IAM"],
   operationId: "assignRolePermissions",
   summary: "给角色批量配权限(仅实例角色)",
-  middleware: iamManageMiddleware,
+  middleware: rolesManageMiddleware,
   security: authedSecurity,
   request: {
     params: RoleIdParamSchema,
@@ -167,7 +169,7 @@ export const deleteRolePermissionRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteRolePermission",
   summary: "撤角色的单个权限(仅实例角色)",
-  middleware: iamManageMiddleware,
+  middleware: rolesManageMiddleware,
   security: authedSecurity,
   request: { params: z.object({ roleId: z.string(), permission: z.string() }) },
   responses: {
@@ -295,7 +297,7 @@ export const assignUserRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "assignUserRole",
   summary: "授用户角色(绑定组织,可指定过期)",
-  middleware: iamManageMiddleware,
+  middleware: assignmentsManageMiddleware,
   security: authedSecurity,
   request: {
     params: UserRoleParamSchema,
@@ -314,7 +316,7 @@ export const deleteUserRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteUserRole",
   summary: "撤用户角色(需 orgId 查询参数定位)",
-  middleware: iamManageMiddleware,
+  middleware: assignmentsManageMiddleware,
   security: authedSecurity,
   request: { params: UserRoleParamSchema, query: OrgIdQuerySchema },
   responses: {
@@ -330,7 +332,7 @@ export const assignUserPermissionRoute = createRoute({
   tags: ["IAM"],
   operationId: "assignUserPermission",
   summary: "直接授用户权限(allow/deny,绑定组织)",
-  middleware: iamManageMiddleware,
+  middleware: assignmentsManageMiddleware,
   security: authedSecurity,
   request: {
     params: UserPermissionParamSchema,
@@ -349,7 +351,7 @@ export const deleteUserPermissionRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteUserPermission",
   summary: "撤用户直接权限(需 orgId 查询参数定位)",
-  middleware: iamManageMiddleware,
+  middleware: assignmentsManageMiddleware,
   security: authedSecurity,
   request: { params: UserPermissionParamSchema, query: OrgIdQuerySchema },
   responses: {
@@ -427,7 +429,7 @@ export const createOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "createOrganization",
   summary: "创建组织(可指定父组织)",
-  middleware: iamManageMiddleware,
+  middleware: organizationsManageMiddleware,
   security: authedSecurity,
   request: { body: { content: { "application/json": { schema: CreateOrganizationSchema } } } },
   responses: {
@@ -459,7 +461,7 @@ export const updateOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "updateOrganization",
   summary: "修改组织(改 parentId 时防环)",
-  middleware: iamManageMiddleware,
+  middleware: organizationsManageMiddleware,
   security: authedSecurity,
   request: {
     params: OrganizationIdParamSchema,
@@ -479,7 +481,7 @@ export const deleteOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteOrganization",
   summary: "删除组织(有子组织拒绝)",
-  middleware: iamManageMiddleware,
+  middleware: organizationsManageMiddleware,
   security: authedSecurity,
   request: { params: OrganizationIdParamSchema },
   responses: {

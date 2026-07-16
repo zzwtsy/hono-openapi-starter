@@ -83,7 +83,7 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
   const canReset = useCan("users.reset-password");
   const canDisable = useCan("users.disable");
   const canEnable = useCan("users.enable");
-  const canAuthorize = useCan("iam.manage");
+  const canAuthorize = useCan("assignments.manage");
   const hasRowActions = canUpdate || canReset || canDisable || canEnable || canAuthorize;
 
   const [createOpen, setCreateOpen] = useState(false);

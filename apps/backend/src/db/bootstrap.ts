@@ -57,7 +57,7 @@ async function main() {
     password: passwordHash,
   });
 
-  // 在根组织授 admin 角色(全局 admin:祖先遍历使其对任意子组织 iam.manage 通过)
+  // 在根组织授 admin 角色(全局 admin:祖先遍历使其对任意子组织 manage 通过)
   await db
     .insert(userRoles)
     .values({ userId, roleId: ADMIN_ROLE.id, orgId: rootOrgId })

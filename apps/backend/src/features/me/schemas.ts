@@ -20,6 +20,6 @@ export const MeSchema = z.object({
   user: UserSchema,
   permissions: z.array(z.enum(allPermissionNames)).openapi({
     description: "当前组织下的有效权限名列表(空数组表示未绑定组织或无权限)",
-    example: ["projects.read", "iam.manage"],
+    example: ["projects.read", "organizations.manage"],
   }),
 }).openapi("Me");

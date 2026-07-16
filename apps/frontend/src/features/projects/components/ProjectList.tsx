@@ -38,7 +38,7 @@ function formatDate(iso: string): string {
 
 export function ProjectList() {
   const { data, loading, error, send } = useRequest(() => Apis.Projects.listProjects());
-  // 细粒度写权限:创建/编辑/删除各自独立(非 IAM 的单一 iam.manage)。
+  // 细粒度写权限:创建/编辑/删除各自独立(非 IAM 的三分 manage)。
   const canCreate = useCan("projects.create");
   const canUpdate = useCan("projects.update");
   const canDelete = useCan("projects.delete");

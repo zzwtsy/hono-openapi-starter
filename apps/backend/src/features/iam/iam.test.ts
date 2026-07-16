@@ -201,7 +201,7 @@ describe("iam routes", () => {
   });
 
   // --- 建角色 ---
-  it("createRole 无 iam.manage 返回 403", async () => {
+  it("createRole 无 roles.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -213,7 +213,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("createRole 有 iam.manage 调 service 返回 200", async () => {
+  it("createRole 有 roles.manage 调 service 返回 200", async () => {
     authed();
     mockCreateRole.mockResolvedValue(mockRole);
 
@@ -227,7 +227,7 @@ describe("iam routes", () => {
   });
 
   // --- 改角色 ---
-  it("updateRole 无 iam.manage 返回 403", async () => {
+  it("updateRole 无 roles.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -239,7 +239,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("updateRole 有 iam.manage 调 service 返回 200", async () => {
+  it("updateRole 有 roles.manage 调 service 返回 200", async () => {
     authed();
     mockUpdateRole.mockResolvedValue({ ...mockRole, name: "editor" });
 
@@ -320,7 +320,7 @@ describe("iam routes", () => {
   });
 
   // --- 撤角色权限 ---
-  it("deleteRolePermission 无 iam.manage 返回 403", async () => {
+  it("deleteRolePermission 无 roles.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -328,7 +328,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("deleteRolePermission 有 iam.manage 调 service 返回 200", async () => {
+  it("deleteRolePermission 有 roles.manage 调 service 返回 200", async () => {
     authed();
     mockDeleteRolePermission.mockResolvedValue(undefined);
 
@@ -507,7 +507,7 @@ describe("iam routes", () => {
   });
 
   // --- 授用户角色 ---
-  it("assignUserRole 无 iam.manage 返回 403", async () => {
+  it("assignUserRole 无 assignments.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -519,7 +519,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("assignUserRole 有 iam.manage 调 service 返回 200", async () => {
+  it("assignUserRole 有 assignments.manage 调 service 返回 200", async () => {
     authed();
     mockAssignUserRole.mockResolvedValue(undefined);
 
@@ -550,7 +550,7 @@ describe("iam routes", () => {
   });
 
   // --- 撤用户角色 ---
-  it("deleteUserRole 无 iam.manage 返回 403", async () => {
+  it("deleteUserRole 无 assignments.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -558,7 +558,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("deleteUserRole 有 iam.manage 调 service 返回 200", async () => {
+  it("deleteUserRole 有 assignments.manage 调 service 返回 200", async () => {
     authed();
     mockDeleteUserRole.mockResolvedValue(undefined);
 
@@ -578,7 +578,7 @@ describe("iam routes", () => {
   });
 
   // --- 直接授权 ---
-  it("assignUserPermission 无 iam.manage 返回 403", async () => {
+  it("assignUserPermission 无 assignments.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -590,7 +590,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("assignUserPermission 有 iam.manage 调 service 返回 200", async () => {
+  it("assignUserPermission 有 assignments.manage 调 service 返回 200", async () => {
     authed();
     mockAssignUserPermission.mockResolvedValue(undefined);
 
@@ -621,7 +621,7 @@ describe("iam routes", () => {
   });
 
   // --- 撤直接权限 ---
-  it("deleteUserPermission 无 iam.manage 返回 403", async () => {
+  it("deleteUserPermission 无 assignments.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -629,7 +629,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("deleteUserPermission 有 iam.manage 调 service 返回 200", async () => {
+  it("deleteUserPermission 有 assignments.manage 调 service 返回 200", async () => {
     authed();
     mockDeleteUserPermission.mockResolvedValue(undefined);
 
@@ -740,7 +740,7 @@ describe("iam routes", () => {
   });
 
   // --- 建组织 ---
-  it("createOrganization 无 iam.manage 返回 403", async () => {
+  it("createOrganization 无 organizations.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -752,7 +752,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("createOrganization 有 iam.manage 调 service 返回 200", async () => {
+  it("createOrganization 有 organizations.manage 调 service 返回 200", async () => {
     authed();
     mockCreateOrganization.mockResolvedValue(mockOrg);
 
@@ -806,7 +806,7 @@ describe("iam routes", () => {
   });
 
   // --- 改组织 ---
-  it("updateOrganization 无 iam.manage 返回 403", async () => {
+  it("updateOrganization 无 organizations.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -818,7 +818,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("updateOrganization 有 iam.manage 调 service 返回 200", async () => {
+  it("updateOrganization 有 organizations.manage 调 service 返回 200", async () => {
     authed();
     mockUpdateOrganization.mockResolvedValue({ ...mockOrg, name: "Root Org" });
 
@@ -856,7 +856,7 @@ describe("iam routes", () => {
   });
 
   // --- 删组织 ---
-  it("deleteOrganization 无 iam.manage 返回 403", async () => {
+  it("deleteOrganization 无 organizations.manage 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
 
@@ -864,7 +864,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("deleteOrganization 有 iam.manage 调 service 返回 200", async () => {
+  it("deleteOrganization 有 organizations.manage 调 service 返回 200", async () => {
     authed();
     mockDeleteOrganization.mockResolvedValue(undefined);
 

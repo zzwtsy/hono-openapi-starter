@@ -3,7 +3,7 @@ import { useRouteContext } from "@tanstack/react-router";
 import { hasPermission } from "@/lib/permissions";
 
 /**
- * 单权限检查 hook:`useCan("iam.manage")` -> `boolean`。
+ * 单权限检查 hook:`useCan("roles.manage")` -> `boolean`。
  *
  * 鉴权走 TanStack Router context(非 React Context),`useRouteContext({ strict: false })`
  * 返回合并根 context 形状 `{ auth: AuthState }`(经 `router.tsx` 的 `Register` 注册类型)。

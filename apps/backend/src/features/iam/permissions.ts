@@ -3,12 +3,14 @@ import type { PermissionDefinition } from "@/core/auth/permissions.js";
 /**
  * iam feature 权限定义:权限管理本身 + 用户身份生命周期。
  *
- * **iam.*** — 组织/角色/授权/权限目录:
+ * **iam.*** - 组织/角色/授权/权限目录:
  * - iam.read:查询组织/角色/授权/权限目录
- * - iam.manage:管理(建/改/删)组织/角色/授权
+ * - organizations.manage:管理组织(建/改/删)
+ * - roles.manage:管理角色与角色权限挂载
+ * - assignments.manage:授/撤用户角色与直接权限
  *
- * **users.*** — 用户身份生命周期(细粒度,对齐 projects.* 范式,不塞进 iam.manage):
- * - users.read:列出组织内用户
+ * **users.*** - 用户身份生命周期(细粒度,对齐 projects.* 范式,不塞进 manage):
+ * - users.read:列出子树用户
  * - users.create:管理员代创建用户
  * - users.update:改 name/email
  * - users.reset-password:重置密码
@@ -19,7 +21,9 @@ import type { PermissionDefinition } from "@/core/auth/permissions.js";
  */
 export const iamPermissions = [
   { name: "iam.read", description: "查看权限管理信息" },
-  { name: "iam.manage", description: "管理组织/角色/授权" },
+  { name: "organizations.manage", description: "管理组织(建/改/删)" },
+  { name: "roles.manage", description: "管理角色与角色权限挂载" },
+  { name: "assignments.manage", description: "授/撤用户角色与直接权限" },
   { name: "users.read", description: "查看用户" },
   { name: "users.create", description: "创建用户" },
   { name: "users.update", description: "修改用户资料" },
@@ -35,7 +39,9 @@ export type IamPermission = (typeof iamPermissions)[number]["name"];
 declare module "@/core/auth/permissions.js" {
   interface AppPermissionRegistry {
     "iam.read": true;
-    "iam.manage": true;
+    "organizations.manage": true;
+    "roles.manage": true;
+    "assignments.manage": true;
     "users.read": true;
     "users.create": true;
     "users.update": true;

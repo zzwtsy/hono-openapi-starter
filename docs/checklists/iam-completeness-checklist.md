@@ -93,13 +93,13 @@ lastReviewedAt: 2026-07-16
 
 模板推荐默认（**消灭 `iam.manage` 一锅，但不要拆到每 HTTP 动词**）：
 
-- [ ] 删除或停止使用单一写权限 `iam.manage`
-- [ ] `organizations.manage`（或等价命名）：组织树 create/update/delete
-- [ ] `roles.manage`：实例角色 CRUD + 角色权限挂载
-- [ ] `assignments.manage`：用户角色/直接权限的授与撤
-- [ ] 保留单一 `iam.read` 覆盖 IAM 只读面（不必再拆三个 `*.read`）
-- [ ] 前端 Can / 路由与后端 middleware 同步上述三分
-- [ ] admin 角色仍同步全部权限；文档说明自定义角色如何勾选
+- [x] 删除或停止使用单一写权限 `iam.manage`
+- [x] `organizations.manage`（或等价命名）：组织树 create/update/delete
+- [x] `roles.manage`：实例角色 CRUD + 角色权限挂载
+- [x] `assignments.manage`：用户角色/直接权限的授与撤
+- [x] 保留单一 `iam.read` 覆盖 IAM 只读面（不必再拆三个 `*.read`）
+- [x] 前端 Can / 路由与后端 middleware 同步上述三分
+- [x] admin 角色仍同步全部权限；文档说明自定义角色如何勾选
 
 **不推荐作为模板默认**：每个 assign/revoke/create 各一个 permission（目录膨胀、假 SoD）。
 

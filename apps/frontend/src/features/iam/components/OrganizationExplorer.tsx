@@ -155,7 +155,7 @@ export function OrganizationExplorer({
           <EmptyTitle>暂无组织</EmptyTitle>
           <EmptyDescription>创建第一个根组织，开始搭建组织结构。</EmptyDescription>
         </EmptyHeader>
-        <Can perm="iam.manage">
+        <Can perm="organizations.manage">
           <EmptyContent>
             <Button onClick={() => { setCreatingParentId(null); }}>
               <Plus data-icon="inline-start" />
@@ -233,7 +233,7 @@ export function OrganizationExplorer({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 p-4 sm:p-6">
       <PageHeader title="组织管理" description="浏览和维护组织层级。">
-        <Can perm="iam.manage">
+        <Can perm="organizations.manage">
           <Button onClick={() => { setCreatingParentId(null); }}>
             <Plus data-icon="inline-start" />
             新建根组织

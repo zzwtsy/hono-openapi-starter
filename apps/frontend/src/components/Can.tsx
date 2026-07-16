@@ -10,7 +10,7 @@ interface CanProps {
 }
 
 /**
- * 声明式权限门:`<Can perm="iam.manage">{children}</Can>`。
+ * 声明式权限门:`<Can perm="roles.manage">{children}</Can>`。
  *
  * 取代散落的 `auth.permissions?.includes("x") === true` 内联判断。仅在 `_authenticated`
  * 子树使用(`useCan` 读 router context);无权限返回 null(不渲染 fallback,保持调用点精简)。

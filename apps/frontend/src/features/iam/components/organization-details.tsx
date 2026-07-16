@@ -66,7 +66,7 @@ export function OrganizationDetails({
       <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
         <CardTitle className="break-words text-lg">{organization.name}</CardTitle>
         <CardDescription className="break-words">{index.getDisplayPath(organization.id)}</CardDescription>
-        <Can perm="iam.manage">
+        <Can perm="organizations.manage">
           <CardAction className="col-start-1 row-span-1 row-start-auto mt-3 flex flex-wrap items-center justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
             <Button variant="outline" size="sm" onClick={() => { onCreateChild(organization); }}>
               <Plus data-icon="inline-start" />

@@ -5,7 +5,7 @@ import { requirePermission } from "./require-permission";
 describe("requirePermission", () => {
   it("持有权限时不抛错", () => {
     expect(() => {
-      requirePermission(["users.read", "iam.manage"], "users.read");
+      requirePermission(["users.read", "organizations.manage"], "users.read");
     }).not.toThrow();
   });
 

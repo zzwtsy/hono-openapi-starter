@@ -95,7 +95,7 @@ export function RoleList() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Can perm="iam.manage">
+      <Can perm="roles.manage">
         <div className="flex justify-end">
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus data-icon="inline-start" />
@@ -126,7 +126,7 @@ export function RoleList() {
                         <TableHead>描述</TableHead>
                         <TableHead>来源</TableHead>
                         <TableHead>创建时间</TableHead>
-                        <Can perm="iam.manage">
+                        <Can perm="roles.manage">
                           <TableHead className="text-right">操作</TableHead>
                         </Can>
                       </TableRow>
@@ -147,7 +147,7 @@ export function RoleList() {
                               : <Badge>实例</Badge>}
                           </TableCell>
                           <TableCell className="text-muted-foreground">{formatDate(role.createdAt)}</TableCell>
-                          <Can perm="iam.manage">
+                          <Can perm="roles.manage">
                             <TableCell className="text-right">
                               {role.source === "instance" && (
                                 <DropdownMenu>

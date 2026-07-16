@@ -10,7 +10,7 @@ lastReviewedAt: 2026-07-16
 
 ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同步 / 请求级 memoize）先行落地，但写侧（管理 API + bootstrap）缺失，导致权限数据无 API 入口，只能 seed/直连 DB。本 feature 补全写侧，让权限层对真实用户可用。
 
-模板 day-0 完成度（成员子树、注册策略、`iam.manage` 拆分、调岗等）见 [IAM 完成度 Checklist](../../checklists/iam-completeness-checklist.md)。
+模板 day-0 完成度（成员子树、注册策略、`iam.manage` 拆三分、调岗等）见 [IAM 完成度 Checklist](../../checklists/iam-completeness-checklist.md)。
 
 ## 2. Goals
 
@@ -24,7 +24,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 ## 3. Non-goals
 
-- 分级管理员（对目标 org 二次 `iam.manage` 检查）。
+- 分级管理员（对目标 org 二次 manage 检查）。
 - Redis 权限缓存 + 事件失效（第一版 ALS 请求级 memoize 足够）。
 - 自定义角色之外的实例角色复杂策略；过期记录 housekeeping。
 - audit log（关键写操作审计，独立 feature 推进）。
@@ -39,30 +39,30 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | GET | `/api/v1/me` | `getMe` | 认证 | 当前用户 + 有效权限全集 |
 | GET | `/api/v1/permissions` | `listPermissions` | iam.read | 权限目录（只读） |
 | GET | `/api/v1/roles` | `listRoles` | iam.read | 角色列表（含 source） |
-| POST | `/api/v1/roles` | `createRole` | iam.manage | 建实例角色 |
-| PATCH | `/api/v1/roles/{roleId}` | `updateRole` | iam.manage | 改实例角色 |
-| DELETE | `/api/v1/roles/{roleId}` | `deleteRole` | iam.manage | 删实例角色（cascade） |
+| POST | `/api/v1/roles` | `createRole` | roles.manage | 建实例角色 |
+| PATCH | `/api/v1/roles/{roleId}` | `updateRole` | roles.manage | 改实例角色 |
+| DELETE | `/api/v1/roles/{roleId}` | `deleteRole` | roles.manage | 删实例角色（cascade） |
 | GET | `/api/v1/roles/{roleId}/permissions` | `listRolePermissions` | iam.read | 角色含的权限 |
-| POST | `/api/v1/roles/{roleId}/permissions` | `assignRolePermissions` | iam.manage | 给角色配权限 |
-| DELETE | `/api/v1/roles/{roleId}/permissions/{permission}` | `deleteRolePermission` | iam.manage | 撤角色权限 |
+| POST | `/api/v1/roles/{roleId}/permissions` | `assignRolePermissions` | roles.manage | 给角色配权限 |
+| DELETE | `/api/v1/roles/{roleId}/permissions/{permission}` | `deleteRolePermission` | roles.manage | 撤角色权限 |
 | GET | `/api/v1/users` | `listUsers` | users.read | 列出管理子树(自身+子孙)下的用户 |
 | POST | `/api/v1/users` | `createUser` | users.create | 管理员代创建用户（email+password+name+orgId，目标 org 须在管理子树内） |
 | PATCH | `/api/v1/users/{userId}` | `updateUser` | users.update | 改用户资料（name/email，不改 orgId） |
 | POST | `/api/v1/users/{userId}/reset-password` | `resetUserPassword` | users.reset-password | 重置密码（hashPassword+update account+删 session） |
 | POST | `/api/v1/users/{userId}/disable` | `disableUser` | users.disable | 禁用用户（set disabled=true+删所有 session；禁止自禁用） |
 | POST | `/api/v1/users/{userId}/enable` | `enableUser` | users.enable | 启用用户（清 disabled） |
-| POST | `/api/v1/users/{userId}/roles/{roleId}` | `assignUserRole` | iam.manage | 授用户角色 |
-| DELETE | `/api/v1/users/{userId}/roles/{roleId}` | `deleteUserRole` | iam.manage | 撤用户角色（query orgId） |
-| POST | `/api/v1/users/{userId}/permissions/{permission}` | `assignUserPermission` | iam.manage | 直接授权 allow/deny |
-| DELETE | `/api/v1/users/{userId}/permissions/{permission}` | `deleteUserPermission` | iam.manage | 撤直接权限（query orgId） |
+| POST | `/api/v1/users/{userId}/roles/{roleId}` | `assignUserRole` | assignments.manage | 授用户角色 |
+| DELETE | `/api/v1/users/{userId}/roles/{roleId}` | `deleteUserRole` | assignments.manage | 撤用户角色（query orgId） |
+| POST | `/api/v1/users/{userId}/permissions/{permission}` | `assignUserPermission` | assignments.manage | 直接授权 allow/deny |
+| DELETE | `/api/v1/users/{userId}/permissions/{permission}` | `deleteUserPermission` | assignments.manage | 撤直接权限（query orgId） |
 | GET | `/api/v1/users/{userId}/permissions` | `listUserPermissions` | iam.read | 用户有效权限全集（query orgId，含祖先继承，CTE 计算） |
 | GET | `/api/v1/users/{userId}/roles` | `listUserRoles` | iam.read | 用户在某组织已授的角色记录（query orgId，原始授权非继承，含 expiresAt，撤销用） |
 | GET | `/api/v1/users/{userId}/direct-permissions` | `listUserDirectPermissions` | iam.read | 用户在某组织的直接授权记录（query orgId，原始授权非继承，含 effect/expiresAt，撤销用） |
 | GET | `/api/v1/organizations` | `listOrganizations` | iam.read | 组织列表（扁平） |
-| POST | `/api/v1/organizations` | `createOrganization` | iam.manage | 建组织 |
+| POST | `/api/v1/organizations` | `createOrganization` | organizations.manage | 建组织 |
 | GET | `/api/v1/organizations/{orgId}` | `getOrganization` | iam.read | 组织详情 |
-| PATCH | `/api/v1/organizations/{orgId}` | `updateOrganization` | iam.manage | 改组织（防环） |
-| DELETE | `/api/v1/organizations/{orgId}` | `deleteOrganization` | iam.manage | 删组织（有子拒绝） |
+| PATCH | `/api/v1/organizations/{orgId}` | `updateOrganization` | organizations.manage | 改组织（防环） |
+| DELETE | `/api/v1/organizations/{orgId}` | `deleteOrganization` | organizations.manage | 删组织（有子拒绝） |
 
 ## 5. Request / Response
 
@@ -77,7 +77,9 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | Permission | Description |
 | --- | --- |
 | `iam.read` | 查看组织/角色/授权/权限目录 |
-| `iam.manage` | 管理（建/改/删）组织/角色/授权 |
+| `organizations.manage` | 管理组织（建/改/删） |
+| `roles.manage` | 管理角色与角色权限挂载 |
+| `assignments.manage` | 授/撤用户角色与直接权限 |
 | `users.read` | 查看用户列表 |
 | `users.create` | 代创建用户 |
 | `users.update` | 修改用户资料 |
@@ -129,7 +131,7 @@ sequenceDiagram
   participant DB as PG
 
   Client->>API: POST /api/v1/users/{id}/roles/{roleId}
-  API->>Auth: requireAuth + requirePermission("iam.manage")
+  API->>Auth: requireAuth + requirePermission("assignments.manage")
   Auth->>DB: checkPermission(递归 CTE)
   DB-->>Auth: allowed
   API->>Service: assignUserRole
