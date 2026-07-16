@@ -1,8 +1,19 @@
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterAll, afterEach, beforeAll } from "vitest";
+import { server } from "./msw/server";
 import "@testing-library/jest-dom/vitest";
 
-// RTL 文档:框架级 teardown,避免测试间 DOM 泄漏。
+// MSW:Vitest 官方推荐拦截网络(https://vitest.dev/guide/mocking/requests.md)
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: "error" });
+});
+
+// RTL cleanup + 重置 handlers,保证用例隔离
 afterEach(() => {
+  server.resetHandlers();
   cleanup();
+});
+
+afterAll(() => {
+  server.close();
 });

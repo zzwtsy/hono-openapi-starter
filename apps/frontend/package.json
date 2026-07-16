@@ -50,6 +50,7 @@
     "@vitejs/plugin-react": "catalog:",
     "globals": "catalog:",
     "happy-dom": "catalog:",
+    "msw": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

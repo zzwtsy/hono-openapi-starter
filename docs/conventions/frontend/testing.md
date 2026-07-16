@@ -8,7 +8,7 @@ lastReviewedAt: 2026-07-15
 
 ## 目标
 
-前端测试与后端一致，作为模板一等产物：本地快速回路 + CI 门禁。当前以 **unit** 为主（纯逻辑 + 轻量组件）；MSW / E2E / 覆盖率硬门禁留后续。
+前端测试与后端一致，作为模板一等产物：本地快速回路 + CI 门禁。当前以 **unit** 为主（纯逻辑 + 轻量组件 + MSW 网络集成示范）；E2E / 覆盖率硬门禁留后续。
 
 ## 栈
 
@@ -17,15 +17,28 @@ lastReviewedAt: 2026-07-15
 | 框架 | vitest 4（catalog 与后端同源） | `pnpm --filter frontend test` |
 | DOM | happy-dom | 快于 jsdom；缺 API 时可单文件 `@vitest-environment jsdom` |
 | 组件 | @testing-library/react + jest-dom | setup 内 `cleanup` |
-| 网络 mock | （未装）MSW | 首批不测 fetch；后续 alova 集成再加 |
+| 网络 mock | **MSW**（`msw/node`） | Vitest 官方推荐；`setupServer` 拦 fetch，应用代码无感 |
 
 ## 目录与约定
 
 - 测试与源码同置：`src/**/*.{test,spec}.{ts,tsx}`
-- 全局 setup：`src/test/setup.ts`（jest-dom matchers + RTL cleanup）
+- 全局 setup：`src/test/setup.ts`（jest-dom + RTL cleanup + **MSW lifecycle**）
+- MSW：`src/test/msw/server.ts`、`src/test/msw/handlers.ts`（`okEnvelope` / `failEnvelope`）
 - 配置：`apps/frontend/vitest.config.ts`（`@` alias、happy-dom、`css: false`）
 - **显式** `import { describe, it, expect } from "vitest"`（不强制 globals，与后端一致）
 - 文案与后端一致：`describe`/`it`/注释用**中文**行为描述（`describe` 可用模块/符号名；eslint `test/prefer-lowercase-title` 对 describe 已 ignore）
+
+## MSW 约定
+
+- lifecycle（setup 内，与 [Vitest Mocking Requests](https://vitest.dev/guide/mocking/requests.md) 一致）：
+  - `beforeAll(() => server.listen({ onUnhandledRequest: "error" }))`
+  - `afterEach(() => { server.resetHandlers(); cleanup(); })`
+  - `afterAll(() => server.close())`
+- 默认 `handlers` 为空；各用例 `server.use(http.get/patch(...))` 注册，避免串扰。
+- 路径用 `*/api/v1/...` 前缀，兼容 `baseURL === ""` 与绝对 URL。
+- 业务响应走 **envelope**：`okEnvelope(data)` / `failEnvelope(message)`；alova `responded` 运行时剥 `data`。
+- 用例间可 `await invalidateCache()`（alova）避免 GET 缓存串数据。
+- 仅 mock 边界 hook（如 `useCan`），**真实** alova `Apis.*` 发请求。
 
 ## scripts
 
@@ -45,18 +58,20 @@ CI frontend job 含 `pnpm --filter frontend test`（见 `.github/workflows/ci.ym
 | `lib/require-permission.test.ts` | 无权限抛 `redirect` → `/403`（`isRedirect` + `options.to`） |
 | `features/iam/organization-tree.test.ts` | 树索引、缺父升根、环打断、路径、编辑排除后代 |
 | `components/Can.test.tsx` | 权限门渲染分支（`vi.mock` `useCan`） |
+| `features/settings/components/SettingsPage.test.tsx` | **MSW+alova**：加载失败/开关态/只读 disabled/PATCH body |
 
 ## 组件测试模式
 
 - 尽量 mock 边界 hook（如 `useCan`），避免 RouterProvider 样板。
 - 需要全局 Provider 时再抽 `src/test/utils.tsx` custom render（RTL 官方推荐，按需）。
+- Base UI 控件：优先 `aria-*` / `data-*` 断言（例如 Switch 用 `aria-disabled` + `data-disabled`，非原生 `disabled` 属性）。
 
 ## 不在当前范围
 
 - 覆盖率 threshold / codecov
 - Playwright e2e
-- MSW + alova 缓存失效
 - 全路由 beforeLoad 内存 router 集成（优先测 `requirePermission` 纯函数）
+- OpenAPI lint 进 CI（明确不做）
 
 ## 与后端
 
