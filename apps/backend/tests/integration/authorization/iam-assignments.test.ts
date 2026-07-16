@@ -129,6 +129,37 @@ describe("iam user assignments", () => {
     expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
   });
 
+  it("重复授角色省略 expiresAt 保留原过期时间(不清空)", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+    // 先授 2020(已过期)
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root", expiresAt: "2020-01-01T00:00:00Z" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
+    // 重授省略 expiresAt:原 2020 过期保留,仍失效(未被清空为永久)
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
+    // 提供新 expiresAt 续期到 2099 -> 生效
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root", expiresAt: "2099-01-01T00:00:00Z" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
+  });
+
+  it("重复授直接权限省略 expiresAt 保留原过期,effect 仍更新", async () => {
+    await setup();
+    // 先授 allow + 2020(已过期)
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "allow", expiresAt: "2020-01-01T00:00:00Z" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
+    // 重授 deny 省略 expiresAt:effect 变 deny,expiresAt 保留 2020(过期)
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "deny" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
+    // 续期到 2099(effect 仍 deny,保留):deny 拒绝
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "deny", expiresAt: "2099-01-01T00:00:00Z" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
+    // 切回 allow + 2099:通过
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "allow", expiresAt: "2099-01-01T00:00:00Z" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
+  });
+
   it("重复授直接权限更新 effect(allow->deny)", async () => {
     await setup();
     await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "allow" });
