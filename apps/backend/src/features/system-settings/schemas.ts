@@ -46,8 +46,12 @@ export const SettingKeyParamSchema = z.object({
   key: keyParamSchema.openapi({ description: "配置名", example: "exampleKey" }),
 });
 
-/** value 联合:registry 非空时 z.union(oneOf);空时 z.unknown(z.union 空数组会 throw)。 */
-const valueUnion = allValueSchemas.length > 0 ? z.union(allValueSchemas) : z.record(z.string(), z.unknown());
+/**
+ * value 联合:registry 非空时 z.union(oneOf);空时 z.unknown(z.union 空数组会 throw)。
+ * 空时此分支不可达(keyParamSchema 拒所有 key)。z.unknown() 语义为任意 JSON(jsonb 列),
+ * wormhole 对其生成 null 是已知生成器限制(见 globals.d.ts),不应在 schema 妥协成 z.record 限死为 object。
+ */
+const valueUnion = allValueSchemas.length > 0 ? z.union(allValueSchemas) : z.unknown();
 
 /** PATCH body: { value: <对应 key 的 value schema> }。 */
 export const UpdateSettingSchema = z.object({

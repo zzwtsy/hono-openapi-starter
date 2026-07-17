@@ -211,7 +211,7 @@ export const createUserRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(UserSummarySchema, "创建成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("组织不存在或不在管理范围"),
+    404: jsonErrorResponse("组织不存在或不在管理范围内"),
     409: jsonErrorResponse("邮箱已存在"),
   },
 });
@@ -374,6 +374,7 @@ export const listUserPermissionsRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(z.string()), "有效权限名列表"),
     ...authErrorResponses,
+    404: jsonErrorResponse("用户或组织不存在或不在管理范围内"),
   },
 });
 
@@ -390,6 +391,7 @@ export const listUserRolesRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(UserRoleAssignmentSchema), "已授角色记录列表"),
     ...authErrorResponses,
+    404: jsonErrorResponse("用户或组织不存在或不在管理范围内"),
   },
 });
 
@@ -406,6 +408,7 @@ export const listUserDirectPermissionsRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(UserDirectPermissionSchema), "直接授权记录列表"),
     ...authErrorResponses,
+    404: jsonErrorResponse("用户或组织不存在或不在管理范围内"),
   },
 });
 
@@ -481,7 +484,7 @@ export const deleteOrganizationRoute = createRoute({
   path: "/organizations/{orgId}",
   tags: ["IAM"],
   operationId: "deleteOrganization",
-  summary: "删除组织(有子组织拒绝)",
+  summary: "删除组织(有子组织或有用户拒绝)",
   middleware: organizationsManageMiddleware,
   security: authedSecurity,
   request: { params: OrganizationIdParamSchema },
@@ -489,7 +492,7 @@ export const deleteOrganizationRoute = createRoute({
     200: jsonSuccessResponse(z.object({ id: z.string() }), "删除成功"),
     ...authErrorResponses,
     404: jsonErrorResponse("组织不存在"),
-    409: jsonErrorResponse("有子组织"),
+    409: jsonErrorResponse("有子组织或有用户"),
   },
 });
 
