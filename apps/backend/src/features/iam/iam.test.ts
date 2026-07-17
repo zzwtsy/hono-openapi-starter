@@ -566,7 +566,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { userId: string; roleId: string; orgId: string } };
     expect(body.data).toEqual({ userId: "u-2", roleId: "r-1", orgId: "org-1" });
-    expect(mockDeleteUserRole).toHaveBeenCalledWith("org-1", "u-2", "r-1", "org-1");
+    expect(mockDeleteUserRole).toHaveBeenCalledWith("org-1", "u-1", "u-2", "r-1", "org-1");
   });
 
   it("deleteUserRole service 抛 NOT_FOUND 返回 404", async () => {
@@ -575,6 +575,14 @@ describe("iam routes", () => {
 
     const res = await buildApp().request("/users/u-2/roles/r-1?orgId=org-1", { method: "DELETE" });
     expect(res.status).toBe(404);
+  });
+
+  it("deleteUserRole service 抛 FORBIDDEN(撤自己)返回 403", async () => {
+    authed();
+    mockDeleteUserRole.mockRejectedValue(new AppError("COMMON_FORBIDDEN", { message: "不能撤销自己的授权" }));
+
+    const res = await buildApp().request("/users/u-2/roles/r-1?orgId=org-1", { method: "DELETE" });
+    expect(res.status).toBe(403);
   });
 
   // --- 直接授权 ---
@@ -637,7 +645,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { userId: string; permission: string; orgId: string } };
     expect(body.data).toEqual({ userId: "u-2", permission: "projects.read", orgId: "org-1" });
-    expect(mockDeleteUserPermission).toHaveBeenCalledWith("org-1", "u-2", "projects.read", "org-1");
+    expect(mockDeleteUserPermission).toHaveBeenCalledWith("org-1", "u-1", "u-2", "projects.read", "org-1");
   });
 
   it("deleteUserPermission service 抛 NOT_FOUND 返回 404", async () => {
@@ -646,6 +654,14 @@ describe("iam routes", () => {
 
     const res = await buildApp().request("/users/u-2/permissions/projects.read?orgId=org-1", { method: "DELETE" });
     expect(res.status).toBe(404);
+  });
+
+  it("deleteUserPermission service 抛 FORBIDDEN(撤自己)返回 403", async () => {
+    authed();
+    mockDeleteUserPermission.mockRejectedValue(new AppError("COMMON_FORBIDDEN", { message: "不能撤销自己的授权" }));
+
+    const res = await buildApp().request("/users/u-2/permissions/projects.read?orgId=org-1", { method: "DELETE" });
+    expect(res.status).toBe(403);
   });
 
   // --- 用户有效权限全集 ---

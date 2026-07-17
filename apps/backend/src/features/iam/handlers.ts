@@ -138,10 +138,10 @@ export const assignUserRoleHandler: AppRouteHandler<AssignUserRoleRoute> = async
 };
 
 export const deleteUserRoleHandler: AppRouteHandler<DeleteUserRoleRoute> = async (c) => {
-  const { orgId: actorOrgId } = requireOrgUser(c);
+  const { id, orgId: actorOrgId } = requireOrgUser(c);
   const { userId, roleId } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
-  await IamService.deleteUserRole(actorOrgId, userId, roleId, orgId);
+  await IamService.deleteUserRole(actorOrgId, id, userId, roleId, orgId);
   return successResponse(c, { userId, roleId, orgId });
 };
 
@@ -154,10 +154,10 @@ export const assignUserPermissionHandler: AppRouteHandler<AssignUserPermissionRo
 };
 
 export const deleteUserPermissionHandler: AppRouteHandler<DeleteUserPermissionRoute> = async (c) => {
-  const { orgId: actorOrgId } = requireOrgUser(c);
+  const { id, orgId: actorOrgId } = requireOrgUser(c);
   const { userId, permission } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
-  await IamService.deleteUserPermission(actorOrgId, userId, permission, orgId);
+  await IamService.deleteUserPermission(actorOrgId, id, userId, permission, orgId);
   return successResponse(c, { userId, permission, orgId });
 };
 
