@@ -311,6 +311,7 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
             key={authorizing.id}
             user={authorizing}
             orgId={authorizing.orgId ?? orgId}
+            orgOptions={orgOptions}
             roles={roles}
           />
         )}
