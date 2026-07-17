@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
+import { db } from "@/db/client.js";
+import { user } from "@/db/schema/auth-schema.js";
 import { IamService } from "@/features/iam/service.js";
 import { allPermissions } from "@/permissions-catalog.js";
 import { resetDb } from "../../helpers/db.js";
@@ -65,5 +67,15 @@ describe("iam organization management", () => {
 
   it("删不存在组织抛 NOT_FOUND", async () => {
     await expect(IamService.deleteOrganization("org-nope")).rejects.toThrow();
+  });
+
+  it("删有用户的组织 -> 409(防孤儿用户)", async () => {
+    const org = await IamService.createOrganization({ name: "WithUsers" });
+    // 直插用户(orgId=org),绕过 createUser
+    await db.insert(user).values({ id: "u-orphan-test", name: "U", email: "orphan@test.com", orgId: org.id });
+    await expect(IamService.deleteOrganization(org.id)).rejects.toMatchObject({
+      code: "COMMON_CONFLICT",
+      message: "组织下仍有用户,请先迁移或禁用用户",
+    });
   });
 });

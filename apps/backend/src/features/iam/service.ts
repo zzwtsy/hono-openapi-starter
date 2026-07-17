@@ -202,18 +202,21 @@ export const IamService = {
     }
     const userId = generateId();
     const passwordHash = await hashPassword(input.password);
-    await db.insert(user).values({
-      id: userId,
-      name: input.name,
-      email: input.email,
-      orgId: input.orgId,
-    });
-    await db.insert(account).values({
-      id: generateId(),
-      accountId: userId,
-      providerId: "credential",
-      userId,
-      password: passwordHash,
+    // user + account 原子写入:account 失败不留孤儿 user(可见不可登录,重试 409)
+    await db.transaction(async (tx) => {
+      await tx.insert(user).values({
+        id: userId,
+        name: input.name,
+        email: input.email,
+        orgId: input.orgId,
+      });
+      await tx.insert(account).values({
+        id: generateId(),
+        accountId: userId,
+        providerId: "credential",
+        userId,
+        password: passwordHash,
+      });
     });
     const [created] = await db
       .select({
@@ -469,7 +472,7 @@ export const IamService = {
     return org;
   },
 
-  /** 删组织(有子组织拒绝;外键 cascade 删 user_roles/user_permissions/projects)。 */
+  /** 删组织(有子组织或仍有用户拒绝;外键 cascade 删 user_roles/user_permissions/projects)。 */
   async deleteOrganization(id: string) {
     const [child] = await db
       .select({ id: organizations.id })
@@ -478,6 +481,11 @@ export const IamService = {
       .limit(1);
     if (child != null) {
       throw new AppError("COMMON_CONFLICT", { message: "组织有子组织,请先删除子组织" });
+    }
+    // user.orgId 无 FK,删 org 后用户成孤儿(对所有 admin 不可见/不可管理)-> 有用户拒删
+    const [u] = await db.select({ id: user.id }).from(user).where(eq(user.orgId, id)).limit(1);
+    if (u != null) {
+      throw new AppError("COMMON_CONFLICT", { message: "组织下仍有用户,请先迁移或禁用用户" });
     }
     const [org] = await db.delete(organizations).where(eq(organizations.id, id)).returning({ id: organizations.id });
     if (org == null) {

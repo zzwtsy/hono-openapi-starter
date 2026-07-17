@@ -5,7 +5,7 @@ import { auth } from "@/core/auth/index.js";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
-import { organizations, session, user } from "@/db/schema/index.js";
+import { account, organizations, session, user } from "@/db/schema/index.js";
 import { IamService } from "@/features/iam/service.js";
 import { allPermissions } from "@/permissions-catalog.js";
 import { resetDb } from "../../helpers/db.js";
@@ -31,6 +31,17 @@ beforeEach(async () => {
 });
 
 describe("iam user management", () => {
+  it("createUser 成功后 user 与 credential account 原子存在(事务)", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "tx@example.com",
+      password: "password-123",
+      name: "Tx",
+      orgId: "org-root",
+    });
+    const [acc] = await db.select({ id: account.id }).from(account).where(eq(account.userId, created.id));
+    expect(acc).toBeDefined();
+  });
+
   it("createUser 目标 org 在子树内成功(子组织),listUsers 子树含之", async () => {
     const created = await IamService.createUser("org-root", {
       email: "child@example.com",
