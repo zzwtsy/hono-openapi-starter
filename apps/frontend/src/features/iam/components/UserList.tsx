@@ -67,9 +67,11 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
   const { data: organizations } = useRequest(() => Apis.IAM.listOrganizations());
 
   // create 用户时选归属组织:操作者管理子树(自身+子孙),复用 organization-tree 的 getDescendantIds。
+  // listOrganizations 需 iam.read;无该权限(如仅 users.create 无 iam.read)时 organizations 为 undefined,
+  // 降级为仅操作者 home org(建用户仍可用默认 org,只是不能选子组织)。
   const orgOptions = useMemo<UserOrgOption[]>(() => {
     if (organizations == null) {
-      return [];
+      return [{ label: orgId, value: orgId }];
     }
     const tree = buildOrganizationTree(organizations);
     return [
@@ -308,7 +310,7 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
           <UserAuthorizationDialog
             key={authorizing.id}
             user={authorizing}
-            orgId={orgId}
+            orgId={authorizing.orgId ?? orgId}
             roles={roles}
           />
         )}

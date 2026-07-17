@@ -207,4 +207,27 @@ describe("iam user assignments", () => {
       IamService.deleteUserPermission("org-root", "u-2", "projects.read", "org-root"),
     ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
   });
+
+  it("查子树外 user 的有效权限 -> 404(不暴露)", async () => {
+    await setup();
+    await expect(
+      IamService.listUserEffectivePermissions("org-root", "u-2", "org-root"),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+  });
+
+  it("查子树内 user 但 orgId 在子树外 -> 404", async () => {
+    await setup();
+    await expect(
+      IamService.listUserRoles("org-root", "u-1", "org-other"),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+  });
+
+  it("查子树内 user + 子树内 orgId -> 返回(正常)", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
+    const roles = await IamService.listUserRoles("org-root", "u-1", "org-root");
+    expect(roles.some(r => r.roleId === role.id)).toBe(true);
+  });
 });

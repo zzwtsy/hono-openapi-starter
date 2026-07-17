@@ -665,7 +665,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: string[] };
     expect(body.data).toEqual(["projects.read", "iam.read"]);
-    expect(mockListUserEffectivePermissions).toHaveBeenCalledWith("u-2", "org-1");
+    expect(mockListUserEffectivePermissions).toHaveBeenCalledWith("org-1", "u-2", "org-1");
   });
 
   // --- 用户已授角色记录(原始授权,撤销用) ---
@@ -691,7 +691,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { roleId: string; roleName: string }[] };
     expect(body.data[0].roleName).toBe("viewer");
-    expect(mockListUserRoles).toHaveBeenCalledWith("u-2", "org-1");
+    expect(mockListUserRoles).toHaveBeenCalledWith("org-1", "u-2", "org-1");
   });
 
   // --- 用户直接授权记录(原始授权,撤销用) ---
@@ -717,7 +717,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { permission: string; effect: string }[] };
     expect(body.data[0]).toEqual({ permission: "projects.read", effect: "deny", orgId: "org-1", expiresAt: null });
-    expect(mockListUserDirectPermissions).toHaveBeenCalledWith("u-2", "org-1");
+    expect(mockListUserDirectPermissions).toHaveBeenCalledWith("org-1", "u-2", "org-1");
   });
 
   // --- 组织列表 ---
