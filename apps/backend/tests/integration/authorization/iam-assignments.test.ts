@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { db } from "@/db/client.js";
 import { user } from "@/db/schema/auth-schema.js";
-import { organizations } from "@/db/schema/authorization-schema.js";
+import { organizations, userPermissions, userRoles } from "@/db/schema/authorization-schema.js";
 import { IamPermissionChecker } from "@/features/iam/permission-checker.js";
 import { IamService } from "@/features/iam/service.js";
 import { allPermissions } from "@/permissions-catalog.js";
@@ -175,5 +175,36 @@ describe("iam user assignments", () => {
     await expect(
       IamService.deleteUserRole("org-root", "u-1", role.id, "org-other"),
     ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+  });
+
+  it("子树外 user 与非存在 user 的 404 message 一致(不暴露存在性)", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    // 子树外 user(u-2 home=org-other)
+    const foreign = IamService.assignUserRole("org-root", "u-2", role.id, { orgId: "org-root" });
+    await expect(foreign).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
+    // 非存在 user
+    const ghost = IamService.assignUserRole("org-root", "u-nope", role.id, { orgId: "org-root" });
+    await expect(ghost).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
+  });
+
+  it("撤子树内 grant.orgId 但子树外 user -> 404(与 assign 对称)", async () => {
+    await setup();
+    // u-2 home=org-other(子树外);先由上级在 org-root(子树内)授 grant
+    // 模拟:直接插一条 u-2 在 org-root 的 user_roles(绕过 assign 的 user 校验)
+    const role = await IamService.createRole({ name: "viewer" });
+    await db.insert(userRoles).values({ userId: "u-2", roleId: role.id, orgId: "org-root" });
+    // actor(org-root 子树)撤该 grant:grant.orgId=org-root 在子树,但 user u-2 子树外 -> 现 404
+    await expect(
+      IamService.deleteUserRole("org-root", "u-2", role.id, "org-root"),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
+  });
+
+  it("撤直接权限:子树内 grant.orgId 但子树外 user -> 404", async () => {
+    await setup();
+    await db.insert(userPermissions).values({ userId: "u-2", permission: "projects.read", orgId: "org-root", effect: "allow" });
+    await expect(
+      IamService.deleteUserPermission("org-root", "u-2", "projects.read", "org-root"),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
   });
 });
