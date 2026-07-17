@@ -97,7 +97,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - **管理子树**:管理员可写操作的范围 = 自身 + 子孙。`createUser`/`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable`/`assignUserRole`/`assignUserPermission` 的目标组织与目标用户均须落在操作者管理子树内。
 - **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
 
-> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission`/`listUserPermissions`/`listUserRoles`/`listUserDirectPermissions` 均已按操作者管理子树(自身+子孙)校验(user 与 grant.orgId 双校验,读端点与写端点对称);重复授角色/权限时,提供 `expiresAt` 则更新(续期),省略则保留原过期时间(不清空),`effect` 总以新值为准。调岗(PATCH orgId)本期不做。`deleteOrganization` 有用户即拒删(防孤儿),当前无迁移/删除用户 API,有用户的组织需先经数据库迁移用户;且检查与删除非原子(`user.orgId` 无 FK),并发 `createUser` 存在低概率产生孤儿用户的 TOCTOU 窗口,待加 FK 或迁移 API 后根除。
+> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission`/`listUserPermissions`/`listUserRoles`/`listUserDirectPermissions` 均已按操作者管理子树(自身+子孙)校验(user 与 grant.orgId 双校验,读端点与写端点对称);重复授角色/权限时,提供 `expiresAt` 则更新(续期),省略则保留原过期时间(不清空),`effect` 总以新值为准。调岗(PATCH orgId)本期不做。`deleteOrganization` 有用户即拒删(防孤儿),当前无迁移/删除用户 API,有用户的组织需先经数据库迁移用户;且检查与删除非原子(`user.orgId` 无 FK),并发 `createUser` 存在低概率产生孤儿用户的 TOCTOU 窗口,待加 FK 或迁移 API 后根除。`deleteUserRole`/`deleteUserPermission` 禁止对自己操作(防自我降级锁死,对齐 `disableUser`);`assignUserRole`/`assignUserPermission` 不限(授予不锁死)。
 
 ## 7. Data Model
 

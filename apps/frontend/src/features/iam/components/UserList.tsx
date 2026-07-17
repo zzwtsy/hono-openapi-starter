@@ -217,7 +217,7 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                     <DropdownMenuGroup>
-                                      {canAuthorize && (
+                                      {canAuthorize && !isSelf && (
                                         <DropdownMenuItem onClick={() => { setAuthorizing(u); }}>
                                           <ShieldCheck />
                                           授权

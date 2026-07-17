@@ -336,8 +336,14 @@ export const IamService = {
     }
   },
 
-  /** 撤用户角色(需 roleId + orgId 精确定位);user 与 grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
-  async deleteUserRole(actorOrgId: string, userId: string, roleId: string, orgId: string) {
+  /**
+   * 撤用户角色(需 roleId + orgId 精确定位);user 与 grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。
+   *  禁止撤销自己的授权 -> 403(防自我降级锁死,对齐 disableUser)。
+   */
+  async deleteUserRole(actorOrgId: string, actorUserId: string, userId: string, roleId: string, orgId: string) {
+    if (userId === actorUserId) {
+      throw new AppError("COMMON_FORBIDDEN", { message: "不能撤销自己的授权" });
+    }
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, orgId);
     const [row] = await db
@@ -378,8 +384,14 @@ export const IamService = {
     }
   },
 
-  /** 撤用户直接权限(需 permission + orgId);user 与 grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。 */
-  async deleteUserPermission(actorOrgId: string, userId: string, permission: string, orgId: string) {
+  /**
+   * 撤用户直接权限(需 permission + orgId);user 与 grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。
+   *  禁止撤销自己的授权 -> 403(防自我降级锁死,对齐 disableUser)。
+   */
+  async deleteUserPermission(actorOrgId: string, actorUserId: string, userId: string, permission: string, orgId: string) {
+    if (userId === actorUserId) {
+      throw new AppError("COMMON_FORBIDDEN", { message: "不能撤销自己的授权" });
+    }
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, orgId);
     const [row] = await db

@@ -34,6 +34,8 @@ async function setup() {
   await db.insert(user).values([
     { id: "u-1", name: "U1", email: "u1@x.com", orgId: "org-root" },
     { id: "u-2", name: "U2", email: "u2@x.com", orgId: "org-other" },
+    // 操作者(actor-1,org-root 管理员):deleteUserRole/deleteUserPermission 的 actorUserId 入参
+    { id: "actor-1", name: "Actor", email: "actor@x.com", orgId: "org-root" },
   ]);
 }
 
@@ -87,7 +89,7 @@ describe("iam user assignments", () => {
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
     await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
-    await IamService.deleteUserRole("org-root", "u-1", role.id, "org-root");
+    await IamService.deleteUserRole("org-root", "actor-1", "u-1", role.id, "org-root");
 
     expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
   });
@@ -104,7 +106,7 @@ describe("iam user assignments", () => {
 
   it("撤不存在的授权抛 NOT_FOUND", async () => {
     await setup();
-    await expect(IamService.deleteUserRole("org-root", "u-1", "role-admin", "org-root")).rejects.toThrow();
+    await expect(IamService.deleteUserRole("org-root", "actor-1", "u-1", "role-admin", "org-root")).rejects.toThrow();
   });
 
   it("授角色到子树外 grant.orgId -> 404(不暴露)", async () => {
@@ -177,7 +179,7 @@ describe("iam user assignments", () => {
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
     await expect(
-      IamService.deleteUserRole("org-root", "u-1", role.id, "org-other"),
+      IamService.deleteUserRole("org-root", "actor-1", "u-1", role.id, "org-other"),
     ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
   });
 
@@ -200,7 +202,7 @@ describe("iam user assignments", () => {
     await db.insert(userRoles).values({ userId: "u-2", roleId: role.id, orgId: "org-root" });
     // actor(org-root 子树)撤该 grant:grant.orgId=org-root 在子树,但 user u-2 子树外 -> 现 404
     await expect(
-      IamService.deleteUserRole("org-root", "u-2", role.id, "org-root"),
+      IamService.deleteUserRole("org-root", "actor-1", "u-2", role.id, "org-root"),
     ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
   });
 
@@ -208,7 +210,7 @@ describe("iam user assignments", () => {
     await setup();
     await db.insert(userPermissions).values({ userId: "u-2", permission: "projects.read", orgId: "org-root", effect: "allow" });
     await expect(
-      IamService.deleteUserPermission("org-root", "u-2", "projects.read", "org-root"),
+      IamService.deleteUserPermission("org-root", "actor-1", "u-2", "projects.read", "org-root"),
     ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
   });
 
@@ -274,5 +276,24 @@ describe("iam user assignments", () => {
     await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-south" });
     const perms = await IamService.listUserEffectivePermissions("org-root", "u-1", "org-south");
     expect(perms).toContain("projects.read");
+  });
+
+  // 防自我锁死:撤销自己的授权 -> 403(对齐 disableUser)。actor-1 撤 actor-1 自己。
+  it("撤自己的角色 -> 403(防自我锁死)", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+    await IamService.assignUserRole("org-root", "actor-1", role.id, { orgId: "org-root" });
+    await expect(
+      IamService.deleteUserRole("org-root", "actor-1", "actor-1", role.id, "org-root"),
+    ).rejects.toMatchObject({ code: "COMMON_FORBIDDEN", message: "不能撤销自己的授权" });
+  });
+
+  it("撤自己的直接权限 -> 403(防自我锁死)", async () => {
+    await setup();
+    await IamService.assignUserPermission("org-root", "actor-1", "projects.read", { orgId: "org-root", effect: "allow" });
+    await expect(
+      IamService.deleteUserPermission("org-root", "actor-1", "actor-1", "projects.read", "org-root"),
+    ).rejects.toMatchObject({ code: "COMMON_FORBIDDEN", message: "不能撤销自己的授权" });
   });
 });
