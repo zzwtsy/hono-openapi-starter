@@ -196,20 +196,25 @@ export const IamService = {
   async createUser(actorOrgId: string, input: { email: string; password: string; name: string; orgId: string }) {
     // 目标 org 须在操作者管理子树(自身+子孙);不在或不存在 -> 404
     await assertOrgInSubtree(actorOrgId, input.orgId);
-    const [existing] = await db.select({ id: user.id }).from(user).where(eq(user.email, input.email));
-    if (existing != null) {
-      throw new AppError("COMMON_CONFLICT", { message: "邮箱已存在" });
-    }
     const userId = generateId();
     const passwordHash = await hashPassword(input.password);
-    // user + account 原子写入:account 失败不留孤儿 user(可见不可登录,重试 409)
+    // user + account 原子写入:account 失败不留孤儿 user(可见不可登录,重试 409)。
+    // email 查重在事务内用 onConflictDoNothing 兜底,根除并发 TOCTOU:并发同邮箱第二次不再撞 DB 唯一约束返 500,
+    // 而是 returning 空 -> 抛 COMMON_CONFLICT(409),与 OpenAPI 契约一致。
     await db.transaction(async (tx) => {
-      await tx.insert(user).values({
-        id: userId,
-        name: input.name,
-        email: input.email,
-        orgId: input.orgId,
-      });
+      const [inserted] = await tx
+        .insert(user)
+        .values({
+          id: userId,
+          name: input.name,
+          email: input.email,
+          orgId: input.orgId,
+        })
+        .onConflictDoNothing({ target: user.email })
+        .returning();
+      if (inserted == null) {
+        throw new AppError("COMMON_CONFLICT", { message: "邮箱已存在" });
+      }
       await tx.insert(account).values({
         id: generateId(),
         accountId: userId,
@@ -229,6 +234,10 @@ export const IamService = {
       })
       .from(user)
       .where(eq(user.id, userId));
+    // 事务已提交,理论上 user 必存在;兜底防异常场景(如并发硬删)返回 null 破坏 UserSummary 契约。
+    if (created == null) {
+      throw new AppError("COMMON_INTERNAL_ERROR", { message: "用户创建后未找到" });
+    }
     return created;
   },
 
@@ -483,10 +492,11 @@ export const IamService = {
     if (child != null) {
       throw new AppError("COMMON_CONFLICT", { message: "组织有子组织,请先删除子组织" });
     }
-    // user.orgId 无 FK,删 org 后用户成孤儿(对所有 admin 不可见/不可管理)-> 有用户拒删
+    // user.orgId 无 FK,删 org 后用户成孤儿(对所有 admin 不可见/不可管理)-> 有用户拒删。
+    // 当前无迁移/删除用户 API(调岗本期不做,见 docs/features/backend/iam.md),有用户的组织需先经数据库迁移用户。
     const [u] = await db.select({ id: user.id }).from(user).where(eq(user.orgId, id)).limit(1);
     if (u != null) {
-      throw new AppError("COMMON_CONFLICT", { message: "组织下仍有用户,请先迁移或禁用用户" });
+      throw new AppError("COMMON_CONFLICT", { message: "组织下仍有用户,请先迁移用户" });
     }
     const [org] = await db.delete(organizations).where(eq(organizations.id, id)).returning({ id: organizations.id });
     if (org == null) {

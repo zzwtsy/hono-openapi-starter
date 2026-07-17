@@ -1,3 +1,4 @@
+import type { UserOrgOption } from "./user-form";
 import type { Permission, Role, UserDirectPermission, UserRoleAssignment, UserSummary } from "@/api/globals";
 import { useRequest } from "alova/client";
 import { format } from "date-fns";
@@ -27,17 +28,18 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 interface UserAuthorizationDialogProps {
   user: UserSummary;
   orgId: string;
+  /** 可选组织(操作者管理子树内 org,默认 user home org)。切换后查看/管理该 org 的授权。 */
+  orgOptions: UserOrgOption[];
   roles: Role[];
 }
 
-export function UserAuthorizationDialog({ user, orgId, roles }: UserAuthorizationDialogProps) {
-  // 有效权限全集(角色 ∪ 直接 allow − 直接 deny,含祖先继承,CTE 计算)
-  const {
-    data: effectivePerms,
-    loading: permsLoading,
-    error: permsError,
-    send: sendPerms,
-  } = useRequest(() => Apis.IAM.listUserPermissions({ pathParams: { userId: user.id }, params: { orgId } }));
+export function UserAuthorizationDialog({ user, orgId, orgOptions, roles }: UserAuthorizationDialogProps) {
+  // 选中查看/管理的组织(默认用户 home org)。切换后重新拉该 org 的有效权限与授权记录,
+  // 解决"祖先 org 授的授权在 home org 视角不可见不可撤销"(listUserRoles/listUserDirectPermissions 用 eq(orgId) 直接相等)。
+  const [selectedOrgId, setSelectedOrgId] = useState(orgId);
+  // assign/revoke 后刷新有效权限区(EffectivePermissionsPanel remount 重发)。
+  const [permRefresh, setPermRefresh] = useState(0);
+  const refreshPerms = () => setPermRefresh(n => n + 1);
 
   return (
     <DialogContent className="max-w-lg">
@@ -49,12 +51,29 @@ export function UserAuthorizationDialog({ user, orgId, roles }: UserAuthorizatio
         <DialogDescription>{user.email}</DialogDescription>
       </DialogHeader>
 
-      <EffectivePermissions
-        loading={permsLoading}
-        error={permsError !== null && effectivePerms === undefined}
-        perms={effectivePerms}
-        onRetry={() => { void sendPerms(); }}
-      />
+      <Field>
+        <FieldLabel htmlFor="auth-org">组织</FieldLabel>
+        <Select
+          items={orgOptions}
+          value={selectedOrgId}
+          onValueChange={(val) => { setSelectedOrgId(val ?? orgId); }}
+        >
+          <SelectTrigger id="auth-org" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {orgOptions.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
+
+      <EffectivePermissionsPanel key={`${selectedOrgId}-${permRefresh}`} userId={user.id} orgId={selectedOrgId} />
 
       <Separator />
 
@@ -64,13 +83,32 @@ export function UserAuthorizationDialog({ user, orgId, roles }: UserAuthorizatio
           <TabsTrigger value="direct">直接授权</TabsTrigger>
         </TabsList>
         <TabsContent value="roles">
-          <RoleAssignmentsTab userId={user.id} orgId={orgId} roles={roles} onChanged={() => { void sendPerms(); }} />
+          <RoleAssignmentsTab key={selectedOrgId} userId={user.id} orgId={selectedOrgId} roles={roles} onChanged={refreshPerms} />
         </TabsContent>
         <TabsContent value="direct">
-          <DirectPermissionsTab userId={user.id} orgId={orgId} onChanged={() => { void sendPerms(); }} />
+          <DirectPermissionsTab key={selectedOrgId} userId={user.id} orgId={selectedOrgId} onChanged={refreshPerms} />
         </TabsContent>
       </Tabs>
     </DialogContent>
+  );
+}
+
+/** 有效权限全集(角色 ∪ 直接 allow − 直接 deny,含祖先继承,CTE 计算)。按 selectedOrgId 拉取,org 切换/授权变更时 remount 重发。 */
+function EffectivePermissionsPanel({ userId, orgId }: { userId: string; orgId: string }) {
+  const {
+    data: effectivePerms,
+    loading: permsLoading,
+    error: permsError,
+    send: sendPerms,
+  } = useRequest(() => Apis.IAM.listUserPermissions({ pathParams: { userId }, params: { orgId } }));
+
+  return (
+    <EffectivePermissions
+      loading={permsLoading}
+      error={permsError !== null && effectivePerms === undefined}
+      perms={effectivePerms}
+      onRetry={() => { void sendPerms(); }}
+    />
   );
 }
 

@@ -75,7 +75,9 @@ describe("iam organization management", () => {
     await db.insert(user).values({ id: "u-orphan-test", name: "U", email: "orphan@test.com", orgId: org.id });
     await expect(IamService.deleteOrganization(org.id)).rejects.toMatchObject({
       code: "COMMON_CONFLICT",
-      message: "组织下仍有用户,请先迁移或禁用用户",
+      message: "组织下仍有用户,请先迁移用户",
     });
+    // 拒绝后组织仍存在(防 guard 误删:若检查顺序错成先删后查,org 已没而 user 成真孤儿)。
+    await expect(IamService.getOrganizationById(org.id)).resolves.toBeDefined();
   });
 });

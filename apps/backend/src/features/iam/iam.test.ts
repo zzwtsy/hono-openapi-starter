@@ -720,6 +720,31 @@ describe("iam routes", () => {
     expect(mockListUserDirectPermissions).toHaveBeenCalledWith("org-1", "u-2", "org-1");
   });
 
+  // --- 读端点 service 抛 NOT_FOUND -> 404(对齐同文件 10 个端点模式,验证 handler->error-handler->HTTP 链路) ---
+  it("listUserPermissions service 抛 NOT_FOUND 返回 404", async () => {
+    authed();
+    mockListUserEffectivePermissions.mockRejectedValue(new AppError("COMMON_NOT_FOUND"));
+
+    const res = await buildApp().request("/users/u-2/permissions?orgId=org-1");
+    expect(res.status).toBe(404);
+  });
+
+  it("listUserRoles service 抛 NOT_FOUND 返回 404", async () => {
+    authed();
+    mockListUserRoles.mockRejectedValue(new AppError("COMMON_NOT_FOUND"));
+
+    const res = await buildApp().request("/users/u-2/roles?orgId=org-1");
+    expect(res.status).toBe(404);
+  });
+
+  it("listUserDirectPermissions service 抛 NOT_FOUND 返回 404", async () => {
+    authed();
+    mockListUserDirectPermissions.mockRejectedValue(new AppError("COMMON_NOT_FOUND"));
+
+    const res = await buildApp().request("/users/u-2/direct-permissions?orgId=org-1");
+    expect(res.status).toBe(404);
+  });
+
   // --- 组织列表 ---
   it("listOrganizations 无 iam.read 返回 403", async () => {
     authed();

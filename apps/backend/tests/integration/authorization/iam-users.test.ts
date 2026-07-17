@@ -42,6 +42,29 @@ describe("iam user management", () => {
     expect(acc).toBeDefined();
   });
 
+  it("createUser 同邮箱 -> 409(事务内 onConflict 兜底),且不留孤儿 user", async () => {
+    await IamService.createUser("org-root", {
+      email: "dup@example.com",
+      password: "password-123",
+      name: "First",
+      orgId: "org-root",
+    });
+    // 第二次同邮箱:事务内 onConflictDoNothing(target=email) -> returning 空 -> 抛 COMMON_CONFLICT(409),
+    // 非 DB 唯一约束裸错误(500)。验证并发 TOCTOU 修复后的错误码契约。
+    await expect(
+      IamService.createUser("org-root", {
+        email: "dup@example.com",
+        password: "password-123",
+        name: "Second",
+        orgId: "org-root",
+      }),
+    ).rejects.toMatchObject({ code: "COMMON_CONFLICT", message: "邮箱已存在" });
+    // 冲突时 user 不应插入(无孤儿),user 表仍只有 First。
+    const rows = await db.select({ name: user.name }).from(user).where(eq(user.email, "dup@example.com"));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe("First");
+  });
+
   it("createUser 目标 org 在子树内成功(子组织),listUsers 子树含之", async () => {
     const created = await IamService.createUser("org-root", {
       email: "child@example.com",

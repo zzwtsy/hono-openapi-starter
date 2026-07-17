@@ -162,8 +162,8 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 - `GET /api/v1/me`：当前用户信息 + 有效权限全集
 - `GET /api/v1/permissions`：权限目录（代码同步，只读）
 - 角色：`GET/POST /api/v1/roles`、`PATCH/DELETE /api/v1/roles/{id}`、`GET/POST /api/v1/roles/{id}/permissions`、`DELETE /api/v1/roles/{id}/permissions/{permission}`（仅 `source='instance'` 角色可改删）
-- 用户授权：`POST/DELETE /api/v1/users/{userId}/roles/{roleId}`、`POST/DELETE /api/v1/users/{userId}/permissions/{permission}`、`GET /api/v1/users/{userId}/permissions`
-- 组织：`GET/POST /api/v1/organizations`、`GET/PATCH/DELETE /api/v1/organizations/{orgId}`（改 parentId 防环，有子组织拒绝删除）
+- 用户授权：`POST/DELETE /api/v1/users/{userId}/roles/{roleId}`、`POST/DELETE /api/v1/users/{userId}/permissions/{permission}`、`GET /api/v1/users/{userId}/permissions`（有效全集，祖先继承）、`GET /api/v1/users/{userId}/roles`（已授角色记录，直接授权）、`GET /api/v1/users/{userId}/direct-permissions`（已授直接权限记录，allow/deny）
+- 组织：`GET/POST /api/v1/organizations`、`GET/PATCH/DELETE /api/v1/organizations/{orgId}`（改 parentId 防环，有子组织或有用户拒绝删除）
 
 ## 性能
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
+import { setPermissionChecker } from "@/core/authorization/permission-checker.js";
 import { db } from "@/db/client.js";
 import { user } from "@/db/schema/auth-schema.js";
 import { organizations, userPermissions, userRoles } from "@/db/schema/authorization-schema.js";
@@ -19,6 +20,9 @@ const checker = new IamPermissionChecker();
 beforeEach(async () => {
   await resetDb();
   await syncAuthorizationCatalog(allPermissions);
+  // 装配 PermissionChecker holder:listUserEffectivePermissions 正常路径经
+  // PermissionService.listEffectivePermissions -> requireChecker(),未装配会抛"未装配"。
+  setPermissionChecker(checker);
 });
 
 async function setup() {
@@ -229,5 +233,46 @@ describe("iam user assignments", () => {
     await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
     const roles = await IamService.listUserRoles("org-root", "u-1", "org-root");
     expect(roles.some(r => r.roleId === role.id)).toBe(true);
+  });
+
+  // listUserEffectivePermissions 之前只测 subtree-out user(requireUserInSubtree 路径),
+  // 补 subtree-in user + subtree-out orgId 用例,覆盖 assertOrgInSubtree 路径。
+  it("listUserEffectivePermissions:子树内 user + 子树外 orgId -> 404", async () => {
+    await setup();
+    await expect(
+      IamService.listUserEffectivePermissions("org-root", "u-1", "org-other"),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+  });
+
+  // 以下三个用例故意用 actorOrgId(org-root) != query orgId(org-south),
+  // 使 (actorOrgId, userId, orgId) 参数调换可被检出:调换后 requireUserInSubtree(org-south, u-1)
+  // 因 u-1 home=org-root 不在 org-south 子树 -> 404,与期望返回不符,测试失败。
+  it("listUserRoles:子树内不同 orgId(org-south) -> 返回该 org 授权(actorOrgId != query orgId)", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-south" });
+    const roles = await IamService.listUserRoles("org-root", "u-1", "org-south");
+    expect(roles.some(r => r.roleId === role.id && r.orgId === "org-south")).toBe(true);
+  });
+
+  it("listUserDirectPermissions:子树外 orgId -> 404;子树内不同 orgId(org-south) -> 返回直接授权", async () => {
+    await setup();
+    await expect(
+      IamService.listUserDirectPermissions("org-root", "u-1", "org-other"),
+    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-south", effect: "allow" });
+    const perms = await IamService.listUserDirectPermissions("org-root", "u-1", "org-south");
+    expect(perms.some(p => p.permission === "projects.read" && p.orgId === "org-south" && p.effect === "allow")).toBe(true);
+  });
+
+  it("listUserEffectivePermissions:子树内不同 orgId(org-south) -> 返回有效权限(走 PermissionService holder)", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-south" });
+    const perms = await IamService.listUserEffectivePermissions("org-root", "u-1", "org-south");
+    expect(perms).toContain("projects.read");
   });
 });
