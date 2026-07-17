@@ -379,13 +379,17 @@ export const IamService = {
     }
   },
 
-  /** 列出用户在某组织的有效权限全集(走 PermissionService memoize)。 */
-  async listUserEffectivePermissions(userId: string, orgId: string) {
+  /** 列出用户在某组织的有效权限全集(走 PermissionService memoize)。user 与 orgId 须在操作者管理子树内。 */
+  async listUserEffectivePermissions(actorOrgId: string, userId: string, orgId: string) {
+    await requireUserInSubtree(actorOrgId, userId);
+    await assertOrgInSubtree(actorOrgId, orgId);
     return PermissionService.listEffectivePermissions(userId, orgId);
   },
 
-  /** 列出用户在某组织已授的角色记录(原始授权,非祖先继承,含过期)。 */
-  async listUserRoles(userId: string, orgId: string) {
+  /** 列出用户在某组织已授的角色记录(原始授权,非祖先继承,含过期)。user 与 orgId 须在操作者管理子树内。 */
+  async listUserRoles(actorOrgId: string, userId: string, orgId: string) {
+    await requireUserInSubtree(actorOrgId, userId);
+    await assertOrgInSubtree(actorOrgId, orgId);
     return db
       .select({
         roleId: userRoles.roleId,
@@ -399,8 +403,10 @@ export const IamService = {
       .orderBy(asc(roles.name));
   },
 
-  /** 列出用户在某组织的直接授权记录(原始授权,allow/deny,非祖先继承,含过期)。 */
-  async listUserDirectPermissions(userId: string, orgId: string) {
+  /** 列出用户在某组织的直接授权记录(原始授权,allow/deny,非祖先继承,含过期)。user 与 orgId 须在操作者管理子树内。 */
+  async listUserDirectPermissions(actorOrgId: string, userId: string, orgId: string) {
+    await requireUserInSubtree(actorOrgId, userId);
+    await assertOrgInSubtree(actorOrgId, orgId);
     return db
       .select({
         permission: userPermissions.permission,

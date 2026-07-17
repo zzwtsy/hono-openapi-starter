@@ -162,23 +162,26 @@ export const deleteUserPermissionHandler: AppRouteHandler<DeleteUserPermissionRo
 };
 
 export const listUserPermissionsHandler: AppRouteHandler<ListUserPermissionsRoute> = async (c) => {
+  const { orgId: actorOrgId } = requireOrgUser(c);
   const { userId } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
-  const perms = await IamService.listUserEffectivePermissions(userId, orgId);
+  const perms = await IamService.listUserEffectivePermissions(actorOrgId, userId, orgId);
   return successResponse(c, perms);
 };
 
 export const listUserRolesHandler: AppRouteHandler<ListUserRolesRoute> = async (c) => {
+  const { orgId: actorOrgId } = requireOrgUser(c);
   const { userId } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
-  const roles = await IamService.listUserRoles(userId, orgId);
+  const roles = await IamService.listUserRoles(actorOrgId, userId, orgId);
   return successResponse(c, roles);
 };
 
 export const listUserDirectPermissionsHandler: AppRouteHandler<ListUserDirectPermissionsRoute> = async (c) => {
+  const { orgId: actorOrgId } = requireOrgUser(c);
   const { userId } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
-  const perms = await IamService.listUserDirectPermissions(userId, orgId);
+  const perms = await IamService.listUserDirectPermissions(actorOrgId, userId, orgId);
   return successResponse(c, perms);
 };
 
