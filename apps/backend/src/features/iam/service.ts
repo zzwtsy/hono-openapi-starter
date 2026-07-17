@@ -462,6 +462,7 @@ export const IamService = {
           SELECT ${organizations.parentId} FROM ${organizations}
           JOIN org_ancestors oa ON ${organizations.id} = oa.id
         )
+        CYCLE id SET is_cycle USING path
         SELECT EXISTS(SELECT 1 FROM org_ancestors WHERE id = ${id}) AS is_cycle
       `);
       if (row?.is_cycle === true) {

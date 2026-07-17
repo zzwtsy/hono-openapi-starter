@@ -18,7 +18,6 @@ export function requireAuth() {
 
     c.set("user", result.user);
     c.set("session", result.session);
-    c.set("userId", result.user.id);
     await next();
   });
 }

@@ -55,7 +55,7 @@ features/iam/
 - **角色授权**：列出已授角色(`listUserRoles`，含过期) + 逐条撤销(`deleteUserRole`) + 授角色表单(角色 Select + 过期 DatePicker + `assignUserRole`)。
 - **直接授权**：列出已授直接权限(`listUserDirectPermissions`，含 effect/过期) + 逐条撤销(`deleteUserPermission`) + 授直接权限表单(权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`)。deny = 阻止部分权限。
 
-过期用 DatePicker(react-day-picker v10 + Base UI Popover 薄包装)，日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET + `send` 手动刷新(双保险)。**`iam.manage` 才显示授权入口**。
+过期用 DatePicker(react-day-picker v10 + Base UI Popover 薄包装)，日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET + `send` 手动刷新(双保险)。**`assignments.manage` 才显示授权入口**。
 
 ## 用户管理
 
@@ -69,7 +69,7 @@ features/iam/
 | 重置密码 | `users.reset-password` | 「重置密码」→ `reset-password-dialog`（newPassword min 8） |
 | 禁用 | `users.disable` | AlertDialog 确认；**禁止对自己**（菜单隐藏；后端亦 403） |
 | 启用 | `users.enable` | 已禁用行显示「启用」 |
-| 授权 | `iam.manage` | 见上节 |
+| 授权 | `assignments.manage` | 见上节 |
 
 - **disabled badge**：`disabled === true` → destructive「已禁用」，否则 secondary「正常」。
 - **currentUserId**：由路由 `auth.user.id` 传入，用于自禁用 UX。
@@ -104,7 +104,7 @@ features/iam/
 | 权限 | UX |
 | --- | --- |
 | `iam.read` | 角色、组织路由与侧栏 |
-| `iam.manage` | 角色/组织写操作 + 用户「授权」 |
+| `organizations.manage` / `roles.manage` / `assignments.manage` | 组织/角色/授权写操作 |
 | `users.read` | 用户路由与侧栏「用户」 |
 | `users.create` / `update` / `reset-password` / `disable` / `enable` | 对应用户管理入口 |
 

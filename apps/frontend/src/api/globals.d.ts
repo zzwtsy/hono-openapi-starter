@@ -302,7 +302,7 @@ export interface SystemSetting {
   /**
    * 配置值(JSON)
    */
-  value?: null;
+  value: Record<string, undefined>;
   /**
    * 最后修改时间(ISO 8601)
    */
@@ -347,7 +347,7 @@ export interface UpdateSetting {
   /**
    * 配置值(JSON)
    */
-  value?: null;
+  value: Record<string, undefined>;
 }
 export interface UserRoleAssignment {
   /**
@@ -2077,7 +2077,7 @@ declare global {
        *   // 配置名
        *   key: string
        *   // 配置值(JSON)
-       *   value?: null
+       *   value: Record<string, undefined>
        *   // 最后修改时间(ISO 8601)
        *   updatedAt: string
        *   // 最后修改者用户 ID
@@ -2111,7 +2111,7 @@ declare global {
        * ```ts
        * type RequestBody = {
        *   // 配置值(JSON)
-       *   value?: null
+       *   value: Record<string, undefined>
        * }
        * ```
        *
@@ -2123,7 +2123,7 @@ declare global {
        *   // 配置名
        *   key: string
        *   // 配置值(JSON)
-       *   value?: null
+       *   value: Record<string, undefined>
        *   // 最后修改时间(ISO 8601)
        *   updatedAt: string
        *   // 最后修改者用户 ID

@@ -35,6 +35,9 @@ export const auth = betterAuth({
     additionalFields: {
       // input: false 防客户端经 /api/auth/sign-up、/api/auth/update-user 写入 orgId/disabled
       // (BA 文档:input 默认 true,不设是安全漏洞)。自建 createUser 走业务端点,不受此限。
+      // 注意:BA parseInputData 对 input:false 字段用 truthy 检查(if (data[key]) throw),
+      // falsy 值(disabled:false/orgId:"")静默丢弃(不抛错也不写入)。禁用/启用走自建
+      // disable/enable 端点,不依赖 BA input,故无影响。
       orgId: { type: "string", required: false, input: false },
       /** 账号禁用标记：databaseHooks.session.create.before 检查，禁用时阻止 session 创建（自建，不用 BA admin 插件，见 ADR-0007）。 */
       disabled: { type: "boolean", required: false, input: false },

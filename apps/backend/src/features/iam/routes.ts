@@ -211,6 +211,7 @@ export const createUserRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(UserSummarySchema, "创建成功"),
     ...authErrorResponses,
+    404: jsonErrorResponse("组织不存在或不在管理范围"),
     409: jsonErrorResponse("邮箱已存在"),
   },
 });

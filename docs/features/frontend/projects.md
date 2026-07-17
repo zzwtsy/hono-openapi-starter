@@ -36,7 +36,7 @@ features/projects/
 
 ## 权限
 
-后端是细粒度写权限(与 IAM 单一 `iam.manage` 不同),前端按权限分别门控入口:
+后端是细粒度写权限(与 IAM 三分 manage 不同),前端按权限分别门控入口:
 
 - `projects.read`:路由 `beforeLoad`(进列表)
 - `projects.create`:`useCan` 控"新建项目"按钮
