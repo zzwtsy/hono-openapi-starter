@@ -40,7 +40,7 @@ lastReviewedAt: 2026-07-16
 - [x] 文档区分认证（Better Auth）与授权（自建权限层）
 - [x] 授权检查算法：祖先集 + 角色∪allow − deny + 过期过滤（PDP）
 - [x] 文档显式定义 Home org / 管理子树 / Grant org 三词（避免与「切换组织」混淆）
-- [ ] 成员 CRUD 的管理范围与授权写路径的管理范围 **同一套子树定义**
+- [x] 成员 CRUD 的管理范围与授权写路径的管理范围 **同一套子树定义**
 
 ---
 
@@ -89,7 +89,7 @@ lastReviewedAt: 2026-07-16
 - [x] `projects.*` 细粒度（read/create/update/delete）
 - [x] `users.*` 细粒度（read/create/update/reset-password/disable/enable）
 - [x] `settings.read` / `settings.update`
-- [x] `iam.read` / **`iam.manage`（写侧仍为粗粒度一锅）**
+- [x] `iam.read` / `organizations.manage` / `roles.manage` / `assignments.manage`（写侧三分）
 
 模板推荐默认（**消灭 `iam.manage` 一锅，但不要拆到每 HTTP 动词**）：
 
@@ -143,7 +143,7 @@ lastReviewedAt: 2026-07-16
 - [x] 扁平 list + 前端建树
 - [x] `listOrganizations` 需 `iam.read`
 - [ ] 读路径是否按管理范围过滤（全表 list 对「仅根 admin」可接受；子树管理员落地前必须过滤或保持「仅全局 admin 可读全树」的文档约束）
-- [ ] 写路径与 `organizations.manage`（或现今 `iam.manage`）+ 子树约束一致
+- [x] 写路径与 `organizations.manage`/`roles.manage`/`assignments.manage` + 子树约束一致
 
 ---
 
@@ -152,7 +152,7 @@ lastReviewedAt: 2026-07-16
 - [x] 实例角色 CRUD；`source=code|instance`；code 角色不可改删
 - [x] admin 代码角色同步全部权限
 - [x] 角色权限挂载 API + UI
-- [ ] 权限从代码移除后 DB 行清理策略（文档/运维说明即可）
+- [x] 权限从代码移除后 DB 行清理策略（sync upsert-only 不删旧行;fork 升级需手动 `DELETE FROM role_permissions WHERE permission='iam.manage'; DELETE FROM permissions WHERE name='iam.manage';`）
 - [ ] 与 `roles.manage` 细粒度对齐（见 §3.2）
 
 ---
@@ -193,7 +193,7 @@ lastReviewedAt: 2026-07-16
 - [x] 前端权限名来自 OpenAPI / gen:api
 - [x] 路由/侧栏与后端权限名对齐（users / projects / settings / iam.read）
 - [x] 前端仅 UX，后端 PermissionChecker 为权威
-- [ ] 去掉 `iam.manage` 后 UI 全量改为三分 manage
+- [x] 去掉 `iam.manage` 后 UI 全量改为三分 manage
 - [x] 用户列表/表单与「子树管理范围」一致（创建选 org、列表见子树用户）
 - [x] 无公开注册入口
 

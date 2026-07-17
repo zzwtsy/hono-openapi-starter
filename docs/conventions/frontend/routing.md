@@ -45,7 +45,7 @@ beforeLoad: ({ context }) => {
 }
 ```
 
-权限名与后端 `AppPermission` 一致(如 `iam.read`、`iam.manage`、`projects.read`)。
+权限名与后端 `AppPermission` 一致(如 `iam.read`、`assignments.manage`、`projects.read`)。
 
 ## router context
 

@@ -7,7 +7,6 @@ import type { AuthVariables } from "../auth/context.js";
 export interface AppBindings {
   Variables: HonoLogLayerVariables & {
     requestId: string;
-    userId?: string;
   } & Partial<AuthVariables>;
 }
 

@@ -43,21 +43,21 @@ const keyParamSchema = allKeys.length > 0
   : z.string().refine(() => false, { message: "无可用配置项" });
 
 export const SettingKeyParamSchema = z.object({
-  key: keyParamSchema.openapi({ description: "配置名", example: "signUp" }),
+  key: keyParamSchema.openapi({ description: "配置名", example: "exampleKey" }),
 });
 
 /** value 联合:registry 非空时 z.union(oneOf);空时 z.unknown(z.union 空数组会 throw)。 */
-const valueUnion = allValueSchemas.length > 0 ? z.union(allValueSchemas) : z.unknown();
+const valueUnion = allValueSchemas.length > 0 ? z.union(allValueSchemas) : z.record(z.string(), z.unknown());
 
 /** PATCH body: { value: <对应 key 的 value schema> }。 */
 export const UpdateSettingSchema = z.object({
-  value: valueUnion.openapi({ description: "配置值(JSON)", example: { enabled: false } }),
+  value: valueUnion.openapi({ description: "配置值(JSON)", example: {} }),
 }).openapi("UpdateSetting");
 
 /** 系统设置响应 schema。 */
 export const SystemSettingSchema = z.object({
-  key: z.string().openapi({ description: "配置名", example: "signUp" }),
-  value: valueUnion.openapi({ description: "配置值(JSON)", example: { enabled: true } }),
+  key: z.string().openapi({ description: "配置名", example: "exampleKey" }),
+  value: valueUnion.openapi({ description: "配置值(JSON)", example: {} }),
   updatedAt: z.iso.datetime().openapi({ description: "最后修改时间(ISO 8601)", example: "2026-07-15T00:00:00.000Z" }),
   updatedByUserId: z.string().nullable().openapi({ description: "最后修改者用户 ID", example: "u-1" }),
 }).openapi("SystemSetting");

@@ -93,7 +93,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 授权与管理沿三条组织轴(定义见 [authorization.md 组织三轴](../../conventions/backend/authorization.md)):
 
-- **Home org**:`user.orgId`,管理员代建用户时取此值(当前不可选目标 org)。
+- **Home org**:`user.orgId`,管理员代建用户时选定(须在管理子树内)。
 - **管理子树**:管理员可写操作的范围 = 自身 + 子孙。`createUser`/`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable`/`assignUserRole`/`assignUserPermission` 的目标组织与目标用户均须落在操作者管理子树内。
 - **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
 
@@ -143,7 +143,7 @@ sequenceDiagram
 
 ## 10. Logging & Audit
 
-管理写操作走结构化日志（LogLayer，带 requestId）。userId 在 requireAuth 注入 Hono context（`c.set("userId")`），供 handler 读取；未注入 LogLayer 日志 context（Hono c.set 与 LogLayer withContext 类型不兼容，见 checklist §11）。关键写操作的 audit log 暂未实现（见 Non-goals）。
+管理写操作走结构化日志（LogLayer，带 requestId）。userId 不再注入 Hono context（B7 探索 LogLayer withContext 类型不兼容后移除 c.set("userId")，见 checklist §11）。关键写操作的 audit log 暂未实现（见 Non-goals）。
 
 ## 11. Test Cases
 

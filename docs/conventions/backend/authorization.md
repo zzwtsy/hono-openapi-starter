@@ -61,7 +61,7 @@ core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `ap
 
 **管理子树(向下)与 Grant 继承(向上)方向相反,不可混用**:管理子树决定「我能管谁」--写操作范围向子孙展开;Grant 继承决定「授在父组织、子组织生效」--检查范围向祖先回溯。例:张三 Home = 华南,管理子树 = {华南, 福建, 深圳}(可在此范围建用户/授 grant);张三在总部授 admin,因福建祖先含总部,张三在福建检查 admin 通过(Grant 继承)。
 
-> 当前实现:Grant org 继承已落地;**管理子树已实现**(createUser 选目标 org + listUsers/update/reset/disable/enable 子树校验);授权写路径(assign/revoke)子树校验随 [checklist](../../checklists/iam-completeness-checklist.md) §5 推进。
+> 当前实现:Grant org 继承已落地;**管理子树已实现**(createUser 选目标 org + listUsers/update/reset/disable/enable 子树校验);授权写路径(assign/revoke)子树校验已实现(与读端点对称)。
 
 ## 组织树继承（向下）
 
@@ -157,7 +157,7 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 
 组织、用户、授权是 deployment 特定的，走自建管理 API（`/api/v1/*` + envelope，见 [ADR-0004](../../adr/0004-authorization-layer.md) 代价）。空生产从 0 开始：先 `pnpm db:bootstrap` 造根组织 + 第一个 admin 用户（授标准 admin 角色），再由 admin 通过管理 API 建组织、建角色、授角色/直接授权。
 
-管理 API 端点（`features/iam` + `features/me`，均需 `iam.read`/`iam.manage`，`/api/v1/me` 仅需认证）：
+管理 API 端点（`features/iam` + `features/me`，均需 `iam.read`/`organizations.manage`/`roles.manage`/`assignments.manage`，`/api/v1/me` 仅需认证）：
 
 - `GET /api/v1/me`：当前用户信息 + 有效权限全集
 - `GET /api/v1/permissions`：权限目录（代码同步，只读）
@@ -178,4 +178,4 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 
 ## 模板完成度
 
-模板 day-0 默认（成员子树、去注册、拆分 `iam.manage`、调岗等）的勾选清单见 [IAM 完成度 Checklist](../../checklists/iam-completeness-checklist.md)。本规范描述算法与边界；清单跟踪与「目标态」的差距。
+模板 day-0 默认（成员子树、去注册、拆分写权限三分、调岗等）的勾选清单见 [IAM 完成度 Checklist](../../checklists/iam-completeness-checklist.md)。本规范描述算法与边界；清单跟踪与「目标态」的差距。
