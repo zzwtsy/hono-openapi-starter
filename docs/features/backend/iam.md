@@ -62,7 +62,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | POST | `/api/v1/organizations` | `createOrganization` | organizations.manage | 建组织 |
 | GET | `/api/v1/organizations/{orgId}` | `getOrganization` | iam.read | 组织详情 |
 | PATCH | `/api/v1/organizations/{orgId}` | `updateOrganization` | organizations.manage | 改组织（防环） |
-| DELETE | `/api/v1/organizations/{orgId}` | `deleteOrganization` | organizations.manage | 删组织（有子拒绝） |
+| DELETE | `/api/v1/organizations/{orgId}` | `deleteOrganization` | organizations.manage | 删组织（有子或有用户拒绝） |
 
 ## 5. Request / Response
 
