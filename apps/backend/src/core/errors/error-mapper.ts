@@ -9,7 +9,7 @@ import { formatZodError } from "./zod-error.js";
 export interface MappedError {
   code: ErrorCode;
   details?: ValidationErrorDetail[];
-  message?: string;
+  params?: Readonly<Record<string, string | number>>;
   type: ErrorType;
 }
 
@@ -19,7 +19,7 @@ export function mapError(error: unknown): MappedError {
     return {
       code: error.code,
       details: error.details,
-      message: error.message,
+      params: error.params,
       type: "business",
     };
   }

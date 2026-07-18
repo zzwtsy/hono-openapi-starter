@@ -30,7 +30,7 @@ export const errorHandler: ErrorHandler<AppBindings> = (error, c) => {
 
   return errorResponse(c, mappedError.code, {
     details: mappedError.details,
-    message: mappedError.message,
+    params: mappedError.params,
     type: mappedError.type,
   });
 };

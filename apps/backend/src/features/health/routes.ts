@@ -12,7 +12,7 @@ export const getHealthRoute = createRoute({
   description: "返回当前服务的健康状态",
   responses: {
     200: jsonSuccessResponse(HealthStatusSchema, "服务健康"),
-    500: jsonErrorResponse("内部服务器错误"),
+    500: jsonErrorResponse("内部服务器错误", "COMMON_INTERNAL_ERROR"),
   },
 });
 
@@ -25,7 +25,7 @@ export const getHealthzRoute = createRoute({
   description: "进程存活即返回 ok,不检查依赖。供 K8s livenessProbe。",
   responses: {
     200: jsonSuccessResponse(HealthzSchema, "存活"),
-    500: jsonErrorResponse("内部服务器错误"),
+    500: jsonErrorResponse("内部服务器错误", "COMMON_INTERNAL_ERROR"),
   },
 });
 
@@ -38,7 +38,7 @@ export const getReadyzRoute = createRoute({
   description: "检查 DB 连接;就绪返回 ready,否则 503。供 K8s readinessProbe。",
   responses: {
     200: jsonSuccessResponse(ReadyzSchema, "就绪"),
-    503: jsonErrorResponse("DB 未就绪"),
+    503: jsonErrorResponse("DB 未就绪", "COMMON_SERVICE_UNAVAILABLE"),
   },
 });
 

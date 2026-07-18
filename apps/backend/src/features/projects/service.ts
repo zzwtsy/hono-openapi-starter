@@ -22,7 +22,7 @@ async function getOwnedProject(id: string, orgId: string) {
     .from(projects)
     .where(and(eq(projects.id, id), eq(projects.orgId, orgId)));
   if (project == null) {
-    throw new AppError("COMMON_NOT_FOUND");
+    throw new AppError("PROJECT_NOT_FOUND");
   }
   return project;
 }
@@ -53,7 +53,7 @@ export const ProjectService = {
         .onConflictDoNothing({ target: [projects.orgId, projects.name] })
         .returning();
       if (row == null) {
-        throw new AppError("COMMON_CONFLICT", { message: "项目名已存在" });
+        throw new AppError("PROJECT_NAME_CONFLICT");
       }
       return [row];
     });
@@ -77,7 +77,7 @@ export const ProjectService = {
           .from(projects)
           .where(and(eq(projects.orgId, orgId), eq(projects.name, input.name), ne(projects.id, id)));
         if (conflict != null) {
-          throw new AppError("COMMON_CONFLICT", { message: "项目名已存在" });
+          throw new AppError("PROJECT_NAME_CONFLICT");
         }
       }
       const [project] = await tx
@@ -96,7 +96,7 @@ export const ProjectService = {
       .where(and(eq(projects.id, id), eq(projects.orgId, orgId)))
       .returning({ id: projects.id });
     if (row == null) {
-      throw new AppError("COMMON_NOT_FOUND");
+      throw new AppError("PROJECT_NOT_FOUND");
     }
   },
 };

@@ -149,8 +149,12 @@ middleware: [requireAuth(), requirePermission("users.read")] as const,
 
 ```ts
 jsonSuccessResponse(schema, description)
-jsonErrorResponse(description)
+jsonErrorResponse(description, code)
 ```
+
+`jsonErrorResponse` 的 `code` 参数强制传入，让每个错误响应显式绑定错误码；内部用 `errorExample(code)` 生成 response 级 example（`message` = `errorRegistry[code].defaultMessage`(en)，`originalMessage` 同，`type` 按 code 推断：`COMMON_VALIDATION_FAILED`->validation+details，`COMMON_INTERNAL_ERROR`->internal，其他->business）。response 级 example 优先于 `ErrorEnvelopeSchema` 的字段 example，OpenAPI 文档（Scalar）各状态码展示真实示例（401 展示 `COMMON_UNAUTHORIZED`，404 `USER_NOT_FOUND`，409 `ROLE_NAME_CONFLICT`），不再全显示成 validation。
+
+`ErrorEnvelopeSchema.code` 是 `z.enum(ErrorCode)`（从 `errorRegistry` 派生，含通用码 + 业务码），前端 `gen:api` 得 `ErrorCode` 联合可类型安全 `switch`。`error.originalMessage` 为 en 兜底（填 params）。运行时 `message` 由 i18n 按 `Accept-Language` + params 派生（见 [错误码体系](./error-code-system.md#i18n多语言)），契约 example 展示 en 默认值。
 
 示例：
 
@@ -168,12 +172,13 @@ export const getUserRoute = createRoute({
   },
   responses: {
     200: jsonSuccessResponse(UserSchema, "用户详情"),
-    401: jsonErrorResponse("未认证"),
-    404: jsonErrorResponse("用户不存在"),
-    422: jsonErrorResponse("请求校验失败"),
+    401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
+    404: jsonErrorResponse("用户不存在", "USER_NOT_FOUND"),
   },
 });
 ```
+
+> 422 不逐 route 声明（见下节）；`authErrorResponses` 集中定义 401/403。多码场景（如"角色或组织不存在"）保留 `COMMON_NOT_FOUND`/`COMMON_CONFLICT`（无法精确单一业务码）。
 
 ## 校验失败响应（422）
 

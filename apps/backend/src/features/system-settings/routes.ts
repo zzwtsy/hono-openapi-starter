@@ -7,8 +7,8 @@ import { authedSecurity } from "@/core/http/openapi/security.js";
 import { SettingKeyParamSchema, SystemSettingSchema, UpdateSettingSchema } from "./schemas.js";
 
 const authErrorResponses = {
-  401: jsonErrorResponse("未认证"),
-  403: jsonErrorResponse("无权限"),
+  401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
+  403: jsonErrorResponse("无权限", "COMMON_FORBIDDEN"),
 };
 
 export const listSettingsRoute = createRoute({

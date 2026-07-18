@@ -42,11 +42,11 @@ describe("projects write operations", () => {
     expect(row?.orgId).toBe(org.id);
   });
 
-  it("同组织内重名抛 COMMON_CONFLICT", async () => {
+  it("同组织内重名抛 PROJECT_NAME_CONFLICT", async () => {
     const org = await IamService.createOrganization({ name: "org-a" });
     await ProjectService.create(org.id, { name: "同名" });
 
-    await expectAppError(ProjectService.create(org.id, { name: "同名" }), "COMMON_CONFLICT");
+    await expectAppError(ProjectService.create(org.id, { name: "同名" }), "PROJECT_NAME_CONFLICT");
   });
 
   it("不同组织允许同名", async () => {
@@ -75,20 +75,20 @@ describe("projects write operations", () => {
     expect(updated.name).toBe("p1");
   });
 
-  it("修改时同组织改名重名抛 COMMON_CONFLICT", async () => {
+  it("修改时同组织改名重名抛 PROJECT_NAME_CONFLICT", async () => {
     const org = await IamService.createOrganization({ name: "org-a" });
     await ProjectService.create(org.id, { name: "p1" });
     const target = await ProjectService.create(org.id, { name: "p2" });
 
-    await expectAppError(ProjectService.update(target.id, org.id, { name: "p1" }), "COMMON_CONFLICT");
+    await expectAppError(ProjectService.update(target.id, org.id, { name: "p1" }), "PROJECT_NAME_CONFLICT");
   });
 
-  it("跨组织修改别人的项目抛 COMMON_NOT_FOUND(归属隔离)", async () => {
+  it("跨组织修改别人的项目抛 PROJECT_NOT_FOUND(归属隔离)", async () => {
     const orgA = await IamService.createOrganization({ name: "org-a" });
     const orgB = await IamService.createOrganization({ name: "org-b" });
     const project = await ProjectService.create(orgA.id, { name: "p1" });
 
-    await expectAppError(ProjectService.update(project.id, orgB.id, { name: "x" }), "COMMON_NOT_FOUND");
+    await expectAppError(ProjectService.update(project.id, orgB.id, { name: "x" }), "PROJECT_NOT_FOUND");
   });
 
   it("updatedAt 在 update 后自动刷新", async () => {
@@ -113,12 +113,12 @@ describe("projects write operations", () => {
     expect(row).toBeUndefined();
   });
 
-  it("跨组织删除别人的项目抛 COMMON_NOT_FOUND 且未删除", async () => {
+  it("跨组织删除别人的项目抛 PROJECT_NOT_FOUND 且未删除", async () => {
     const orgA = await IamService.createOrganization({ name: "org-a" });
     const orgB = await IamService.createOrganization({ name: "org-b" });
     const project = await ProjectService.create(orgA.id, { name: "p1" });
 
-    await expectAppError(ProjectService.remove(project.id, orgB.id), "COMMON_NOT_FOUND");
+    await expectAppError(ProjectService.remove(project.id, orgB.id), "PROJECT_NOT_FOUND");
 
     const [row] = await db.select().from(projects).where(eq(projects.id, project.id));
     expect(row).toBeDefined();

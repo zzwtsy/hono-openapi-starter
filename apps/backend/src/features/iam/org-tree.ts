@@ -47,6 +47,6 @@ export async function assertOrgInSubtree(rootOrgId: string, targetOrgId: string)
     SELECT EXISTS(SELECT 1 FROM org_descendants WHERE id = ${targetOrgId}) AS in_subtree
   `);
   if (row?.in_subtree !== true) {
-    throw new AppError("COMMON_NOT_FOUND", { message: "组织不存在或不在管理范围内" });
+    throw new AppError("ORG_NOT_FOUND");
   }
 }

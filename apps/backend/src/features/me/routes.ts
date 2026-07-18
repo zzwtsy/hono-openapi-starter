@@ -16,7 +16,7 @@ export const getMeRoute = createRoute({
   security: authedSecurity,
   responses: {
     200: jsonSuccessResponse(MeSchema, "当前用户与权限"),
-    401: jsonErrorResponse("未认证"),
+    401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
   },
 });
 

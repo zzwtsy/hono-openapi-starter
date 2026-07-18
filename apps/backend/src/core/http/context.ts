@@ -3,10 +3,12 @@ import type { HonoLogLayerVariables } from "@loglayer/hono";
 import type { Schema } from "hono";
 
 import type { AuthVariables } from "../auth/context.js";
+import type { Locale } from "../i18n/locale.js";
 
 export interface AppBindings {
   Variables: HonoLogLayerVariables & {
     requestId: string;
+    locale: Locale;
   } & Partial<AuthVariables>;
 }
 

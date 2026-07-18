@@ -96,12 +96,12 @@ describe("iam user assignments", () => {
 
   it("授角色到不存在的角色抛 NOT_FOUND", async () => {
     await setup();
-    await expect(IamService.assignUserRole("org-root", "u-1", "role-nope", { orgId: "org-root" })).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    await expect(IamService.assignUserRole("org-root", "u-1", "role-nope", { orgId: "org-root" })).rejects.toMatchObject({ code: "ROLE_NOT_FOUND" });
   });
 
   it("授角色到不存在的组织抛 NOT_FOUND", async () => {
     await setup();
-    await expect(IamService.assignUserRole("org-root", "u-1", "role-admin", { orgId: "org-nope" })).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    await expect(IamService.assignUserRole("org-root", "u-1", "role-admin", { orgId: "org-nope" })).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
   });
 
   it("撤不存在的授权抛 NOT_FOUND", async () => {
@@ -114,7 +114,7 @@ describe("iam user assignments", () => {
     const role = await IamService.createRole({ name: "viewer" });
     await expect(
       IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-other" }),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
   });
 
   it("授角色给子树外 user -> 404(不暴露)", async () => {
@@ -122,7 +122,7 @@ describe("iam user assignments", () => {
     const role = await IamService.createRole({ name: "viewer" });
     await expect(
       IamService.assignUserRole("org-root", "u-2", role.id, { orgId: "org-root" }),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
   });
 
   it("重复授角色更新 expiresAt(续期)", async () => {
@@ -180,7 +180,7 @@ describe("iam user assignments", () => {
     await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" });
     await expect(
       IamService.deleteUserRole("org-root", "actor-1", "u-1", role.id, "org-other"),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
   });
 
   it("子树外 user 与非存在 user 的 404 message 一致(不暴露存在性)", async () => {
@@ -188,10 +188,10 @@ describe("iam user assignments", () => {
     const role = await IamService.createRole({ name: "viewer" });
     // 子树外 user(u-2 home=org-other)
     const foreign = IamService.assignUserRole("org-root", "u-2", role.id, { orgId: "org-root" });
-    await expect(foreign).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
+    await expect(foreign).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
     // 非存在 user
     const ghost = IamService.assignUserRole("org-root", "u-nope", role.id, { orgId: "org-root" });
-    await expect(ghost).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
+    await expect(ghost).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
   });
 
   it("撤子树内 grant.orgId 但子树外 user -> 404(与 assign 对称)", async () => {
@@ -203,7 +203,7 @@ describe("iam user assignments", () => {
     // actor(org-root 子树)撤该 grant:grant.orgId=org-root 在子树,但 user u-2 子树外 -> 现 404
     await expect(
       IamService.deleteUserRole("org-root", "actor-1", "u-2", role.id, "org-root"),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
+    ).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
   });
 
   it("撤直接权限:子树内 grant.orgId 但子树外 user -> 404", async () => {
@@ -211,21 +211,21 @@ describe("iam user assignments", () => {
     await db.insert(userPermissions).values({ userId: "u-2", permission: "projects.read", orgId: "org-root", effect: "allow" });
     await expect(
       IamService.deleteUserPermission("org-root", "actor-1", "u-2", "projects.read", "org-root"),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND", message: "用户不存在" });
+    ).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
   });
 
   it("查子树外 user 的有效权限 -> 404(不暴露)", async () => {
     await setup();
     await expect(
       IamService.listUserEffectivePermissions("org-root", "u-2", "org-root"),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
   });
 
   it("查子树内 user 但 orgId 在子树外 -> 404", async () => {
     await setup();
     await expect(
       IamService.listUserRoles("org-root", "u-1", "org-other"),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
   });
 
   it("查子树内 user + 子树内 orgId -> 返回(正常)", async () => {
@@ -243,7 +243,7 @@ describe("iam user assignments", () => {
     await setup();
     await expect(
       IamService.listUserEffectivePermissions("org-root", "u-1", "org-other"),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
   });
 
   // 以下三个用例故意用 actorOrgId(org-root) != query orgId(org-south),
@@ -262,7 +262,7 @@ describe("iam user assignments", () => {
     await setup();
     await expect(
       IamService.listUserDirectPermissions("org-root", "u-1", "org-other"),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
 
     await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-south", effect: "allow" });
     const perms = await IamService.listUserDirectPermissions("org-root", "u-1", "org-south");
@@ -286,7 +286,7 @@ describe("iam user assignments", () => {
     await IamService.assignUserRole("org-root", "actor-1", role.id, { orgId: "org-root" });
     await expect(
       IamService.deleteUserRole("org-root", "actor-1", "actor-1", role.id, "org-root"),
-    ).rejects.toMatchObject({ code: "COMMON_FORBIDDEN", message: "不能撤销自己的授权" });
+    ).rejects.toMatchObject({ code: "USER_CANNOT_REVOKE_OWN_AUTH" });
   });
 
   it("撤自己的直接权限 -> 403(防自我锁死)", async () => {
@@ -294,6 +294,6 @@ describe("iam user assignments", () => {
     await IamService.assignUserPermission("org-root", "actor-1", "projects.read", { orgId: "org-root", effect: "allow" });
     await expect(
       IamService.deleteUserPermission("org-root", "actor-1", "actor-1", "projects.read", "org-root"),
-    ).rejects.toMatchObject({ code: "COMMON_FORBIDDEN", message: "不能撤销自己的授权" });
+    ).rejects.toMatchObject({ code: "USER_CANNOT_REVOKE_OWN_AUTH" });
   });
 });

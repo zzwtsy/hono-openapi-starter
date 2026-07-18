@@ -1,4 +1,10 @@
+import type { ErrorCode } from "../../errors/error-registry.js";
+
 import { z } from "@hono/zod-openapi";
+import { errorRegistry } from "../../errors/error-registry.js";
+
+// 从 errorRegistry 派生错误码枚举：新增错误码自动进 enum，前端 gen:api 得 ErrorCode 联合可类型安全 switch。
+const ERROR_CODES = Object.keys(errorRegistry) as [ErrorCode, ...ErrorCode[]];
 
 export const ResponseMetaSchema = z.object({
   requestId: z.string().openapi({
@@ -26,6 +32,10 @@ export const ErrorSchema = z.object({
   details: z.array(ErrorDetailSchema).optional().openapi({
     description: "结构化错误明细；validation 类型时为 ErrorDetail 数组，其他类型可省略。",
   }),
+  originalMessage: z.string().optional().openapi({
+    description: "en 兜底消息（errorRegistry.defaultMessage），供排障/日志/客户端 fallback；与本地化 message 分离。",
+    example: "Validation failed",
+  }),
 }).openapi("ErrorBody");
 
 export const ErrorEnvelopeSchema = z.object({
@@ -33,7 +43,7 @@ export const ErrorEnvelopeSchema = z.object({
     description: "请求是否成功。",
     example: false,
   }),
-  code: z.string().openapi({
+  code: z.enum(ERROR_CODES).openapi({
     description: "应用错误码。",
     example: "COMMON_VALIDATION_FAILED",
   }),

@@ -63,7 +63,7 @@ export const SystemSettingService = {
   async upsert(key: string, value: unknown, updatedByUserId: string) {
     const entry = registry[key];
     if (entry == null) {
-      throw new AppError("COMMON_VALIDATION_FAILED", { message: "未知配置项" });
+      throw new AppError("SETTING_KEY_UNKNOWN");
     }
     const parsed = entry.valueSchema.safeParse(value);
     if (!parsed.success) {

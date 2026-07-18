@@ -49,7 +49,7 @@ describe("iam user management", () => {
       name: "First",
       orgId: "org-root",
     });
-    // 第二次同邮箱:事务内 onConflictDoNothing(target=email) -> returning 空 -> 抛 COMMON_CONFLICT(409),
+    // 第二次同邮箱:事务内 onConflictDoNothing(target=email) -> returning 空 -> 抛 USER_EMAIL_ALREADY_EXISTS(409),
     // 非 DB 唯一约束裸错误(500)。验证并发 TOCTOU 修复后的错误码契约。
     await expect(
       IamService.createUser("org-root", {
@@ -58,7 +58,7 @@ describe("iam user management", () => {
         name: "Second",
         orgId: "org-root",
       }),
-    ).rejects.toMatchObject({ code: "COMMON_CONFLICT", message: "邮箱已存在" });
+    ).rejects.toMatchObject({ code: "USER_EMAIL_ALREADY_EXISTS" });
     // 冲突时 user 不应插入(无孤儿),user 表仍只有 First。
     const rows = await db.select({ name: user.name }).from(user).where(eq(user.email, "dup@example.com"));
     expect(rows).toHaveLength(1);
@@ -87,7 +87,7 @@ describe("iam user management", () => {
         name: "Outside",
         orgId: "org-other",
       }),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
   });
 
   it("createUser 目标 org 不存在 -> 404", async () => {
@@ -98,7 +98,7 @@ describe("iam user management", () => {
         name: "Ghost",
         orgId: "org-nope",
       }),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
   });
 
   it("updateUser 对子树内子组织用户成功;子树外操作者 404", async () => {
@@ -113,7 +113,7 @@ describe("iam user management", () => {
 
     await expect(
       IamService.updateUser("org-other", created.id, { name: "X" }),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
   });
 
   it("createUser 成功并出现在 listUsers(含 disabled)", async () => {
@@ -148,7 +148,7 @@ describe("iam user management", () => {
         name: "B",
         orgId: "org-root",
       }),
-    ).rejects.toMatchObject({ code: "COMMON_CONFLICT" });
+    ).rejects.toMatchObject({ code: "USER_EMAIL_ALREADY_EXISTS" });
   });
 
   it("updateUser 改 name;跨组织 404", async () => {
@@ -164,7 +164,7 @@ describe("iam user management", () => {
 
     await expect(
       IamService.updateUser("org-other", created.id, { name: "X" }),
-    ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
+    ).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
   });
 
   it("resetPassword 后旧密码 sign-in 失败、新密码成功;session 被清", async () => {
@@ -256,6 +256,6 @@ describe("iam user management", () => {
 
     await expect(
       IamService.disableUser("org-root", "actor-1", "actor-1"),
-    ).rejects.toMatchObject({ code: "COMMON_FORBIDDEN" });
+    ).rejects.toMatchObject({ code: "USER_CANNOT_DISABLE_SELF" });
   });
 });

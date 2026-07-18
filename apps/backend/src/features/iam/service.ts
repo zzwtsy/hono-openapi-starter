@@ -31,7 +31,7 @@ import { assertOrgInSubtree, getManagedSubtree } from "./org-tree.js";
 async function getRole(id: string) {
   const [role] = await db.select().from(roles).where(eq(roles.id, id));
   if (role == null) {
-    throw new AppError("COMMON_NOT_FOUND");
+    throw new AppError("ROLE_NOT_FOUND");
   }
   return role;
 }
@@ -40,7 +40,7 @@ async function getRole(id: string) {
 async function requireInstanceRole(id: string) {
   const [role] = await db.select({ source: roles.source }).from(roles).where(eq(roles.id, id));
   if (role == null || role.source !== "instance") {
-    throw new AppError("COMMON_NOT_FOUND");
+    throw new AppError("ROLE_NOT_FOUND");
   }
 }
 
@@ -48,21 +48,21 @@ async function requireInstanceRole(id: string) {
 async function requireExistingRole(id: string) {
   const [role] = await db.select({ id: roles.id }).from(roles).where(eq(roles.id, id));
   if (role == null) {
-    throw new AppError("COMMON_NOT_FOUND", { message: "角色不存在" });
+    throw new AppError("ROLE_NOT_FOUND");
   }
 }
 
 async function requireExistingOrg(id: string) {
   const [org] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, id));
   if (org == null) {
-    throw new AppError("COMMON_NOT_FOUND", { message: "组织不存在" });
+    throw new AppError("ORG_NOT_FOUND");
   }
 }
 
 async function requireExistingPermission(name: string) {
   const [perm] = await db.select({ name: permissions.name }).from(permissions).where(eq(permissions.name, name));
   if (perm == null) {
-    throw new AppError("COMMON_NOT_FOUND", { message: "权限不存在" });
+    throw new AppError("PERMISSION_NOT_FOUND");
   }
 }
 
@@ -83,7 +83,7 @@ async function requireUserInSubtree(actorOrgId: string, userId: string) {
     .from(user)
     .where(eq(user.id, userId));
   if (row == null || row.orgId == null) {
-    throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
+    throw new AppError("USER_NOT_FOUND");
   }
   // 用户 home 不在操作者管理子树 -> 统一抛"用户不存在"(不暴露跨组织用户存在性,
   // 不用 assertOrgInSubtree 的"组织不存在"message,防 foreign-user 与 non-existent 可区分)
@@ -91,7 +91,7 @@ async function requireUserInSubtree(actorOrgId: string, userId: string) {
     await assertOrgInSubtree(actorOrgId, row.orgId);
   } catch (e) {
     if (e instanceof AppError) {
-      throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
+      throw new AppError("USER_NOT_FOUND");
     }
     throw e;
   }
@@ -123,7 +123,7 @@ export const IamService = {
         .onConflictDoNothing({ target: roles.name })
         .returning();
       if (row == null) {
-        throw new AppError("COMMON_CONFLICT", { message: "角色名已存在" });
+        throw new AppError("ROLE_NAME_CONFLICT");
       }
       return [row];
     });
@@ -144,7 +144,7 @@ export const IamService = {
           .from(roles)
           .where(and(eq(roles.name, input.name), ne(roles.id, id)));
         if (clash != null) {
-          throw new AppError("COMMON_CONFLICT", { message: "角色名已存在" });
+          throw new AppError("ROLE_NAME_CONFLICT");
         }
       }
       const [role] = await tx.update(roles).set(input).where(eq(roles.id, id)).returning();
@@ -158,7 +158,7 @@ export const IamService = {
       .where(and(eq(roles.id, id), eq(roles.source, "instance")))
       .returning({ id: roles.id });
     if (role == null) {
-      throw new AppError("COMMON_NOT_FOUND");
+      throw new AppError("ROLE_NOT_FOUND");
     }
   },
 
@@ -186,7 +186,7 @@ export const IamService = {
     if (existing.length !== permissionNames.length) {
       const found = new Set(existing.map(e => e.name));
       const missing = permissionNames.find(p => !found.has(p));
-      throw new AppError("COMMON_NOT_FOUND", { message: `权限不存在: ${missing}` });
+      throw new AppError("PERMISSION_NOT_FOUND", { params: { permission: missing! } });
     }
     await db.transaction(async (tx) => {
       await tx
@@ -246,7 +246,7 @@ export const IamService = {
         .onConflictDoNothing({ target: user.email })
         .returning();
       if (inserted == null) {
-        throw new AppError("COMMON_CONFLICT", { message: "邮箱已存在" });
+        throw new AppError("USER_EMAIL_ALREADY_EXISTS");
       }
       await tx.insert(account).values({
         id: generateId(),
@@ -269,7 +269,7 @@ export const IamService = {
       .where(eq(user.id, userId));
     // 事务已提交,理论上 user 必存在;兜底防异常场景(如并发硬删)返回 null 破坏 UserSummary 契约。
     if (created == null) {
-      throw new AppError("COMMON_INTERNAL_ERROR", { message: "用户创建后未找到" });
+      throw new AppError("COMMON_INTERNAL_ERROR");
     }
     return created;
   },
@@ -304,7 +304,7 @@ export const IamService = {
           .from(user)
           .where(and(eq(user.email, patch.email), ne(user.id, userId)));
         if (clash != null) {
-          throw new AppError("COMMON_CONFLICT", { message: "邮箱已存在" });
+          throw new AppError("USER_EMAIL_ALREADY_EXISTS");
         }
       }
       const [row] = await tx
@@ -320,7 +320,7 @@ export const IamService = {
           createdAt: user.createdAt,
         });
       if (row == null) {
-        throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
+        throw new AppError("USER_NOT_FOUND");
       }
       return [row];
     });
@@ -343,7 +343,7 @@ export const IamService = {
         .where(and(eq(account.userId, userId), eq(account.providerId, "credential")))
         .returning({ id: account.id });
       if (updated == null) {
-        throw new AppError("COMMON_NOT_FOUND", { message: "用户无密码账号" });
+        throw new AppError("USER_NO_CREDENTIAL_ACCOUNT");
       }
       await tx.delete(session).where(eq(session.userId, userId));
     });
@@ -355,7 +355,7 @@ export const IamService = {
    */
   async disableUser(actorOrgId: string, actorUserId: string, userId: string) {
     if (userId === actorUserId) {
-      throw new AppError("COMMON_FORBIDDEN", { message: "不能禁用自己" });
+      throw new AppError("USER_CANNOT_DISABLE_SELF");
     }
     await requireUserInSubtree(actorOrgId, userId);
     // 事务保证 update disabled + delete session 原子:delete 失败则 disabled 回滚,
@@ -374,7 +374,7 @@ export const IamService = {
           createdAt: user.createdAt,
         });
       if (row == null) {
-        throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
+        throw new AppError("USER_NOT_FOUND");
       }
       // 删全部 session:未开 cookieCache,删行后旧 session 立即失效;
       // databaseHooks.session.create.before 拦新建 session,禁用用户无法再登录。
@@ -420,7 +420,7 @@ export const IamService = {
    */
   async deleteUserRole(actorOrgId: string, actorUserId: string, userId: string, roleId: string, orgId: string) {
     if (userId === actorUserId) {
-      throw new AppError("COMMON_FORBIDDEN", { message: "不能撤销自己的授权" });
+      throw new AppError("USER_CANNOT_REVOKE_OWN_AUTH");
     }
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, orgId);
@@ -468,7 +468,7 @@ export const IamService = {
    */
   async deleteUserPermission(actorOrgId: string, actorUserId: string, userId: string, permission: string, orgId: string) {
     if (userId === actorUserId) {
-      throw new AppError("COMMON_FORBIDDEN", { message: "不能撤销自己的授权" });
+      throw new AppError("USER_CANNOT_REVOKE_OWN_AUTH");
     }
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, orgId);
@@ -531,7 +531,7 @@ export const IamService = {
   async getOrganizationById(id: string) {
     const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
     if (org == null) {
-      throw new AppError("COMMON_NOT_FOUND");
+      throw new AppError("ORG_NOT_FOUND");
     }
     return org;
   },
@@ -567,7 +567,7 @@ export const IamService = {
           SELECT EXISTS(SELECT 1 FROM org_ancestors WHERE id = ${id}) AS is_cycle
         `);
         if (row?.is_cycle === true) {
-          throw new AppError("COMMON_CONFLICT", { message: "不能将组织挂到自身或其子孙下(会形成环)" });
+          throw new AppError("ORG_CYCLE");
         }
       }
       const [org] = await tx.update(organizations).set(input).where(eq(organizations.id, id)).returning();
@@ -583,17 +583,17 @@ export const IamService = {
       .where(eq(organizations.parentId, id))
       .limit(1);
     if (child != null) {
-      throw new AppError("COMMON_CONFLICT", { message: "组织有子组织,请先删除子组织" });
+      throw new AppError("ORG_HAS_CHILDREN");
     }
     // user.orgId 无 FK,删 org 后用户成孤儿(对所有 admin 不可见/不可管理)-> 有用户拒删。
     // 当前无迁移/删除用户 API(调岗本期不做,见 docs/features/backend/iam.md),有用户的组织需先经数据库迁移用户。
     const [u] = await db.select({ id: user.id }).from(user).where(eq(user.orgId, id)).limit(1);
     if (u != null) {
-      throw new AppError("COMMON_CONFLICT", { message: "组织下仍有用户,请先迁移用户" });
+      throw new AppError("ORG_HAS_USERS");
     }
     const [org] = await db.delete(organizations).where(eq(organizations.id, id)).returning({ id: organizations.id });
     if (org == null) {
-      throw new AppError("COMMON_NOT_FOUND");
+      throw new AppError("ORG_NOT_FOUND");
     }
   },
 };

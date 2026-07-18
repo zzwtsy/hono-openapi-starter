@@ -54,6 +54,29 @@ export const errorRegistry = {
     defaultMessage: "Internal server error",
     expose: false,
   },
+
+  // --- 业务错误码（DOMAIN_REASON）：恢复业务语义，客户端可按 code 精确处理 ---
+  // USER
+  USER_NOT_FOUND: { status: 404, defaultMessage: "User not found", expose: true },
+  USER_EMAIL_ALREADY_EXISTS: { status: 409, defaultMessage: "Email already exists", expose: true },
+  USER_NO_CREDENTIAL_ACCOUNT: { status: 404, defaultMessage: "User has no credential account", expose: true },
+  USER_CANNOT_DISABLE_SELF: { status: 403, defaultMessage: "Cannot disable yourself", expose: true },
+  USER_CANNOT_REVOKE_OWN_AUTH: { status: 403, defaultMessage: "Cannot revoke your own authorization", expose: true },
+  // ROLE
+  ROLE_NOT_FOUND: { status: 404, defaultMessage: "Role not found", expose: true },
+  ROLE_NAME_CONFLICT: { status: 409, defaultMessage: "Role name already exists", expose: true },
+  // PERMISSION
+  PERMISSION_NOT_FOUND: { status: 404, defaultMessage: "Permission not found: {permission}", expose: true },
+  // ORG
+  ORG_NOT_FOUND: { status: 404, defaultMessage: "Organization not found", expose: true },
+  ORG_CYCLE: { status: 409, defaultMessage: "Organization cycle detected", expose: true },
+  ORG_HAS_CHILDREN: { status: 409, defaultMessage: "Organization has children", expose: true },
+  ORG_HAS_USERS: { status: 409, defaultMessage: "Organization still has users", expose: true },
+  // PROJECT
+  PROJECT_NOT_FOUND: { status: 404, defaultMessage: "Project not found", expose: true },
+  PROJECT_NAME_CONFLICT: { status: 409, defaultMessage: "Project name already exists", expose: true },
+  // SETTING
+  SETTING_KEY_UNKNOWN: { status: 422, defaultMessage: "Unknown setting key", expose: true },
 } as const;
 
 export type ErrorCode = keyof typeof errorRegistry;

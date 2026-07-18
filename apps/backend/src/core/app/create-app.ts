@@ -7,6 +7,7 @@ import { permissionCacheMiddleware } from "../authorization/index.js";
 import { errorHandler } from "../errors/error-handler.js";
 import { apiRateLimiter, authRateLimiter } from "../http/rate-limit.js";
 import { requestIdMiddleware, resolveRequestId } from "../http/request-id-middleware.js";
+import { i18nMiddleware } from "../i18n/index.js";
 import { logger } from "../logger/index.js";
 import { createRouter } from "./create-router.js";
 import { notFoundHandler } from "./not-found.js";
@@ -16,6 +17,8 @@ export function createApp() {
 
   // 全局中间件必须先写入 requestId，后续错误响应和 404 才能复用同一个追踪标识。
   app.use("*", requestIdMiddleware());
+  // locale 检测(Accept-Language)在 requestId 之后、错误响应之前注入,供 errorResponse 取本地化 message。
+  app.use("*", i18nMiddleware());
   // 前后端分离场景需 CORS 控制允许的前端来源；留空则放行所有来源。
   app.use("*", cors({
     origin: env.CORS_ORIGINS !== undefined && env.CORS_ORIGINS !== ""

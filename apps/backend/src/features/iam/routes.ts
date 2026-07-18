@@ -41,8 +41,8 @@ const usersResetPasswordMiddleware = [requireAuth(), requirePermission("users.re
 const usersDisableMiddleware = [requireAuth(), requirePermission("users.disable")];
 const usersEnableMiddleware = [requireAuth(), requirePermission("users.enable")];
 const authErrorResponses = {
-  401: jsonErrorResponse("未认证"),
-  403: jsonErrorResponse("无权限"),
+  401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
+  403: jsonErrorResponse("无权限", "COMMON_FORBIDDEN"),
 };
 
 // --- 权限目录 ---
@@ -90,7 +90,7 @@ export const createRoleRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(RoleSchema, "创建成功"),
     ...authErrorResponses,
-    409: jsonErrorResponse("角色名已存在"),
+    409: jsonErrorResponse("角色名已存在", "ROLE_NAME_CONFLICT"),
   },
 });
 
@@ -110,7 +110,8 @@ export const updateRoleRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(RoleSchema, "修改成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("角色不存在"),
+    404: jsonErrorResponse("角色不存在", "ROLE_NOT_FOUND"),
+    409: jsonErrorResponse("角色名已存在", "ROLE_NAME_CONFLICT"),
   },
 });
 
@@ -127,7 +128,7 @@ export const deleteRoleRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ id: z.string() }), "删除成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("角色不存在"),
+    404: jsonErrorResponse("角色不存在", "ROLE_NOT_FOUND"),
   },
 });
 
@@ -144,7 +145,7 @@ export const listRolePermissionsRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(z.string()), "权限名列表"),
     ...authErrorResponses,
-    404: jsonErrorResponse("角色不存在"),
+    404: jsonErrorResponse("角色不存在", "ROLE_NOT_FOUND"),
   },
 });
 
@@ -164,7 +165,7 @@ export const assignRolePermissionsRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(z.string()), "角色当前权限列表"),
     ...authErrorResponses,
-    404: jsonErrorResponse("角色不存在"),
+    404: jsonErrorResponse("角色或权限不存在", "COMMON_NOT_FOUND"),
   },
 });
 
@@ -181,7 +182,7 @@ export const deleteRolePermissionRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ permission: z.string() }), "已撤销"),
     ...authErrorResponses,
-    404: jsonErrorResponse("角色不存在"),
+    404: jsonErrorResponse("角色不存在", "ROLE_NOT_FOUND"),
   },
 });
 
@@ -217,8 +218,8 @@ export const createUserRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(UserSummarySchema, "创建成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("组织不存在或不在管理范围内"),
-    409: jsonErrorResponse("邮箱已存在"),
+    404: jsonErrorResponse("组织不存在或不在管理范围内", "ORG_NOT_FOUND"),
+    409: jsonErrorResponse("邮箱已存在", "USER_EMAIL_ALREADY_EXISTS"),
   },
 });
 
@@ -238,8 +239,8 @@ export const updateUserRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(UserSummarySchema, "修改成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("用户不存在"),
-    409: jsonErrorResponse("邮箱已存在"),
+    404: jsonErrorResponse("用户不存在", "USER_NOT_FOUND"),
+    409: jsonErrorResponse("邮箱已存在", "USER_EMAIL_ALREADY_EXISTS"),
   },
 });
 
@@ -259,7 +260,7 @@ export const resetUserPasswordRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string() }), "重置成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("用户不存在或无密码账号"),
+    404: jsonErrorResponse("用户不存在或无密码账号", "COMMON_NOT_FOUND"),
   },
 });
 
@@ -276,7 +277,7 @@ export const disableUserRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(UserSummarySchema, "已禁用"),
     ...authErrorResponses,
-    404: jsonErrorResponse("用户不存在"),
+    404: jsonErrorResponse("用户不存在", "USER_NOT_FOUND"),
   },
 });
 
@@ -293,7 +294,7 @@ export const enableUserRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(UserSummarySchema, "已启用"),
     ...authErrorResponses,
-    404: jsonErrorResponse("用户不存在"),
+    404: jsonErrorResponse("用户不存在", "USER_NOT_FOUND"),
   },
 });
 
@@ -314,7 +315,7 @@ export const assignUserRoleRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string(), roleId: z.string(), orgId: z.string() }), "已授予"),
     ...authErrorResponses,
-    404: jsonErrorResponse("角色或组织不存在"),
+    404: jsonErrorResponse("角色或组织不存在", "COMMON_NOT_FOUND"),
   },
 });
 
@@ -331,7 +332,7 @@ export const deleteUserRoleRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string(), roleId: z.string(), orgId: z.string() }), "已撤销"),
     ...authErrorResponses,
-    404: jsonErrorResponse("授权不存在"),
+    404: jsonErrorResponse("授权不存在", "COMMON_NOT_FOUND"),
   },
 });
 
@@ -351,7 +352,7 @@ export const assignUserPermissionRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string(), permission: z.string(), orgId: z.string(), effect: z.enum(["allow", "deny"]) }), "已授予"),
     ...authErrorResponses,
-    404: jsonErrorResponse("权限或组织不存在"),
+    404: jsonErrorResponse("权限或组织不存在", "COMMON_NOT_FOUND"),
   },
 });
 
@@ -368,7 +369,7 @@ export const deleteUserPermissionRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string(), permission: z.string(), orgId: z.string() }), "已撤销"),
     ...authErrorResponses,
-    404: jsonErrorResponse("授权不存在"),
+    404: jsonErrorResponse("授权不存在", "COMMON_NOT_FOUND"),
   },
 });
 
@@ -385,7 +386,7 @@ export const listUserPermissionsRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(z.string()), "有效权限名列表"),
     ...authErrorResponses,
-    404: jsonErrorResponse("用户或组织不存在或不在管理范围内"),
+    404: jsonErrorResponse("用户或组织不存在或不在管理范围内", "COMMON_NOT_FOUND"),
   },
 });
 
@@ -402,7 +403,7 @@ export const listUserRolesRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(UserRoleAssignmentSchema), "已授角色记录列表"),
     ...authErrorResponses,
-    404: jsonErrorResponse("用户或组织不存在或不在管理范围内"),
+    404: jsonErrorResponse("用户或组织不存在或不在管理范围内", "COMMON_NOT_FOUND"),
   },
 });
 
@@ -419,7 +420,7 @@ export const listUserDirectPermissionsRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(UserDirectPermissionSchema), "直接授权记录列表"),
     ...authErrorResponses,
-    404: jsonErrorResponse("用户或组织不存在或不在管理范围内"),
+    404: jsonErrorResponse("用户或组织不存在或不在管理范围内", "COMMON_NOT_FOUND"),
   },
 });
 
@@ -452,7 +453,7 @@ export const createOrganizationRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(OrganizationSchema, "创建成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("父组织不存在"),
+    404: jsonErrorResponse("父组织不存在", "ORG_NOT_FOUND"),
   },
 });
 
@@ -469,7 +470,7 @@ export const getOrganizationRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(OrganizationSchema, "组织详情"),
     ...authErrorResponses,
-    404: jsonErrorResponse("组织不存在"),
+    404: jsonErrorResponse("组织不存在", "ORG_NOT_FOUND"),
   },
 });
 
@@ -489,8 +490,8 @@ export const updateOrganizationRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(OrganizationSchema, "修改成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("组织不存在"),
-    409: jsonErrorResponse("会形成环"),
+    404: jsonErrorResponse("组织不存在", "ORG_NOT_FOUND"),
+    409: jsonErrorResponse("会形成环", "ORG_CYCLE"),
   },
 });
 
@@ -507,8 +508,8 @@ export const deleteOrganizationRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ id: z.string() }), "删除成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("组织不存在"),
-    409: jsonErrorResponse("有子组织或有用户"),
+    404: jsonErrorResponse("组织不存在", "ORG_NOT_FOUND"),
+    409: jsonErrorResponse("有子组织或有用户", "COMMON_CONFLICT"),
   },
 });
 

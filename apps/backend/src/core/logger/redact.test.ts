@@ -118,10 +118,9 @@ describe("logger redaction", () => {
   it("redacts serialized error fields and sanitizes error text", () => {
     const { entries, logger } = createCaptureLogger();
     // details 收窄为 ValidationErrorDetail[] 后(B3 D3),不再有任意结构敏感字段;
-    // 此用例聚焦 message/stack 脱敏,details 用合法 ErrorDetail[] 形状验证其被保留。
+    // 阶段2 AppError.message 走 i18n 默认值(无敏感),此用例聚焦 details 保留 + stack 无敏感。
     const error = new AppError("COMMON_CONFLICT", {
       details: [{ path: ["body", "email"], message: "邮箱 password=hidden 无效 for user@example.com" }],
-      message: "Invalid password=hidden for user@example.com",
     });
 
     logger.withError(error).error("request failed");
@@ -129,7 +128,7 @@ describe("logger redaction", () => {
     const err = entries[0]?.data.err as Record<string, unknown> | undefined;
     const details = err?.details as Array<{ message?: string }> | undefined;
 
-    expect(err?.message).toBe(`Invalid password=${REDACTED} for ${REDACTED}`);
+    expect(err?.message).toBe("Conflict");
     expect(String(err?.stack)).not.toContain("user@example.com");
     expect(String(err?.stack)).not.toContain("password=hidden");
     expect(details).toHaveLength(1);

@@ -9,8 +9,8 @@ import { CreateProjectSchema, ProjectIdParamSchema, ProjectSchema, UpdateProject
 /** projects feature 共享:认证中间件链 + OpenAPI security + 401/403 响应,避免两条路由重复。 */
 const projectsReadMiddleware = [requireAuth(), requirePermission("projects.read")];
 const authErrorResponses = {
-  401: jsonErrorResponse("未认证"),
-  403: jsonErrorResponse("无权限"),
+  401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
+  403: jsonErrorResponse("无权限", "COMMON_FORBIDDEN"),
 };
 
 export const listProjectsRoute = createRoute({
@@ -43,7 +43,7 @@ export const getProjectRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(ProjectSchema, "项目详情"),
     ...authErrorResponses,
-    404: jsonErrorResponse("项目不存在"),
+    404: jsonErrorResponse("项目不存在", "PROJECT_NOT_FOUND"),
   },
 });
 
@@ -60,7 +60,7 @@ export const createProjectRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(ProjectSchema, "创建成功"),
     ...authErrorResponses,
-    409: jsonErrorResponse("项目名已存在"),
+    409: jsonErrorResponse("项目名已存在", "PROJECT_NAME_CONFLICT"),
   },
 });
 
@@ -80,8 +80,8 @@ export const updateProjectRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(ProjectSchema, "修改成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("项目不存在"),
-    409: jsonErrorResponse("项目名已存在"),
+    404: jsonErrorResponse("项目不存在", "PROJECT_NOT_FOUND"),
+    409: jsonErrorResponse("项目名已存在", "PROJECT_NAME_CONFLICT"),
   },
 });
 
@@ -98,7 +98,7 @@ export const deleteProjectRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ id: z.string() }), "删除成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("项目不存在"),
+    404: jsonErrorResponse("项目不存在", "PROJECT_NOT_FOUND"),
   },
 });
 

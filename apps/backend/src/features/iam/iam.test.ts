@@ -483,7 +483,7 @@ describe("iam routes", () => {
 
   it("disableUser service 抛 FORBIDDEN(自禁用)返回 403", async () => {
     authed();
-    mockDisableUser.mockRejectedValue(new AppError("COMMON_FORBIDDEN", { message: "不能禁用自己" }));
+    mockDisableUser.mockRejectedValue(new AppError("USER_CANNOT_DISABLE_SELF"));
 
     const res = await buildApp().request("/users/u-1/disable", { method: "POST" });
     expect(res.status).toBe(403);
@@ -579,7 +579,7 @@ describe("iam routes", () => {
 
   it("deleteUserRole service 抛 FORBIDDEN(撤自己)返回 403", async () => {
     authed();
-    mockDeleteUserRole.mockRejectedValue(new AppError("COMMON_FORBIDDEN", { message: "不能撤销自己的授权" }));
+    mockDeleteUserRole.mockRejectedValue(new AppError("USER_CANNOT_REVOKE_OWN_AUTH"));
 
     const res = await buildApp().request("/users/u-2/roles/r-1?orgId=org-1", { method: "DELETE" });
     expect(res.status).toBe(403);
@@ -658,7 +658,7 @@ describe("iam routes", () => {
 
   it("deleteUserPermission service 抛 FORBIDDEN(撤自己)返回 403", async () => {
     authed();
-    mockDeleteUserPermission.mockRejectedValue(new AppError("COMMON_FORBIDDEN", { message: "不能撤销自己的授权" }));
+    mockDeleteUserPermission.mockRejectedValue(new AppError("USER_CANNOT_REVOKE_OWN_AUTH"));
 
     const res = await buildApp().request("/users/u-2/permissions/projects.read?orgId=org-1", { method: "DELETE" });
     expect(res.status).toBe(403);
