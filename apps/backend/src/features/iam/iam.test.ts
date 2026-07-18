@@ -931,4 +931,46 @@ describe("iam routes", () => {
     const res = await buildApp().request("/organizations/org-root", { method: "DELETE" });
     expect(res.status).toBe(409);
   });
+
+  // --- 无 session 返回 401 ---
+  // requireAuth 是所有 iam 端点的首个中间件,无 session 时统一 401(先于权限检查与 body 校验)。
+  // 参数化覆盖全部 26 端点,证明 requireAuth 链路完整(此前只测 403,401 路径零覆盖)。
+  const unauthCases: Array<[string, string, string]> = [
+    ["get", "/permissions", ""],
+    ["get", "/roles", ""],
+    ["post", "/roles", "{}"],
+    ["patch", "/roles/r-1", "{}"],
+    ["delete", "/roles/r-1", ""],
+    ["get", "/roles/r-1/permissions", ""],
+    ["post", "/roles/r-1/permissions", "{\"permissions\":[]}"],
+    ["delete", "/roles/r-1/permissions/projects.read", ""],
+    ["get", "/users", ""],
+    ["post", "/users", "{}"],
+    ["patch", "/users/u-1", "{}"],
+    ["post", "/users/u-1/reset-password", "{}"],
+    ["post", "/users/u-1/disable", ""],
+    ["post", "/users/u-1/enable", ""],
+    ["post", "/users/u-1/roles/r-1", "{\"orgId\":\"org-root\"}"],
+    ["delete", "/users/u-1/roles/r-1?orgId=org-root", ""],
+    ["post", "/users/u-1/permissions/projects.read", "{\"orgId\":\"org-root\",\"effect\":\"allow\"}"],
+    ["delete", "/users/u-1/permissions/projects.read?orgId=org-root", ""],
+    ["get", "/users/u-1/permissions?orgId=org-root", ""],
+    ["get", "/users/u-1/roles?orgId=org-root", ""],
+    ["get", "/users/u-1/direct-permissions?orgId=org-root", ""],
+    ["get", "/organizations", ""],
+    ["post", "/organizations", "{}"],
+    ["get", "/organizations/org-root", ""],
+    ["patch", "/organizations/org-root", "{}"],
+    ["delete", "/organizations/org-root", ""],
+  ];
+  it.each(unauthCases)("无 session 时 %s %s 返回 401", async (method, path, body) => {
+    // 不调 authed():mockGetSession 保持 resetAllMocks 后的默认(undefined),requireAuth 抛 401。
+    const init: RequestInit = { method: method.toUpperCase() };
+    if (body !== "") {
+      init.headers = { "content-type": "application/json" };
+      init.body = body;
+    }
+    const res = await buildApp().request(path, init);
+    expect(res.status).toBe(401);
+  });
 });

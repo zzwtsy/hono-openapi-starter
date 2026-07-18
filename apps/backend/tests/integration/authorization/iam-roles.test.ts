@@ -45,16 +45,16 @@ describe("iam role management", () => {
     ).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
   });
 
-  it("删 code 角色(admin)抛错且角色仍在(source 保护)", async () => {
-    await expect(IamService.deleteRole("role-admin")).rejects.toThrow();
+  it("删 code 角色(admin)抛 NOT_FOUND 且角色仍在(source 保护)", async () => {
+    await expect(IamService.deleteRole("role-admin")).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
 
     const [admin] = await db.select().from(roles).where(eq(roles.id, "role-admin"));
     expect(admin).toBeDefined();
     expect(admin?.source).toBe("code");
   });
 
-  it("改 code 角色抛错(source 保护)", async () => {
-    await expect(IamService.updateRole("role-admin", { name: "super-admin" })).rejects.toThrow();
+  it("改 code 角色抛 NOT_FOUND(source 保护)", async () => {
+    await expect(IamService.updateRole("role-admin", { name: "super-admin" })).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
   });
 
   it("updateRole 改名为已存在名抛 COMMON_CONFLICT", async () => {

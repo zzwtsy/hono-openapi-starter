@@ -58,7 +58,8 @@ CI frontend job 含 `pnpm --filter frontend test`（见 `.github/workflows/ci.ym
 | `lib/require-permission.test.ts` | 无权限抛 `redirect` → `/403`（`isRedirect` + `options.to`） |
 | `features/iam/organization-tree.test.ts` | 树索引、缺父升根、环打断、路径、编辑排除后代 |
 | `components/Can.test.tsx` | 权限门渲染分支（`vi.mock` `useCan`） |
-| `features/settings/components/SettingsPage.test.tsx` | **MSW+alova**：加载失败/开关态/只读 disabled/PATCH body |
+| `api/index.test.ts` | **MSW+alova**：envelope 剥离 / `success:false` 抛错 / 401 hard-nav |
+| `features/settings/components/SettingsPage.test.tsx` | 空态占位断言（SettingsPage 简化为空态，PATCH body 覆盖待 settings feature 落地） |
 
 ## 组件测试模式
 

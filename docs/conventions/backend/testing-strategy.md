@@ -147,6 +147,12 @@ tests/
 - rate limited
 - internal error
 
+断言规范：
+
+- 错误路径**必须断言错误码**，用 `rejects.toMatchObject({ code: "<EXPECTED>" })`，不得只用 `rejects.toThrow()`。`toThrow()` 只验证抛错，service 误抛 500 也能通过；`toMatchObject({ code })` 能挡住错误码退化。
+- 401（无 session）覆盖：每个端点的 `requireAuth` 链路必须测。无 session 时 `mockGetSession` 返回 `null`/`undefined`，期望 401（先于权限检查与 body 校验）。
+- 对照 service 实现确认期望错误码，不凭记忆猜测；断言失败时先核实是 service bug 还是断言错。
+
 ## Logging test
 
 只测关键 contract：

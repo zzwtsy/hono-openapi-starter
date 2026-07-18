@@ -94,19 +94,19 @@ describe("iam user assignments", () => {
     expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
   });
 
-  it("授角色到不存在的角色抛错", async () => {
+  it("授角色到不存在的角色抛 NOT_FOUND", async () => {
     await setup();
-    await expect(IamService.assignUserRole("org-root", "u-1", "role-nope", { orgId: "org-root" })).rejects.toThrow();
+    await expect(IamService.assignUserRole("org-root", "u-1", "role-nope", { orgId: "org-root" })).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
   });
 
-  it("授角色到不存在的组织抛错", async () => {
+  it("授角色到不存在的组织抛 NOT_FOUND", async () => {
     await setup();
-    await expect(IamService.assignUserRole("org-root", "u-1", "role-admin", { orgId: "org-nope" })).rejects.toThrow();
+    await expect(IamService.assignUserRole("org-root", "u-1", "role-admin", { orgId: "org-nope" })).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
   });
 
   it("撤不存在的授权抛 NOT_FOUND", async () => {
     await setup();
-    await expect(IamService.deleteUserRole("org-root", "actor-1", "u-1", "role-admin", "org-root")).rejects.toThrow();
+    await expect(IamService.deleteUserRole("org-root", "actor-1", "u-1", "role-admin", "org-root")).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
   });
 
   it("授角色到子树外 grant.orgId -> 404(不暴露)", async () => {

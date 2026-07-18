@@ -25,20 +25,20 @@ describe("iam organization management", () => {
     expect(south.parentId).toBe(root.id);
   });
 
-  it("建组织到不存在父组织抛错", async () => {
-    await expect(IamService.createOrganization({ name: "X", parentId: "org-nope" })).rejects.toThrow();
+  it("建组织到不存在父组织抛 NOT_FOUND", async () => {
+    await expect(IamService.createOrganization({ name: "X", parentId: "org-nope" })).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
   });
 
-  it("改 parent 形成环抛错(挂到自身子孙下)", async () => {
+  it("改 parent 形成环抛 CONFLICT(挂到自身子孙下)", async () => {
     const root = await IamService.createOrganization({ name: "Root" });
     const south = await IamService.createOrganization({ name: "South", parentId: root.id });
     // 把 root 挂到 south 下:root 是 south 的祖先,会成环
-    await expect(IamService.updateOrganization(root.id, { parentId: south.id })).rejects.toThrow();
+    await expect(IamService.updateOrganization(root.id, { parentId: south.id })).rejects.toMatchObject({ code: "COMMON_CONFLICT" });
   });
 
-  it("改 parent 到自身抛错", async () => {
+  it("改 parent 到自身抛 CONFLICT", async () => {
     const root = await IamService.createOrganization({ name: "Root" });
-    await expect(IamService.updateOrganization(root.id, { parentId: root.id })).rejects.toThrow();
+    await expect(IamService.updateOrganization(root.id, { parentId: root.id })).rejects.toMatchObject({ code: "COMMON_CONFLICT" });
   });
 
   it("改 parent 到合法新父成功", async () => {
@@ -50,10 +50,10 @@ describe("iam organization management", () => {
     expect(updated.parentId).toBe(south.id);
   });
 
-  it("删有子组织的根抛错", async () => {
+  it("删有子组织的根抛 CONFLICT", async () => {
     const root = await IamService.createOrganization({ name: "Root" });
     await IamService.createOrganization({ name: "South", parentId: root.id });
-    await expect(IamService.deleteOrganization(root.id)).rejects.toThrow();
+    await expect(IamService.deleteOrganization(root.id)).rejects.toMatchObject({ code: "COMMON_CONFLICT" });
   });
 
   it("删叶子组织成功,父组织仍在", async () => {
@@ -66,7 +66,7 @@ describe("iam organization management", () => {
   });
 
   it("删不存在组织抛 NOT_FOUND", async () => {
-    await expect(IamService.deleteOrganization("org-nope")).rejects.toThrow();
+    await expect(IamService.deleteOrganization("org-nope")).rejects.toMatchObject({ code: "COMMON_NOT_FOUND" });
   });
 
   it("删有用户的组织 -> 409(防孤儿用户)", async () => {
