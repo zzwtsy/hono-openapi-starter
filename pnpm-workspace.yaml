@@ -1,3 +1,6 @@
+# minimumReleaseAge: 新发布包需满 24h 才安装(防供应链攻击:恶意发布通常 1h 内被发现下架)。
+# minimumReleaseAgeExclude: 排除需立即装的包(shadcn/tsx 曾需即时);无主规则时排除不生效。
+minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - shadcn@4.13.0
   - tsx@4.23.0

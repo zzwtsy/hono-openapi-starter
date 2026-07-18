@@ -1,4 +1,5 @@
 import type { PermissionDefinition } from "../auth/permissions.js";
+import { sql } from "drizzle-orm";
 import { db } from "../../db/client.js";
 import { permissions, rolePermissions, roles } from "../../db/schema/authorization-schema.js";
 import { logger } from "../logger/index.js";
@@ -28,11 +29,15 @@ export async function syncAuthorizationCatalog(defs: readonly PermissionDefiniti
   }
 
   await db.transaction(async (tx) => {
-    // 权限目录(含 description)
+    // 权限目录(含 description):onConflictDoUpdate 更新 description + updatedAt,
+    // 代码改权限描述后启动同步生效(此前 DoNothing 导致描述改了不更新)。
     await tx
       .insert(permissions)
       .values([...defs])
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: permissions.name,
+        set: { description: sql`EXCLUDED.description`, updatedAt: new Date() },
+      });
     // 标准 admin 角色(onConflictDoUpdate 强制 source='code':migration 加列后旧库 admin 行可能被 default 'instance' 覆盖,sync 修正)
     await tx.insert(roles)
       .values(ADMIN_ROLE)

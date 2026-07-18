@@ -28,10 +28,12 @@ const { data } = useRequest(() => Apis.IAM.listRoles(), {
   cacheFor: 60_000,
 });
 
-// 创建 mutation,失效列表
-const { send } = useRequest(() => Apis.IAM.createRole({ data: {...} }), {
-  hitSource: [() => Apis.IAM.listRoles()],
-});
+// GET 标 hitSource:mutation 标 name 后,对应 GET cache 自动失效。
+// hitSource 用 method key 字符串(与 api/index.ts 的 $$userConfigMap 一致,集中配置)。
+//   "IAM.listRoles": { cacheFor: 60_000, hitSource: ["IAM.createRole", "IAM.updateRole", "IAM.deleteRole"] },
+//   "IAM.createRole": { name: "IAM.createRole" },
+// mutation 调用无需在 useRequest 传 hitSource,失效由 $$userConfigMap 的 name <-> hitSource 匹配驱动。
+const { send } = useRequest(() => Apis.IAM.createRole({ data: {...} }));
 ```
 
 ### 手动失效(少用)

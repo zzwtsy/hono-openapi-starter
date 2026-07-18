@@ -44,8 +44,7 @@ lastReviewedAt: 2026-07-08
 
 - `pnpm test`:只跑 unit(无需 Docker),本地快速回路
 - `pnpm test:integration`:只跑 integration(需 Docker)
-- `pnpm test:all`:全跑(需 Docker)
-- `pnpm test:ci`:CI 用,等同 `test:all`(需 Docker)
+- `pnpm test:all`:全跑(需 Docker),CI 用此
 
 ### globalSetup
 

@@ -50,7 +50,7 @@ features/iam/
 
 ## 用户授权
 
-`UserList` 的「授权」按钮打开 `user-authorization-dialog`，按 Tabs 分两页管理某用户在**选中组织**的授权，顶部共享「有效权限」(后端 `listUserEffectivePermissions`，含祖先继承 + deny 减法)：
+`UserList` 的「授权」按钮打开 `user-authorization-dialog`，按 Tabs 分两页管理某用户在**选中组织**的授权，顶部共享「有效权限」(后端 `IAM.listUserPermissions`，含祖先继承 + deny 减法)：
 
 - **组织下拉**：可选操作者管理子树内任意 org(默认用户 home org)。切换后重新拉该 org 的有效权限与已授角色/直接权限记录,授予/撤销也绑定该 org。解决「祖先 org 授的授权在 home org 视角不可见不可撤销」(`listUserRoles`/`listUserDirectPermissions` 用 `eq(orgId)` 直接相等,只返回该 org 的直接授权;有效权限走祖先继承 CTE,故二者在固定单 org 下会分裂)。
 - **角色授权**：列出已授角色(`listUserRoles`，含过期) + 逐条撤销(`deleteUserRole`) + 授角色表单(角色 Select + 过期 DatePicker + `assignUserRole`)。

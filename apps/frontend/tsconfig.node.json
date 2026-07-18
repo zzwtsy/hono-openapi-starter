@@ -11,6 +11,7 @@
     "types": ["node"],
     "allowImportingTsExtensions": true,
 
+    "strict": true,
     "noFallthroughCasesInSwitch": true,
     /* Linting */
     "noUnusedLocals": true,

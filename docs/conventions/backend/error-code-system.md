@@ -23,20 +23,14 @@ COMMON_FORBIDDEN
 COMMON_NOT_FOUND
 COMMON_CONFLICT
 COMMON_RATE_LIMITED
+COMMON_SERVICE_UNAVAILABLE
 COMMON_INTERNAL_ERROR
 
-AUTH_SESSION_EXPIRED
-AUTH_INVALID_CREDENTIALS
-AUTH_EMAIL_NOT_VERIFIED
-
-USER_NOT_FOUND
-USER_EMAIL_ALREADY_EXISTS
-USER_STATUS_DISABLED
-
-PROJECT_NOT_FOUND
-PROJECT_MEMBER_ALREADY_EXISTS
-PROJECT_PERMISSION_DENIED
+AUTH_ACCOUNT_DISABLED
+AUTH_SIGNUP_DISABLED
 ```
+
+> 错误码以 [error-registry.ts](../../../apps/backend/src/core/errors/error-registry.ts) 为真相来源。上述为实际注册的码；不要在此处臆造未注册的码（如 USER_*、PROJECT_* 等 feature 专属码目前未引入，业务错误复用 COMMON_*）。
 
 ## 通用错误码
 
@@ -46,10 +40,13 @@ PROJECT_PERMISSION_DENIED
 | `COMMON_VALIDATION_FAILED` | 422 | 请求校验失败 |
 | `COMMON_UNAUTHORIZED` | 401 | 未认证 |
 | `COMMON_FORBIDDEN` | 403 | 无权限 |
+| `AUTH_ACCOUNT_DISABLED` | 403 | 账号已禁用（databaseHooks 拦截 session 创建） |
+| `AUTH_SIGNUP_DISABLED` | 403 | 不支持自助注册 |
 | `COMMON_NOT_FOUND` | 404 | 资源不存在 |
 | `COMMON_CONFLICT` | 409 | 资源冲突 |
 | `COMMON_RATE_LIMITED` | 429 | 请求过于频繁 |
-| `COMMON_INTERNAL_ERROR` | 500 | 内部错误 |
+| `COMMON_SERVICE_UNAVAILABLE` | 503 | 服务不可用（如 readyz DB 未就绪） |
+| `COMMON_INTERNAL_ERROR` | 500 | 内部错误（expose:false，不透传 details） |
 
 ## 错误码注册表
 
@@ -226,4 +223,3 @@ error.details
 ```
 
 `details` 的 shape 全项目统一为 `formatZodError` 产出的 `{ path, message }[]`，与 OpenAPI `ErrorDetailSchema` 一致。无论是 `@hono/zod-openapi` 的 `defaultHook`（路由层校验失败）、`error-mapper`（service 层抛出的 `ZodError`），还是 service 内部 `safeParse` 失败后 `throw new AppError("COMMON_VALIDATION_FAILED", { details: formatZodError(...) })`，都必须走 `formatZodError`，不得直接透传 Zod 原始 `issues`（含 `code/expected/received` 等内部字段）。
-
