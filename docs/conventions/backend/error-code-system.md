@@ -223,3 +223,6 @@ COMMON_VALIDATION_FAILED
 ```json
 error.details
 ```
+
+`details` 的 shape 全项目统一为 `formatZodError` 产出的 `{ path, message }[]`，与 OpenAPI `ErrorDetailSchema` 一致。无论是 `@hono/zod-openapi` 的 `defaultHook`（路由层校验失败）、`error-mapper`（service 层抛出的 `ZodError`），还是 service 内部 `safeParse` 失败后 `throw new AppError("COMMON_VALIDATION_FAILED", { details: formatZodError(...) })`，都必须走 `formatZodError`，不得直接透传 Zod 原始 `issues`（含 `code/expected/received` 等内部字段）。
+

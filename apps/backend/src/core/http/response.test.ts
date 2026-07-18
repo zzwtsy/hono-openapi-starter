@@ -49,4 +49,22 @@ describe("errorResponse", () => {
 
     expect((body as { message: string }).message).toBe("Internal server error");
   });
+
+  it("未暴露错误不透传调用方 details", () => {
+    const { body } = errorResponse(mockContext(), "COMMON_INTERNAL_ERROR", {
+      details: { stack: "at db.query (internal.ts:42)" },
+    }) as MockResponse;
+
+    expect((body as { error: { details?: unknown } }).error.details).toBeUndefined();
+  });
+
+  it("暴露错误透传调用方 details", () => {
+    const { body } = errorResponse(mockContext(), "COMMON_VALIDATION_FAILED", {
+      details: [{ path: ["email"], message: "邮箱格式无效" }],
+    }) as MockResponse;
+
+    expect((body as { error: { details?: unknown } }).error.details).toEqual([
+      { path: ["email"], message: "邮箱格式无效" },
+    ]);
+  });
 });

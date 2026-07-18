@@ -116,7 +116,12 @@ app.use("*", honoLogLayer({
 
 注意：
 
-- `await next()` 不会抛错（Hono 把异常转成 Response 回灌 `c.res`），访问日志中间件**不要**用 `try/catch next` 兜底；错误日志统一在 `app.onError` 里用 `c.var.logger.withError(err).error(...)` 写。
+- `await next()` 不会抛错（Hono 把异常转成 Response 回灌 `c.res`），访问日志中间件**不要**用 `try/catch next` 兜底；错误日志统一用 `c.var.logger` 写，保证 `requestId` 全链路贯穿。
+- 抛错路径（service/handler/middleware 抛 `AppError` 或未知错误）由 `app.onError` 用 `c.var.logger.withError(err).withMetadata(createErrorLogFields(...)).error(...)` 记录，含 `code/status/type/stack/cause`。
+- 非抛错路径的常见错误也必须补日志，不得只留 access log：
+  - `defaultHook`（`@hono/zod-openapi` 校验失败）直接返回 response、不走 `onError`，需在 hook 内用 `c.var.logger` 记一条 `warn`（含 `details` 字段级失败上下文）。
+  - `notFoundHandler`（404）同样不走 `onError`，需记一条 `warn`。
+- feature handler 内不要用全局 `logger` 记错误再抛 `AppError`（会与 `onError` 重复记录且全局 logger 无 `requestId` 上下文）；直接抛错让 `onError` 统一记录。
 - `resolveRequestId` 用 `WeakMap<Request, string>` 缓存，保证中间件与 logger 集成共用同一个 requestId。
 
 ## 敏感信息脱敏

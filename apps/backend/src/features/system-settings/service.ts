@@ -2,6 +2,7 @@ import type { SettingRegistryEntry } from "./schemas.js";
 
 import { asc, eq } from "drizzle-orm";
 import { AppError } from "@/core/errors/app-error.js";
+import { formatZodError } from "@/core/errors/zod-error.js";
 import { db } from "@/db/client.js";
 import { systemSettings } from "@/db/schema/index.js";
 import { settingRegistry } from "./schemas.js";
@@ -66,7 +67,9 @@ export const SystemSettingService = {
     }
     const parsed = entry.valueSchema.safeParse(value);
     if (!parsed.success) {
-      throw new AppError("COMMON_VALIDATION_FAILED", { details: parsed.error.issues });
+      // details shape 与全局 defaultHook/error-mapper 对齐：formatZodError 产出 {path, message}[]，
+      // 与 ErrorDetailSchema 一致；不透传 Zod 原始 issues（含 code/expected/received 等内部字段）。
+      throw new AppError("COMMON_VALIDATION_FAILED", { details: formatZodError(parsed.error) });
     }
     const [row] = await db
       .insert(systemSettings)

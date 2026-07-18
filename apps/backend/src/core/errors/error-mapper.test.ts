@@ -24,4 +24,15 @@ describe("mapError", () => {
       expect(mapped).toMatchObject({ code: "COMMON_VALIDATION_FAILED", type: "validation" });
     }
   });
+
+  it("带 issues 数组的非 ZodError 对象不误判为 validation", () => {
+    // 收紧 isZodError 后：只有真正的 ZodError 才映射为 validation
+    const fakeError = Object.assign(new Error("other lib error"), {
+      issues: [{ message: "something" }],
+    });
+
+    const mapped = mapError(fakeError);
+
+    expect(mapped).toMatchObject({ code: "COMMON_INTERNAL_ERROR", type: "internal" });
+  });
 });

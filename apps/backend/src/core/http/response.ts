@@ -43,10 +43,13 @@ export function errorResponse(
   } = {},
 ) {
   const meta = errorRegistry[code];
-  // 未暴露的错误不透传调用方 message，避免内部异常细节进入公开响应。
+  // 未暴露的错误不透传调用方 message 与 details，避免内部异常细节进入公开响应。
   const message = meta.expose
     ? options.message ?? meta.defaultMessage
     : meta.defaultMessage;
+  // details 同样按 expose 过滤：COMMON_INTERNAL_ERROR 等未暴露码的 AppError 可能携带内部结构，
+  // 必须与 message 同档位拦截，否则 mapError 透传的 error.details 会直接进入响应体。
+  const details = meta.expose ? options.details : undefined;
   const body: ErrorEnvelope = {
     success: false,
     code,
@@ -54,7 +57,7 @@ export function errorResponse(
     data: null,
     error: {
       type: options.type ?? "business",
-      ...(options.details === undefined ? {} : { details: options.details }),
+      ...(details === undefined ? {} : { details }),
     },
     meta: {
       requestId: c.get("requestId"),

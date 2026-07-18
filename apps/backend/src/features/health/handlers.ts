@@ -5,7 +5,6 @@ import type { AppRouteHandler } from "@/core/http/context.js";
 import { sql } from "drizzle-orm";
 import { AppError } from "@/core/errors/app-error.js";
 import { successResponse } from "@/core/http/response.js";
-import { logger } from "@/core/logger/index.js";
 import { db } from "@/db/client.js";
 
 /** 获取服务健康状态。 */
@@ -24,7 +23,8 @@ export const getReadyzHandler: AppRouteHandler<GetReadyzRoute> = async (c) => {
     await db.execute(sql`SELECT 1`);
     return successResponse(c, { status: "ready" as const });
   } catch (error) {
-    logger.withError(error).warn("readyz: DB 未就绪");
-    throw new AppError("COMMON_SERVICE_UNAVAILABLE");
+    // 不在此处记日志：直接抛出让 errorHandler 用 c.var.logger（带 requestId）统一记录，
+    // 避免全局 logger（无请求上下文）与 onError 各记一条导致重复/上下文不一致。
+    throw new AppError("COMMON_SERVICE_UNAVAILABLE", { cause: error });
   }
 };

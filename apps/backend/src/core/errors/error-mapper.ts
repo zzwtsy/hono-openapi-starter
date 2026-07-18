@@ -1,7 +1,7 @@
-import type { z } from "zod";
 import type { ErrorType } from "../http/response.js";
 
 import type { ErrorCode } from "./error-registry.js";
+import { z } from "zod";
 import { AppError } from "./app-error.js";
 import { formatZodError } from "./zod-error.js";
 
@@ -23,7 +23,7 @@ export function mapError(error: unknown): MappedError {
     };
   }
 
-  if (isZodError(error)) {
+  if (error instanceof z.ZodError) {
     return {
       code: "COMMON_VALIDATION_FAILED",
       details: formatZodError(error),
@@ -35,11 +35,4 @@ export function mapError(error: unknown): MappedError {
     code: "COMMON_INTERNAL_ERROR",
     type: "internal",
   };
-}
-
-function isZodError(error: unknown): error is z.ZodError {
-  return typeof error === "object"
-    && error !== null
-    && "issues" in error
-    && Array.isArray(error.issues);
 }
