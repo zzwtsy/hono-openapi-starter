@@ -72,14 +72,14 @@ loader: async () => {
 
 ## 登录/登出
 
-登录:`signIn` 成功后 `router.navigate` 到回跳目标(或 `/dashboard`),触发 `_authenticated` beforeLoad 取 permissions;`/login?redirect=<href>` 由 `_authenticated` 守卫写入,登录后经 `safeRedirect` 校验回跳(防 open-redirect):
+登录:`signIn` 成功后 session 异步变 truthy(App 重渲染 -> RouterProvider context 更新),但 `await signIn` 不等 store 真正更新。`useLogin` 用 effect 监听 `useSession` 的 session 变 truthy 后再 `router.navigate` 到回跳目标(或 `/dashboard`),避免 `_authenticated.beforeLoad` 抢跑读到 stale session=null 被弹回 `/login`。`/login?redirect=<href>` 由 `_authenticated` 守卫写入,登录后经 `safeRedirect` 校验回跳(防 open-redirect):
 
 ```ts
 const { login } = useLogin(); // features/auth/hooks
-await login(email, password, redirect); // signIn + router.navigate(safeRedirect(redirect))
+await login(email, password, redirect); // signIn + 设 pendingRedirectRef;effect 监听 session 变 truthy 后 navigate(safeRedirect(redirect))
 ```
 
-登出:`signOut` 后 `router.invalidate()` 重走守卫(session 变 null -> `_authenticated` 重定向 `/login`)。
+登出:`useLogout` 对称地用 effect 监听 session 变 null 后 `router.navigate("/login")`(`signOut` + `refetch` 后 session 异步变 null,effect 在 render 之后跑,此时 context 已是 null,`/login` beforeLoad 不会弹回 `/dashboard`)。登录/登出都靠 effect 监听 session 异步变化,而非 `router.invalidate()` 或直接 navigate。
 
 session 过期(alova 401)不走此流程,由 [api-alova](./api-alova.md) 的 `responded` 统一 hard-nav 到 `/login`。
 

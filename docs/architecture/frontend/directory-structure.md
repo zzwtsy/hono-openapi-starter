@@ -96,15 +96,19 @@ IAM 当前使用 `components/` + 纯数据 helper `organization-tree.ts`；helpe
 
 | from | 允许 to |
 | --- | --- |
-| routes | features, lib, ui, api |
-| features | lib, ui, api(features 之间 disallow,跨 feature 走 routes 装配) |
-| lib | lib |
-| ui | ui, lib |
-| api | api, lib(生成物 eslint-disable 免约束;手写 index.ts 装配 alova 实例,允许 lib/env) |
+| routes | features, lib, ui, api, layout, hooks, types |
+| features | lib, ui, api, hooks, types(features 之间 disallow,跨 feature 走 routes 装配) |
+| lib | lib, types |
+| ui | ui, lib, types, hooks(展示组件可用通用 hook,如 useIsMobile) |
+| api | api, lib, types(生成物 eslint-disable 免约束;手写 index.ts 装配 alova 实例,允许 lib/env) |
+| layout | features, lib, ui, hooks, types(装配层:侧边栏/页头 shell,接 logout、消费 AuthState) |
+| hooks | lib, ui, types, hooks(通用 hook:useCan/useIsMobile) |
+| types | api, lib, types(纯类型层,聚合 gen:api 生成的 AppPermission/Me/Session) |
 
 强制规范:
 
-1. `routes` 不能被其他层 import(只由 router 消费)。
+1. `routes` 不能被其他层 import(只由 router 消费);`AuthState` 类型下沉到 `types/auth`,不在 routes 定义(避免 layout 反向依赖 routes)。
 2. `features` 之间不直接 import(跨 feature 经 routes 装配或上移 `lib`)。
 3. `api` 依赖自身 + alova;手写 `index.ts` 可依赖 `lib/env`(alova 实例 baseURL)。生成物(`createApis`/`apiDefinitions`/`globals.d.ts`)eslint-disable 免约束。
-4. 根文件(`main`/`App`/`router`)不在任何 element,不受 boundaries 约束。
+4. `layout` 是页面级 shell 装配(AppSidebar/auth-layout);页面内容区的展示组件(如 PageHeader)归 `ui`,供 features 合法引用。
+5. 根文件(`main`/`App`/`router`)不在任何 element,不受 boundaries 约束。

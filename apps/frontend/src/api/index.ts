@@ -76,10 +76,19 @@ export const $$userConfigMap = withConfigType({
     cacheFor: 60_000,
     hitSource: ["IAM.createUser", "IAM.updateUser", "IAM.disableUser", "IAM.enableUser"],
   },
-  // 用户授权:撤销/授予后有效权限全集需自动失效(此前靠手动 send)
+  // 用户授权:撤销/授予后有效权限全集需自动失效(此前靠手动 send)。
+  // 角色权限变更(assignRolePermissions/deleteRolePermission)也影响用户有效权限
+  // (角色->权限->用户链路),故一并纳入 hitSource(B5 D3,对齐 listRolePermissions)。
   "IAM.listUserPermissions": {
     cacheFor: 60_000,
-    hitSource: ["IAM.assignUserRole", "IAM.deleteUserRole", "IAM.assignUserPermission", "IAM.deleteUserPermission"],
+    hitSource: [
+      "IAM.assignUserRole",
+      "IAM.deleteUserRole",
+      "IAM.assignUserPermission",
+      "IAM.deleteUserPermission",
+      "IAM.assignRolePermissions",
+      "IAM.deleteRolePermission",
+    ],
   },
   // 新端点:某组织直接授予的原始记录,撤销后自动失效
   "IAM.listUserRoles": {

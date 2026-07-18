@@ -28,16 +28,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatDate } from "@/lib/utils";
 import { RoleForm } from "./role-form";
 import { RolePermissionsDialog } from "./role-permissions-dialog";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("zh-CN");
-}
 
 export function RoleList() {
   const { data, loading, error, send } = useRequest(() => Apis.IAM.listRoles());
@@ -76,7 +73,7 @@ export function RoleList() {
   };
 
   if (loading && data === undefined) {
-    return <RoleListSkeleton />;
+    return <ListSkeleton />;
   }
   if (error !== null && data === undefined) {
     return (
@@ -241,17 +238,5 @@ export function RoleList() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function RoleListSkeleton() {
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-2 p-4">
-        {[0, 1, 2, 3, 4].map(row => (
-          <Skeleton key={row} className="h-8 w-full" />
-        ))}
-      </CardContent>
-    </Card>
   );
 }

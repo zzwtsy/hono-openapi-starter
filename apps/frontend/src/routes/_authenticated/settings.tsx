@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Apis from "@/api";
-import { PageHeader } from "@/components/layout/page-header";
+import { PageHeader } from "@/components/ui/page-header";
 import { SettingsPage } from "@/features/settings/components/SettingsPage";
 import { requirePermission } from "@/lib/require-permission";
 

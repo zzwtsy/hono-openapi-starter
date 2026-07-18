@@ -114,19 +114,27 @@ export default antfu({
       { type: "lib", pattern: "apps/frontend/src/lib/**", partialMatch: false },
       { type: "ui", pattern: "apps/frontend/src/components/ui/**", partialMatch: false },
       { type: "api", pattern: "apps/frontend/src/api/**", partialMatch: false },
+      { type: "layout", pattern: "apps/frontend/src/components/layout/**", partialMatch: false },
+      { type: "hooks", pattern: "apps/frontend/src/hooks/**", partialMatch: false },
+      { type: "types", pattern: "apps/frontend/src/types/**", partialMatch: false },
     ],
   },
   rules: {
-    // routes(装配层)-> features/lib/ui/api;features(能力层)-> lib/ui/api(features 间 disallow,跨 feature 走 routes);
-    // lib -> lib;ui -> ui/lib;api -> api/lib(生成物 eslint-disable 免约束;手写 index.ts 装配 alova 实例,允许 lib/env)
+    // routes(装配层)-> features/lib/ui/api/layout/hooks/types;features(能力层)-> lib/ui/api/hooks/types;
+    // lib -> lib/types;ui -> ui/lib/types/hooks(展示组件可用通用 hook,如 useIsMobile);api -> api/lib/types;
+    // layout(装配层)-> features/lib/ui/hooks/types;hooks -> lib/ui/types/hooks;
+    // types 聚合 api/lib 的生成类型(AppPermission/Me/Session),故 types -> api/lib/types。
     "boundaries/dependencies": ["error", {
       default: "disallow",
       policies: [
-        { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["features", "lib", "ui", "api"] } } } },
-        { from: { element: { type: "features" } }, allow: { to: { element: { type: ["lib", "ui", "api"] } } } },
-        { from: { element: { type: "lib" } }, allow: { to: { element: { type: ["lib"] } } } },
-        { from: { element: { type: "ui" } }, allow: { to: { element: { type: ["ui", "lib"] } } } },
-        { from: { element: { type: "api" } }, allow: { to: { element: { type: ["api", "lib"] } } } },
+        { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["features", "lib", "ui", "api", "layout", "hooks", "types"] } } } },
+        { from: { element: { type: "features" } }, allow: { to: { element: { type: ["lib", "ui", "api", "hooks", "types"] } } } },
+        { from: { element: { type: "lib" } }, allow: { to: { element: { type: ["lib", "types"] } } } },
+        { from: { element: { type: "ui" } }, allow: { to: { element: { type: ["ui", "lib", "types", "hooks"] } } } },
+        { from: { element: { type: "api" } }, allow: { to: { element: { type: ["api", "lib", "types"] } } } },
+        { from: { element: { type: "layout" } }, allow: { to: { element: { type: ["features", "lib", "ui", "hooks", "types"] } } } },
+        { from: { element: { type: "hooks" } }, allow: { to: { element: { type: ["lib", "ui", "types", "hooks"] } } } },
+        { from: { element: { type: "types" } }, allow: { to: { element: { type: ["api", "lib", "types"] } } } },
       ],
     }],
   },

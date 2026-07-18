@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import type { AuthState } from "@/routes/__root";
+import type { AuthState } from "@/types/auth";
 import type { AppPermission } from "@/types/permissions";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Building2, ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, Settings, ShieldCheck, Users } from "lucide-react";

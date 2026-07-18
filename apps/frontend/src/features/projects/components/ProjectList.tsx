@@ -26,15 +26,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-permissions";
+import { formatDate } from "@/lib/utils";
 import { ProjectForm } from "./project-form";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("zh-CN");
-}
 
 export function ProjectList() {
   const { data, loading, error, send } = useRequest(() => Apis.Projects.listProjects());
@@ -77,7 +74,7 @@ export function ProjectList() {
   };
 
   if (loading && data === undefined) {
-    return <ProjectListSkeleton />;
+    return <ListSkeleton />;
   }
   if (error !== null && data === undefined) {
     return (
@@ -218,17 +215,5 @@ export function ProjectList() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function ProjectListSkeleton() {
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-2 p-4">
-        {[0, 1, 2, 3, 4].map(row => (
-          <Skeleton key={row} className="h-8 w-full" />
-        ))}
-      </CardContent>
-    </Card>
   );
 }

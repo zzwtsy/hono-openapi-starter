@@ -38,18 +38,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-permissions";
+import { formatDate } from "@/lib/utils";
 import { buildOrganizationTree } from "../organization-tree";
 import { ResetPasswordDialog } from "./reset-password-dialog";
 import { UserAuthorizationDialog } from "./user-authorization-dialog";
 import { UserForm } from "./user-form";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("zh-CN");
-}
 
 function isDisabled(u: UserSummary): boolean {
   return u.disabled === true;
@@ -62,9 +59,17 @@ interface UserListProps {
 }
 
 export function UserList({ orgId, currentUserId }: UserListProps) {
+  // 权限检查提到请求前:roles/organizations 仅在需授权或建用户时用到,
+  // 用 immediate 门控避免无 iam.read 权限的用户进页面即触发 403(B5 D2)。
+  const canCreate = useCan("users.create");
+  const canAuthorize = useCan("assignments.manage");
+  const needsAux = canCreate || canAuthorize;
+
   const { data: users, loading, error, send } = useRequest(() => Apis.IAM.listUsers());
-  const { data: roles } = useRequest(() => Apis.IAM.listRoles());
-  const { data: organizations } = useRequest(() => Apis.IAM.listOrganizations());
+  // roles 用于授权对话框;organizations 用于建用户选 org + 授权 org。
+  // 两者均需 iam.read;无该权限时 immediate:false 不请求,降级为 undefined(对话框条件渲染容错)。
+  const { data: roles } = useRequest(() => Apis.IAM.listRoles(), { immediate: needsAux });
+  const { data: organizations } = useRequest(() => Apis.IAM.listOrganizations(), { immediate: needsAux });
 
   // create 用户时选归属组织:操作者管理子树(自身+子孙),复用 organization-tree 的 getDescendantIds。
   // listOrganizations 需 iam.read;无该权限(如仅 users.create 无 iam.read)时 organizations 为 undefined,
@@ -80,12 +85,10 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
     ];
   }, [organizations, orgId]);
 
-  const canCreate = useCan("users.create");
   const canUpdate = useCan("users.update");
   const canReset = useCan("users.reset-password");
   const canDisable = useCan("users.disable");
   const canEnable = useCan("users.enable");
-  const canAuthorize = useCan("assignments.manage");
   const hasRowActions = canUpdate || canReset || canDisable || canEnable || canAuthorize;
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -141,7 +144,7 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
   };
 
   if (loading && users === undefined) {
-    return <UserListSkeleton />;
+    return <ListSkeleton />;
   }
   if (error !== null && users === undefined) {
     return (
@@ -345,17 +348,5 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function UserListSkeleton() {
-  return (
-    <Card>
-      <CardContent className="flex flex-col gap-2 p-4">
-        {[0, 1, 2, 3, 4].map(row => (
-          <Skeleton key={row} className="h-8 w-full" />
-        ))}
-      </CardContent>
-    </Card>
   );
 }
