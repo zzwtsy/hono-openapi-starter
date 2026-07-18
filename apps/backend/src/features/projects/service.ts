@@ -11,8 +11,8 @@ import { generateId, projects } from "@/db/schema/index.js";
  * 权限检查由 `requirePermission` 中间件完成,service 只管数据查询与写操作的归属/重名校验。
  *
  * 归属 scope:所有写操作只作用于 `orgId` 本组织项目;跨组织一律 NOT_FOUND(不泄露存在性)。
- * 重名:同组织内 `name` 唯一,service 层软校验(抛 COMMON_CONFLICT),不加 DB unique 约束,
- * 与 iam `createRole` 风格一致;不同组织允许重名。
+ * 重名:同组织内 `name` 唯一,由 DB unique 约束 `projects_org_name_unq` 兜底,
+ * service 写路径在事务内用 onConflict/查重显式抛 COMMON_CONFLICT(B2 D2);不同组织允许重名。
  */
 
 /** 取项目(带归属校验);不存在或不属于该组织抛 COMMON_NOT_FOUND。 */
@@ -42,19 +42,21 @@ export const ProjectService = {
     return getOwnedProject(id, orgId);
   },
 
-  /** 创建项目;同组织内重名抛 COMMON_CONFLICT。 */
+  /** 创建项目;同组织内重名抛 COMMON_CONFLICT(事务 + onConflict 根除 TOCTOU)。 */
   async create(orgId: string, input: { name: string; description?: string }) {
-    const [existing] = await db
-      .select({ id: projects.id })
-      .from(projects)
-      .where(and(eq(projects.orgId, orgId), eq(projects.name, input.name)));
-    if (existing != null) {
-      throw new AppError("COMMON_CONFLICT", { message: "项目名已存在" });
-    }
-    const [project] = await db
-      .insert(projects)
-      .values({ id: generateId(), name: input.name, description: input.description, orgId })
-      .returning();
+    // 事务 + onConflictDoNothing + returning 判空:并发同名第二次 insert 冲突返回空,
+    // 抛 COMMON_CONFLICT 而非撞 DB unique 转 500(照 createUser 范本,B2 D2)。
+    const [project] = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(projects)
+        .values({ id: generateId(), name: input.name, description: input.description, orgId })
+        .onConflictDoNothing({ target: [projects.orgId, projects.name] })
+        .returning();
+      if (row == null) {
+        throw new AppError("COMMON_CONFLICT", { message: "项目名已存在" });
+      }
+      return [row];
+    });
     return project;
   },
 
@@ -67,21 +69,24 @@ export const ProjectService = {
     if (input.name === undefined && input.description === undefined) {
       return current;
     }
-    if (input.name !== undefined) {
-      const [conflict] = await db
-        .select({ id: projects.id })
-        .from(projects)
-        .where(and(eq(projects.orgId, orgId), eq(projects.name, input.name), ne(projects.id, id)));
-      if (conflict != null) {
-        throw new AppError("COMMON_CONFLICT", { message: "项目名已存在" });
+    // 事务内 select 查重 + update:压窄 TOCTOU 窗口,unique 约束兜底(B2 D2)。
+    return db.transaction(async (tx) => {
+      if (input.name !== undefined) {
+        const [conflict] = await tx
+          .select({ id: projects.id })
+          .from(projects)
+          .where(and(eq(projects.orgId, orgId), eq(projects.name, input.name), ne(projects.id, id)));
+        if (conflict != null) {
+          throw new AppError("COMMON_CONFLICT", { message: "项目名已存在" });
+        }
       }
-    }
-    const [project] = await db
-      .update(projects)
-      .set(input)
-      .where(and(eq(projects.id, id), eq(projects.orgId, orgId)))
-      .returning();
-    return project;
+      const [project] = await tx
+        .update(projects)
+        .set(input)
+        .where(and(eq(projects.id, id), eq(projects.orgId, orgId)))
+        .returning();
+      return project;
+    });
   },
 
   /** 删除项目;不存在/不属于本组织抛 COMMON_NOT_FOUND。 */

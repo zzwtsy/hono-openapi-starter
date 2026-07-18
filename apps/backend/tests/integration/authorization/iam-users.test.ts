@@ -175,10 +175,12 @@ describe("iam user management", () => {
       orgId: "org-root",
     });
 
-    // 先用旧密码登录造 session
+    // 先用旧密码登录造 session,从 DB 拿 token 证明旧 session 失效
     await auth.api.signInEmail({
       body: { email: "pwd@example.com", password: "old-password-123" },
     });
+    const [sessionRow] = await db.select().from(session).where(eq(session.userId, created.id));
+    const oldToken = sessionRow.token;
     const sessionsBefore = await db.select().from(session).where(eq(session.userId, created.id));
     expect(sessionsBefore.length).toBeGreaterThan(0);
 
@@ -186,6 +188,12 @@ describe("iam user management", () => {
 
     const sessionsAfter = await db.select().from(session).where(eq(session.userId, created.id));
     expect(sessionsAfter).toHaveLength(0);
+
+    // 旧 session token 立即失效(B2 D1,与 disableUser 同构)。
+    const staleSession = await auth.api.getSession({
+      headers: { authorization: `Bearer ${oldToken}` },
+    });
+    expect(staleSession).toBeNull();
 
     await expect(
       auth.api.signInEmail({
@@ -207,15 +215,24 @@ describe("iam user management", () => {
       orgId: "org-root",
     });
 
-    // 先登录造 session,再禁用应清 session
+    // 先登录造 session,从 DB 拿 token 用于证明旧 session 失效
     await auth.api.signInEmail({
       body: { email: "ban@example.com", password: "password-123" },
     });
+    const [sessionRow] = await db.select().from(session).where(eq(session.userId, created.id));
+    const oldToken = sessionRow.token;
 
     const disabled = await IamService.disableUser("org-root", "actor-1", created.id);
     expect(disabled.disabled).toBe(true);
     const sessions = await db.select().from(session).where(eq(session.userId, created.id));
     expect(sessions).toHaveLength(0);
+
+    // 旧 session token 立即失效:getSession 查不到行返回 null(未开 cookieCache,删行即失效)。
+    // 这是"禁用用户后旧 session 仍有效"漏洞的核心证明(B2 D1)。
+    const staleSession = await auth.api.getSession({
+      headers: { authorization: `Bearer ${oldToken}` },
+    });
+    expect(staleSession).toBeNull();
 
     await expect(
       auth.api.signInEmail({

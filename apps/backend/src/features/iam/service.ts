@@ -114,14 +114,19 @@ export const IamService = {
   },
 
   async createRole(input: { name: string; description?: string }) {
-    const [existing] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, input.name));
-    if (existing != null) {
-      throw new AppError("COMMON_CONFLICT", { message: "角色名已存在" });
-    }
-    const [role] = await db
-      .insert(roles)
-      .values({ id: randomUUID(), name: input.name, description: input.description, source: "instance" })
-      .returning();
+    // 事务 + onConflictDoNothing + returning 判空:并发同名第二次 insert 冲突返回空,
+    // 抛 COMMON_CONFLICT 而非撞 DB unique 转 500(照 createUser 范本,B2 D4)。
+    const [role] = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(roles)
+        .values({ id: randomUUID(), name: input.name, description: input.description, source: "instance" })
+        .onConflictDoNothing({ target: roles.name })
+        .returning();
+      if (row == null) {
+        throw new AppError("COMMON_CONFLICT", { message: "角色名已存在" });
+      }
+      return [row];
+    });
     return role;
   },
 
@@ -130,8 +135,21 @@ export const IamService = {
     if (input.name === undefined && input.description === undefined) {
       return getRole(id);
     }
-    const [role] = await db.update(roles).set(input).where(eq(roles.id, id)).returning();
-    return role;
+    // 事务内 select 查重 + update:改名时查同组织(全局)重名排除自身,压窄 TOCTOU 窗口,
+    // unique 约束兜底(B2 D4)。createRole 已查重,update 原缺查重,改名撞 unique 会 500。
+    return db.transaction(async (tx) => {
+      if (input.name !== undefined) {
+        const [clash] = await tx
+          .select({ id: roles.id })
+          .from(roles)
+          .where(and(eq(roles.name, input.name), ne(roles.id, id)));
+        if (clash != null) {
+          throw new AppError("COMMON_CONFLICT", { message: "角色名已存在" });
+        }
+      }
+      const [role] = await tx.update(roles).set(input).where(eq(roles.id, id)).returning();
+      return role;
+    });
   },
 
   async deleteRole(id: string) {
@@ -155,12 +173,27 @@ export const IamService = {
 
   async assignRolePermissions(id: string, permissionNames: string[]) {
     await requireInstanceRole(id);
-    if (permissionNames.length > 0) {
-      await db
+    if (permissionNames.length === 0) {
+      return;
+    }
+    // 批量校验权限名存在性(对齐 assignUserPermission 的 requireExistingPermission)。
+    // role_permissions.permission 有 FK 到 permissions.name,未校验则传未注册名触发
+    // PG 23503 -> 500;契约应 404(B2 D3)。
+    const existing = await db
+      .select({ name: permissions.name })
+      .from(permissions)
+      .where(inArray(permissions.name, permissionNames));
+    if (existing.length !== permissionNames.length) {
+      const found = new Set(existing.map(e => e.name));
+      const missing = permissionNames.find(p => !found.has(p));
+      throw new AppError("COMMON_NOT_FOUND", { message: `权限不存在: ${missing}` });
+    }
+    await db.transaction(async (tx) => {
+      await tx
         .insert(rolePermissions)
         .values(permissionNames.map(p => ({ roleId: id, permission: p })))
         .onConflictDoNothing();
-    }
+    });
   },
 
   async deleteRolePermission(id: string, permission: string) {
@@ -251,15 +284,6 @@ export const IamService = {
     input: { name?: string; email?: string },
   ) {
     await requireUserInSubtree(actorOrgId, userId);
-    if (input.email !== undefined) {
-      const [clash] = await db
-        .select({ id: user.id })
-        .from(user)
-        .where(and(eq(user.email, input.email), ne(user.id, userId)));
-      if (clash != null) {
-        throw new AppError("COMMON_CONFLICT", { message: "邮箱已存在" });
-      }
-    }
     const patch: { name?: string; email?: string } = {};
     if (input.name !== undefined) {
       patch.name = input.name;
@@ -270,8 +294,37 @@ export const IamService = {
     if (Object.keys(patch).length === 0) {
       return requireUserInSubtree(actorOrgId, userId);
     }
-    await db.update(user).set(patch).where(eq(user.id, userId));
-    return requireUserInSubtree(actorOrgId, userId);
+    // 事务内 select 查重 + update + returning:email 改名查重排除自身,压窄 TOCTOU 窗口,
+    // unique 约束兜底(B2 D4,对齐 createRole/projects.update)。returning 拿更新后数据,
+    // 不在事务内用全局 db 重查(读不到未提交更改)。
+    const [updated] = await db.transaction(async (tx) => {
+      if (patch.email !== undefined) {
+        const [clash] = await tx
+          .select({ id: user.id })
+          .from(user)
+          .where(and(eq(user.email, patch.email), ne(user.id, userId)));
+        if (clash != null) {
+          throw new AppError("COMMON_CONFLICT", { message: "邮箱已存在" });
+        }
+      }
+      const [row] = await tx
+        .update(user)
+        .set(patch)
+        .where(eq(user.id, userId))
+        .returning({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          orgId: user.orgId,
+          disabled: user.disabled,
+          createdAt: user.createdAt,
+        });
+      if (row == null) {
+        throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
+      }
+      return [row];
+    });
+    return updated;
   },
 
   /**
@@ -281,15 +334,19 @@ export const IamService = {
   async resetPassword(actorOrgId: string, userId: string, newPassword: string) {
     await requireUserInSubtree(actorOrgId, userId);
     const passwordHash = await hashPassword(newPassword);
-    const [updated] = await db
-      .update(account)
-      .set({ password: passwordHash })
-      .where(and(eq(account.userId, userId), eq(account.providerId, "credential")))
-      .returning({ id: account.id });
-    if (updated == null) {
-      throw new AppError("COMMON_NOT_FOUND", { message: "用户无密码账号" });
-    }
-    await db.delete(session).where(eq(session.userId, userId));
+    // 事务保证 update password + delete session 原子:delete 失败则 password 回滚,
+    // 避免密码已改但旧 session 仍有效(B2 D1,与 disableUser 同构)。
+    await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(account)
+        .set({ password: passwordHash })
+        .where(and(eq(account.userId, userId), eq(account.providerId, "credential")))
+        .returning({ id: account.id });
+      if (updated == null) {
+        throw new AppError("COMMON_NOT_FOUND", { message: "用户无密码账号" });
+      }
+      await tx.delete(session).where(eq(session.userId, userId));
+    });
   },
 
   /**
@@ -301,9 +358,30 @@ export const IamService = {
       throw new AppError("COMMON_FORBIDDEN", { message: "不能禁用自己" });
     }
     await requireUserInSubtree(actorOrgId, userId);
-    await db.update(user).set({ disabled: true }).where(eq(user.id, userId));
-    await db.delete(session).where(eq(session.userId, userId));
-    return requireUserInSubtree(actorOrgId, userId);
+    // 事务保证 update disabled + delete session 原子:delete 失败则 disabled 回滚,
+    // 避免"disabled=true 但旧 session 仍有效"的安全语义破坏(B2 D1)。
+    // returning 拿更新后数据,省一次 requireUserInSubtree 查询。
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx.update(user)
+        .set({ disabled: true })
+        .where(eq(user.id, userId))
+        .returning({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          orgId: user.orgId,
+          disabled: user.disabled,
+          createdAt: user.createdAt,
+        });
+      if (row == null) {
+        throw new AppError("COMMON_NOT_FOUND", { message: "用户不存在" });
+      }
+      // 删全部 session:未开 cookieCache,删行后旧 session 立即失效;
+      // databaseHooks.session.create.before 拦新建 session,禁用用户无法再登录。
+      await tx.delete(session).where(eq(session.userId, userId));
+      return row;
+    });
+    return updated;
   },
 
   /** 启用用户:清 disabled。 */
@@ -473,25 +551,28 @@ export const IamService = {
   /** 改组织(改 parentId 时防环:新 parent 的祖先集含自身则成环,拒绝)。 */
   async updateOrganization(id: string, input: { name?: string; parentId?: string | null }) {
     await requireExistingOrg(id);
-    if (input.parentId !== undefined && input.parentId !== null) {
-      await requireExistingOrg(input.parentId);
-      // 防环:新 parent 的祖先集(含自身)若含 id,说明 id 是新 parent 的祖先,挂上去成环
-      const [row] = await db.execute(sql`
-        WITH RECURSIVE org_ancestors AS (
-          SELECT ${organizations.id} FROM ${organizations} WHERE ${organizations.id} = ${input.parentId}
-          UNION ALL
-          SELECT ${organizations.parentId} FROM ${organizations}
-          JOIN org_ancestors oa ON ${organizations.id} = oa.id
-        )
-        CYCLE id SET is_cycle USING path
-        SELECT EXISTS(SELECT 1 FROM org_ancestors WHERE id = ${id}) AS is_cycle
-      `);
-      if (row?.is_cycle === true) {
-        throw new AppError("COMMON_CONFLICT", { message: "不能将组织挂到自身或其子孙下(会形成环)" });
+    // 防环 CTE 检查与 update 同事务:避免检查后、update 前的窗口被并发改 parentId 成环(B2 D4)。
+    return db.transaction(async (tx) => {
+      if (input.parentId !== undefined && input.parentId !== null) {
+        await requireExistingOrg(input.parentId);
+        // 防环:新 parent 的祖先集(含自身)若含 id,说明 id 是新 parent 的祖先,挂上去成环
+        const [row] = await tx.execute(sql`
+          WITH RECURSIVE org_ancestors AS (
+            SELECT ${organizations.id} FROM ${organizations} WHERE ${organizations.id} = ${input.parentId}
+            UNION ALL
+            SELECT ${organizations.parentId} FROM ${organizations}
+            JOIN org_ancestors oa ON ${organizations.id} = oa.id
+          )
+          CYCLE id SET is_cycle USING path
+          SELECT EXISTS(SELECT 1 FROM org_ancestors WHERE id = ${id}) AS is_cycle
+        `);
+        if (row?.is_cycle === true) {
+          throw new AppError("COMMON_CONFLICT", { message: "不能将组织挂到自身或其子孙下(会形成环)" });
+        }
       }
-    }
-    const [org] = await db.update(organizations).set(input).where(eq(organizations.id, id)).returning();
-    return org;
+      const [org] = await tx.update(organizations).set(input).where(eq(organizations.id, id)).returning();
+      return org;
+    });
   },
 
   /** 删组织(有子组织或仍有用户拒绝;外键 cascade 删 user_roles/user_permissions/projects)。 */

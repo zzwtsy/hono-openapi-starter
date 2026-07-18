@@ -62,7 +62,7 @@ lastReviewedAt: 2026-07-14
 - `orgId` 默认 `user.orgId`(用户归属组织)
 - 读/写权限分离:读路由用 `projects.read`,三条写路由分别用 `projects.create` / `update` / `delete`,最小权限粒度
 
-写操作归属 scope:service 层所有写方法只作用于 `orgId` 本组织项目;跨组织一律 `COMMON_NOT_FOUND`(不泄露存在性)。同组织内 `name` 唯一,service 层软校验(抛 `COMMON_CONFLICT`),不加 DB unique 约束,与 iam `createRole` 风格一致;不同组织允许重名。
+写操作归属 scope:service 层所有写方法只作用于 `orgId` 本组织项目;跨组织一律 `COMMON_NOT_FOUND`(不泄露存在性)。同组织内 `name` 唯一,由 DB unique 约束 `projects_org_name_unq` 兜底,service 写路径在事务内用 `onConflictDoNothing`(create)/select 查重(update)显式抛 `COMMON_CONFLICT`,根除并发重名 TOCTOU(B2);不同组织允许重名。
 
 ## 7. Data Model
 
@@ -77,7 +77,7 @@ lastReviewedAt: 2026-07-14
 | created_at | timestamptz | DEFAULT now() NOT NULL |
 | updated_at | timestamptz | DEFAULT now() NOT NULL(`$onUpdate` 自动刷新) |
 
-索引:`org_id`(按组织查询)。migration `0002_gifted_marten_broadcloak.sql`。CRUD 复用现有表结构,无需新 migration。
+索引:`org_id`(按组织查询)。唯一约束:`projects_org_name_unq (org_id, name)`(同组织内项目名唯一,根除并发重名 TOCTOU)。migration `0002`(建表)+ `0005_redundant_shen.sql`(加唯一约束)。
 
 ## 8. Error Codes
 
