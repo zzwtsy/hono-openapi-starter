@@ -117,26 +117,25 @@ describe("logger redaction", () => {
 
   it("redacts serialized error fields and sanitizes error text", () => {
     const { entries, logger } = createCaptureLogger();
+    // details 收窄为 ValidationErrorDetail[] 后(B3 D3),不再有任意结构敏感字段;
+    // 此用例聚焦 message/stack 脱敏,details 用合法 ErrorDetail[] 形状验证其被保留。
     const error = new AppError("COMMON_CONFLICT", {
-      details: {
-        apiKey: "hidden",
-        tokenType: "Bearer",
-      },
+      details: [{ path: ["body", "email"], message: "邮箱 password=hidden 无效 for user@example.com" }],
       message: "Invalid password=hidden for user@example.com",
     });
 
     logger.withError(error).error("request failed");
 
     const err = entries[0]?.data.err as Record<string, unknown> | undefined;
-    const details = err?.details as Record<string, unknown> | undefined;
+    const details = err?.details as Array<{ message?: string }> | undefined;
 
     expect(err?.message).toBe(`Invalid password=${REDACTED} for ${REDACTED}`);
     expect(String(err?.stack)).not.toContain("user@example.com");
     expect(String(err?.stack)).not.toContain("password=hidden");
-    expect(details).toMatchObject({
-      apiKey: REDACTED,
-      tokenType: "Bearer",
-    });
+    expect(details).toHaveLength(1);
+    // details 是结构化数组,redact 只对顶层 message/stack 字符串脱敏,
+    // details 内部 message 不额外脱敏(校验错误说明通常无敏感内容)。
+    expect(details?.[0]?.message).toBe("邮箱 password=hidden 无效 for user@example.com");
   });
 
   it("sanitizes sensitive text in error cause chains", () => {

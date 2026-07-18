@@ -2017,7 +2017,7 @@ declare global {
       /**
        * ---
        *
-       * [DELETE] 删除组织(有子组织拒绝)
+       * [DELETE] 删除组织(有子组织或有用户拒绝)
        *
        * **path:** /api/v1/organizations/{orgId}
        *

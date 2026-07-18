@@ -111,17 +111,18 @@ export type ErrorCode = keyof typeof errorRegistry;
 
 ```ts
 import { errorRegistry, type ErrorCode } from "./error-registry";
+import type { ValidationErrorDetail } from "./zod-error";
 
 export class AppError extends Error {
   readonly code: ErrorCode;
   readonly status: number;
   readonly expose: boolean;
-  readonly details?: unknown;
+  readonly details?: ValidationErrorDetail[];
   readonly cause?: unknown;
 
   constructor(code: ErrorCode, options?: {
     message?: string;
-    details?: unknown;
+    details?: ValidationErrorDetail[];
     cause?: unknown;
   }) {
     const meta = errorRegistry[code];

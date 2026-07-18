@@ -1,13 +1,14 @@
 import type { ErrorType } from "../http/response.js";
 
 import type { ErrorCode } from "./error-registry.js";
+import type { ValidationErrorDetail } from "./zod-error.js";
 import { z } from "zod";
 import { AppError } from "./app-error.js";
 import { formatZodError } from "./zod-error.js";
 
 export interface MappedError {
   code: ErrorCode;
-  details?: unknown;
+  details?: ValidationErrorDetail[];
   message?: string;
   type: ErrorType;
 }

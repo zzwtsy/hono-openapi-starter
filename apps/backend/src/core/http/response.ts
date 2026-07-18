@@ -2,6 +2,7 @@ import type { z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 
 import type { ErrorCode } from "../errors/error-registry.js";
+import type { ValidationErrorDetail } from "../errors/zod-error.js";
 import type { AppBindings } from "./context.js";
 import type { createSuccessEnvelopeSchema, ErrorEnvelopeSchema } from "./openapi/components.js";
 import { errorRegistry } from "../errors/error-registry.js";
@@ -37,7 +38,7 @@ export function errorResponse(
   c: Context<AppBindings>,
   code: ErrorCode,
   options: {
-    details?: unknown;
+    details?: ValidationErrorDetail[];
     message?: string;
     type?: ErrorType;
   } = {},

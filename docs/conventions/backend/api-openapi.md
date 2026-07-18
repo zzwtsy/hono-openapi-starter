@@ -175,6 +175,14 @@ export const getUserRoute = createRoute({
 });
 ```
 
+## 校验失败响应（422）
+
+所有业务 API 的 Zod 校验失败由 `@hono/zod-openapi` 的 `defaultHook` 统一处理，返回 `422 COMMON_VALIDATION_FAILED`，`error.details` 为 `formatZodError` 产出的 `ErrorDetail[]`（`{ path, message }[]`）。
+
+- **不逐 route 声明 422**：校验失败是所有 route 的横切行为，逐个声明是重复噪声。`authErrorResponses` 只含 401/403，422 由 defaultHook 全局兜底。
+- **details shape 唯一**：无论是 defaultHook（路由层）、error-mapper（service 抛 ZodError）还是 service 内部 `safeParse` 失败，`details` 都必须是 `formatZodError` 产出的 `ErrorDetail[]`，与 `ErrorDetailSchema` 一致。`ErrorSchema.details` 的 OpenAPI 契约即 `z.array(ErrorDetailSchema).optional()`。
+- 未暴露错误（`expose: false`，如 `COMMON_INTERNAL_ERROR`）不透传 `details`（B1），响应体 `error.details` 为 `undefined`。
+
 ## Scalar 集成
 
 建议提供两个入口：

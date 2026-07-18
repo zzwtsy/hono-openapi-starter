@@ -1,16 +1,17 @@
 import type { ErrorCode } from "./error-registry.js";
+import type { ValidationErrorDetail } from "./zod-error.js";
 
 import { errorRegistry } from "./error-registry.js";
 
 export class AppError extends Error {
   readonly code: ErrorCode;
-  readonly details?: unknown;
+  readonly details?: ValidationErrorDetail[];
   readonly expose: boolean;
   readonly status: number;
 
   constructor(code: ErrorCode, options: {
     cause?: unknown;
-    details?: unknown;
+    details?: ValidationErrorDetail[];
     message?: string;
   } = {}) {
     const meta = errorRegistry[code];

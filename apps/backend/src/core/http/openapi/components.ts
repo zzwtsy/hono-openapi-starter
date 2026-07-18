@@ -23,7 +23,7 @@ export const ErrorSchema = z.object({
     description: "错误类型。",
     example: "validation",
   }),
-  details: z.unknown().optional().openapi({
+  details: z.array(ErrorDetailSchema).optional().openapi({
     description: "结构化错误明细；validation 类型时为 ErrorDetail 数组，其他类型可省略。",
   }),
 }).openapi("ErrorBody");

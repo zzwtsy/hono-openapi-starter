@@ -51,8 +51,9 @@ describe("errorResponse", () => {
   });
 
   it("未暴露错误不透传调用方 details", () => {
+    // 未暴露错误(COMMON_INTERNAL_ERROR)即使传入 details 也不透传到响应体(B1 D1)。
     const { body } = errorResponse(mockContext(), "COMMON_INTERNAL_ERROR", {
-      details: { stack: "at db.query (internal.ts:42)" },
+      details: [{ path: ["internal"], message: "内部错误细节" }],
     }) as MockResponse;
 
     expect((body as { error: { details?: unknown } }).error.details).toBeUndefined();
