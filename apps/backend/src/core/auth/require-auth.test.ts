@@ -1,7 +1,8 @@
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import type { ILogLayer } from "loglayer";
 import type { AppBindings } from "../http/context.js";
 import { Hono } from "hono";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppError } from "../errors/app-error.js";
 
@@ -18,9 +19,19 @@ const mockGetSession = vi.mocked(getSession);
 const mockUser = { id: "u-1", email: "a@b.c", name: "a" };
 const mockSession = { id: "s-1", userId: "u-1", token: "t" };
 
-/** 构造最小 Hono app:挂 requireAuth + 探针 handler,错误转 status 便于断言。 */
+// requireAuth 依赖 c.var.logger(honoLogLayer 在生产注入),测试用 mock logger 提供 context manager spy。
+const appendContextSpy = vi.fn();
+const mockLogger = {
+  getContextManager: () => ({ appendContext: appendContextSpy }),
+} as unknown as ILogLayer;
+
+/** 构造最小 Hono app:注入 mock logger + 挂 requireAuth + 探针 handler,错误转 status 便于断言。 */
 function buildApp() {
   const app = new Hono<AppBindings>();
+  app.use("/protected", async (c, next) => {
+    c.set("logger", mockLogger);
+    await next();
+  });
   app.use("/protected", requireAuth());
   app.get("/protected", c => c.json({ userId: c.get("user")?.id }));
   app.onError((err, c) => {
@@ -31,6 +42,10 @@ function buildApp() {
 }
 
 describe("requireAuth", () => {
+  beforeEach(() => {
+    appendContextSpy.mockClear();
+  });
+
   it("无 session 时返回 401 COMMON_UNAUTHORIZED", async () => {
     mockGetSession.mockResolvedValue(null);
 
@@ -55,6 +70,22 @@ describe("requireAuth", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ userId: "u-1" });
+  });
+
+  it("认证成功后把 userId 追加到请求级 logger context", async () => {
+    mockGetSession.mockResolvedValue({ user: mockUser, session: mockSession } as never);
+
+    await buildApp().request("/protected");
+
+    expect(appendContextSpy).toHaveBeenCalledWith({ userId: "u-1" });
+  });
+
+  it("未认证时不追加 userId(logger context 不被改动)", async () => {
+    mockGetSession.mockResolvedValue(null);
+
+    await buildApp().request("/protected");
+
+    expect(appendContextSpy).not.toHaveBeenCalled();
   });
 
   it("透传请求 headers 给 getSession", async () => {

@@ -25,7 +25,6 @@ src/core/logger/
   config.ts
   fields.ts
   redact.ts
-  middleware.ts
   transports/
     dev-pretty.ts
     prod-jsonl.ts
@@ -113,6 +112,23 @@ app.use("*", honoLogLayer({
 ```
 
 集成后 `c.var.logger` 即为带 `requestId`/`method`/`path` 上下文的请求级 logger，feature handler 与错误处理直接复用。
+
+### userId 注入
+
+`requireAuth` 认证成功后，把 `userId` 追加到请求级 logger 的 context：
+
+```ts
+const logger = c.get("logger") as ILogLayer | undefined;
+if (logger != null) {
+  logger.getContextManager().appendContext({ userId: result.user.id });
+}
+```
+
+honoLogLayer 为每个请求创建独立 child logger（独立 context manager），`appendContext` 原地修改其 context，业务日志与 access log（用同一 childLogger）均带 `userId`。`honoLogLayer` 在生产全局注入 `c.var.logger`；未挂（如单元测试）时跳过，不影响认证。
+
+不用 `withContext()`：其返回 polymorphic `this`，typescript-eslint 把 `this` 退化为 `ILogLayer<any>`，传给 `c.set` 时触发 `ts/no-unsafe-argument`（tsc 过、eslint 不过）。也不用 `contextFn`：其签名只给 `{ request, path }` 且在 `await next()` 之前执行，此刻尚未认证，拿不到 userId。
+
+未认证请求（401/公共路由）不追加，access log 不带 `userId`（合理）。
 
 注意：
 

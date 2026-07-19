@@ -10,7 +10,7 @@ lastReviewedAt: 2026-07-08
 
 - [x] request log 包含 method/path/status/durationMs/requestId。
 - [x] error log 包含 code/status/stack/requestId。
-- [ ] userId 在认证后写入日志上下文 - 部分:userId 注入 Hono context(requireAuth c.set);未注入 LogLayer 日志 context(Hono c.set 与 LogLayer withContext 类型不兼容;contextFn 双查 session 不可接受)。access log 仅带 requestId。
+- [x] userId 在认证后写入日志上下文 - requireAuth 认证成功后用 `c.var.logger.getContextManager().appendContext({ userId })` 原地追加到请求级 child logger 的 context manager,业务日志与 access log(同一 childLogger)均带 userId。不用 withContext():其 polymorphic this 在 typescript-eslint 退化为 ILogLayer<any> 触发 ts/no-unsafe-argument;不用 contextFn:签名只给 {request,path} 且在 auth 之前执行。未认证请求不追加(合理);honoLogLayer 未挂时(如单元测试)跳过,不影响认证。
 - [x] JSONL 每行都是合法 JSON。
 - [x] 生产日志按天轮转。
 - [x] 日志脱敏规则有测试覆盖。
