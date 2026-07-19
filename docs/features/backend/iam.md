@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-16
+lastReviewedAt: 2026-07-19
 ---
 
 # Feature: iam（权限管理 + 用户身份）
@@ -98,6 +98,8 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
 
 > 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission`/`listUserPermissions`/`listUserRoles`/`listUserDirectPermissions` 均已按操作者管理子树(自身+子孙)校验(user 与 grant.orgId 双校验,读端点与写端点对称);重复授角色/权限时,提供 `expiresAt` 则更新(续期),省略则保留原过期时间(不清空),`effect` 总以新值为准。调岗(PATCH orgId)本期不做。`deleteOrganization` 有用户即拒删(防孤儿),当前无迁移/删除用户 API,有用户的组织需先经数据库迁移用户;且检查与删除非原子(`user.orgId` 无 FK),并发 `createUser` 存在低概率产生孤儿用户的 TOCTOU 窗口,待加 FK 或迁移 API 后根除。`deleteUserRole`/`deleteUserPermission` 禁止对自己操作(防自我降级锁死,对齐 `disableUser`);`assignUserRole`/`assignUserPermission` 不限(授予不锁死)。所有写路径(`createUser`/`updateUser`/`resetPassword`/`disableUser`/`createRole`/`updateRole`/`assignRolePermissions`/`updateOrganization`)均用 `db.transaction` 包多步写 + 冲突显式抛 `AppError`(照 `createUser` 范本,B2),不依赖 PG 错误冒泡兜底。
+>
+> **组织操作的全局 admin 边界**：`listOrganizations`/`createOrganization`/`updateOrganization`/`deleteOrganization` 当前不按管理子树过滤/校验。第一版全局 admin 模型下，`organizations.manage` 与 `iam.read` 仅根 admin 持有，根 admin 子树=全树，故无越权。分级管理员（§3 Non-goal）落地时，需为组织写操作补子树校验、为 `listOrganizations` 补子树过滤；在此之前组织 list/写操作仅全局 admin 可用（checklist §6/§7）。
 
 ## 7. Data Model
 
@@ -143,7 +145,7 @@ sequenceDiagram
 
 ## 10. Logging & Audit
 
-管理写操作走结构化日志（LogLayer，带 requestId）。userId 不再注入 Hono context（B7 探索 LogLayer withContext 类型不兼容后移除 c.set("userId")，见 checklist §11）。关键写操作的 audit log 暂未实现（见 Non-goals）。
+管理写操作走结构化日志（LogLayer，带 requestId）。userId 由 requireAuth 认证成功后用 `c.var.logger.getContextManager().appendContext({ userId })` 注入请求级 logger context（业务日志与 access log 均带 userId；appendContext 绕开 withContext 的 `ts/no-unsafe-argument` 误报，见 logging-loglayer.md）。关键写操作的 audit log 暂未实现（见 Non-goals）。
 
 ## 11. Test Cases
 

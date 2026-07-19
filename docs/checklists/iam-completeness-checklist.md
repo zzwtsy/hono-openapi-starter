@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-16
+lastReviewedAt: 2026-07-19
 ---
 
 # 模板 IAM 完成度 Checklist
@@ -69,7 +69,7 @@ lastReviewedAt: 2026-07-16
 - [x] `requirePermission(perm, { orgId })` 支持显式目标组织
 - [x] `requireOrgUser`：无 user → 401；`orgId == null` → 403
 - [x] 业务路由（如 projects）按 home org 做数据隔离
-- [ ] 管理类写操作在「目标 org ≠ home」时，是否统一显式传 `orgId` 做 PEP 检查（与子树模型对齐时再验收）
+- [ ] 管理类写操作「显式传 orgId 做 PEP」= 分级管理员（Non-goal，见 §13）；当前全局 admin 模型：用户/授权写操作用 home org PEP + service 子树校验（安全），组织写操作无子树校验（仅全局 admin 持有 `organizations.manage`，见 iam.md §6）。分级管理员落地时补组织写操作子树校验。
 
 ---
 
@@ -142,7 +142,7 @@ lastReviewedAt: 2026-07-16
 - [x] 组织 CRUD、改 parent 防环、有子拒删
 - [x] 扁平 list + 前端建树
 - [x] `listOrganizations` 需 `iam.read`
-- [ ] 读路径是否按管理范围过滤（全表 list 对「仅根 admin」可接受；子树管理员落地前必须过滤或保持「仅全局 admin 可读全树」的文档约束）
+- [ ] 读路径按子树过滤 = 分级管理员需求（Non-goal，见 §13）；当前全局 admin 模型，`listOrganizations` 全表返回可接受（仅全局 admin 持有 `iam.read`）。「仅全局 admin 可读全树」文档约束已在 iam.md §6 显式；分级管理员落地时按子树过滤。
 - [x] 写路径与 `organizations.manage`/`roles.manage`/`assignments.manage` + 子树约束一致
 
 ---
@@ -153,7 +153,7 @@ lastReviewedAt: 2026-07-16
 - [x] admin 代码角色同步全部权限
 - [x] 角色权限挂载 API + UI
 - [x] 权限从代码移除后 DB 行清理策略（sync upsert-only 不删旧行;fork 升级需手动 `DELETE FROM role_permissions WHERE permission='iam.manage'; DELETE FROM permissions WHERE name='iam.manage';`）
-- [ ] 与 `roles.manage` 细粒度对齐（见 §3.2）
+- [x] 与 `roles.manage` 细粒度对齐（见 §3.2）--角色写操作统一 `roles.manage`、读操作 `iam.read`，已对齐
 
 ---
 
@@ -204,7 +204,7 @@ lastReviewedAt: 2026-07-16
 - [x] 认证端点 rate limit
 - [x] 敏感日志脱敏
 - [ ] 关键 IAM 写操作 **audit log**（谁给谁在何 org 授了什么）- 模板默认不做（Non-goal,见 §13;生产按需独立 feature）
-- [ ] 认证后日志上下文带 **userId** - userId 已注入 Hono context（requireAuth c.set）;未注入 LogLayer 日志 context（Hono c.set 与 LogLayer withContext 类型不兼容;contextFn 双查 session 不可接受）。access log 仅带 requestId,按 requestId 关联用户。
+- [x] 认证后日志上下文带 **userId** - requireAuth 认证成功后用 `c.var.logger.getContextManager().appendContext({ userId })` 追加到请求级 child logger（业务日志与 access log 均带 userId）。详见 observability-checklist 与 logging-loglayer.md。
 - [ ] 定期核对权限矩阵 / 错误码（与安全 checklist「推荐项」呼应）
 
 ---
