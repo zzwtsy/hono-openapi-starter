@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
-import { useCan, useCanAny } from "@/hooks/use-permissions";
+import { useCanMap } from "@/hooks/use-permissions";
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" });
 
@@ -40,10 +40,8 @@ export function OrganizationDetails({
   onEdit,
   onSelect,
 }: OrganizationDetailsProps) {
-  const canCreate = useCan("organizations.create");
-  const canUpdate = useCan("organizations.update");
-  const canDelete = useCan("organizations.delete");
-  const canManage = useCanAny(["organizations.create", "organizations.update", "organizations.delete"]);
+  const caps = useCanMap(["organizations.create", "organizations.update", "organizations.delete"] as const);
+  const canManage = caps["organizations.create"] || caps["organizations.update"] || caps["organizations.delete"];
 
   if (organization === undefined) {
     return (
@@ -73,19 +71,19 @@ export function OrganizationDetails({
         <CardDescription className="break-words">{index.getDisplayPath(organization.id)}</CardDescription>
         {canManage && (
           <CardAction className="col-start-1 row-span-1 row-start-auto mt-3 flex flex-wrap items-center justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
-            {canCreate && (
+            {caps["organizations.create"] && (
               <Button variant="outline" size="sm" onClick={() => { onCreateChild(organization); }}>
                 <Plus data-icon="inline-start" />
                 新建子组织
               </Button>
             )}
-            {canUpdate && (
+            {caps["organizations.update"] && (
               <Button variant="ghost" size="sm" onClick={() => { onEdit(organization); }}>
                 <Pencil data-icon="inline-start" />
                 编辑
               </Button>
             )}
-            {canDelete && (
+            {caps["organizations.delete"] && (
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={(

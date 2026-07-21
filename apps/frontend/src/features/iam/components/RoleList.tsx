@@ -1,9 +1,10 @@
 import type { Role } from "@/api/globals";
 import { useRequest } from "alova/client";
-import { CircleAlert, KeyRound, MoreHorizontal, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { CircleAlert, KeyRound, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
+import { ResourceActions } from "@/components/resource-actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -19,19 +20,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useCan, useCanAll } from "@/hooks/use-permissions";
+import { useCan, useCanAll, useCanMap } from "@/hooks/use-permissions";
 import { formatDate } from "@/lib/utils";
 import { RoleForm } from "./role-form";
 import { RolePermissionsDialog } from "./role-permissions-dialog";
@@ -45,15 +39,14 @@ export function RoleList() {
   const [deletingBusy, setDeletingBusy] = useState(false);
 
   const canCreate = useCan("roles.create");
-  const canUpdate = useCan("roles.update");
-  const canDelete = useCan("roles.delete");
   const canConfigPerms = useCanAll([
     "roles.assign-permissions",
     "roles.revoke-permissions",
     "permissions.read",
     "roles.read",
   ]);
-  const canManageRow = canConfigPerms || canUpdate || canDelete;
+  const caps = useCanMap(["roles.update", "roles.delete"] as const);
+  const canManageRow = canConfigPerms || caps["roles.update"] || caps["roles.delete"];
 
   const confirmDelete = async () => {
     if (deleting === null) {
@@ -156,33 +149,13 @@ export function RoleList() {
                           {canManageRow && (
                             <TableCell className="text-right">
                               {role.source === "instance" && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="操作" />}>
-                                    <MoreHorizontal />
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuGroup>
-                                      {canConfigPerms && (
-                                        <DropdownMenuItem onClick={() => { setAssigning(role); }}>
-                                          <KeyRound />
-                                          权限分配
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canUpdate && (
-                                        <DropdownMenuItem onClick={() => { setEditing(role); }}>
-                                          <Pencil />
-                                          编辑
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canDelete && (
-                                        <DropdownMenuItem variant="destructive" onClick={() => { setDeleting(role); }}>
-                                          <Trash2 />
-                                          删除
-                                        </DropdownMenuItem>
-                                      )}
-                                    </DropdownMenuGroup>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <ResourceActions
+                                  items={[
+                                    { id: "perms", allowed: canConfigPerms, label: "权限分配", icon: KeyRound, onClick: () => { setAssigning(role); } },
+                                    { id: "edit", allowed: caps["roles.update"], label: "编辑", icon: Pencil, onClick: () => { setEditing(role); } },
+                                    { id: "delete", allowed: caps["roles.delete"], label: "删除", icon: Trash2, variant: "destructive", onClick: () => { setDeleting(role); } },
+                                  ]}
+                                />
                               )}
                             </TableCell>
                           )}

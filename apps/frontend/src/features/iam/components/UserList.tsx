@@ -6,7 +6,6 @@ import {
   CircleAlert,
   CircleCheck,
   KeyRound,
-  MoreHorizontal,
   Pencil,
   Plus,
   ShieldCheck,
@@ -15,6 +14,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
+import { ResourceActions } from "@/components/resource-actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -30,18 +30,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCan, useCanAll, useCanAny } from "@/hooks/use-permissions";
+import { useCan, useCanAll, useCanAny, useCanMap } from "@/hooks/use-permissions";
 import { formatDate } from "@/lib/utils";
 import { buildOrganizationTree } from "../organization-tree";
 import { ResetPasswordDialog } from "./reset-password-dialog";
@@ -91,11 +84,12 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
     ];
   }, [organizations, orgId]);
 
-  const canUpdate = useCan("users.update");
-  const canReset = useCan("users.reset-password");
-  const canDisable = useCan("users.disable");
-  const canEnable = useCan("users.enable");
-  const hasRowActions = useCanAny(["users.update", "users.reset-password", "users.disable", "users.enable"]) || canAuthorize;
+  const caps = useCanMap(["users.update", "users.reset-password", "users.disable", "users.enable"] as const);
+  const hasRowActions = canAuthorize
+    || caps["users.update"]
+    || caps["users.reset-password"]
+    || caps["users.disable"]
+    || caps["users.enable"];
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<UserSummary | null>(null);
@@ -220,48 +214,15 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
                             <TableCell className="text-muted-foreground">{formatDate(u.createdAt)}</TableCell>
                             {hasRowActions && (
                               <TableCell className="text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="操作" />}>
-                                    <MoreHorizontal />
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuGroup>
-                                      {canAuthorize && !isSelf && (
-                                        <DropdownMenuItem onClick={() => { setAuthorizing(u); }}>
-                                          <ShieldCheck />
-                                          授权
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canUpdate && (
-                                        <DropdownMenuItem onClick={() => { setEditing(u); }}>
-                                          <Pencil />
-                                          编辑
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canReset && (
-                                        <DropdownMenuItem onClick={() => { setResetting(u); }}>
-                                          <KeyRound />
-                                          重置密码
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canDisable && !disabled && !isSelf && (
-                                        <DropdownMenuItem
-                                          variant="destructive"
-                                          onClick={() => { setDisabling(u); }}
-                                        >
-                                          <Ban />
-                                          禁用
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canEnable && disabled && (
-                                        <DropdownMenuItem onClick={() => { void enableUser(u); }}>
-                                          <CircleCheck />
-                                          启用
-                                        </DropdownMenuItem>
-                                      )}
-                                    </DropdownMenuGroup>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <ResourceActions
+                                  items={[
+                                    { id: "authorize", allowed: canAuthorize && !isSelf, label: "授权", icon: ShieldCheck, onClick: () => { setAuthorizing(u); } },
+                                    { id: "edit", allowed: caps["users.update"], label: "编辑", icon: Pencil, onClick: () => { setEditing(u); } },
+                                    { id: "reset", allowed: caps["users.reset-password"], label: "重置密码", icon: KeyRound, onClick: () => { setResetting(u); } },
+                                    { id: "disable", allowed: caps["users.disable"] && !disabled && !isSelf, label: "禁用", icon: Ban, variant: "destructive", onClick: () => { setDisabling(u); } },
+                                    { id: "enable", allowed: caps["users.enable"] && disabled, label: "启用", icon: CircleCheck, onClick: () => { void enableUser(u); } },
+                                  ]}
+                                />
                               </TableCell>
                             )}
                           </TableRow>
