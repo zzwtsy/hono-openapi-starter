@@ -42,12 +42,21 @@ core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `ap
 | 角色 | 权限的集合（如 `admin`、`viewer`） |
 | 权限 | `<resource>.<action>` 字符串（如 `users.read`），由 TypeScript `AppPermission` union 约束 |
 
+## 权限命名规则
+
+权限名格式为 `\<resource\>.\<action\>`，但 `resource` 与 `action` 都有约束：
+
+- **resource 必须是业务实体名**，不能是模块/feature 名。当前实体：`permissions`、`roles`、`organizations`、`assignments`、`users`、`projects`、`settings`。
+- **action 必须是细粒度 verb**，不能是聚合词 `manage`。当前动词：`read`、`create`、`update`、`delete`、`grant`、`revoke`、`assign-permissions`、`revoke-permissions`、`reset-password`、`disable`、`enable`。
+- **聚合靠 Role，不靠 permission name**。不要把多个写操作塞进一个 `*.manage` 权限名；需要用角色批量授权。
+- 类型层 `PermissionName = ${ResourceName}.${Action}` 已把 resource/action 词汇表写死，新增权限必须先扩展白名单。
+
 ## 两条授权路径
 
 所有授权都**绑定组织节点**，都支持**过期时间**（`expires_at`，null 表示永不过期）。
 
 1. **角色路径**：在某组织授用户角色（**可多个**）→ 这些角色权限的并集。例：张三在华南同时授 `admin` 和 `editor`，权限是两角色并集。一个用户在同一组织可有多条 `user_roles` 记录（不同 `role_id`），也可在不同组织各授角色。
-2. **直接路径**：在某组织直接授用户一个权限（`allow` 或 `deny`），绕过角色。例：张三在福建直接授 `audit-logs.read`（allow，年底过期）。解决"为单个权限建角色导致角色爆炸"的问题。
+2. **直接路径**：在某组织直接授用户一个权限（`allow` 或 `deny`），绕过角色。例：张三在福建直接授 `projects.read`（allow，年底过期）。解决"为单个权限建角色导致角色爆炸"的问题。
 
 ## 组织三轴
 
@@ -74,11 +83,11 @@ core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `ap
 直接授权支持 `effect: allow | deny`。
 
 - **最终权限 = (角色权限 ∪ 直接 allow) − 直接 deny**，再过滤过期。
-- **deny 向下传播**：在华南 deny `users.delete` → 福建也拒（福建祖先含华南）。
+- **deny 向下传播**：在华南 deny `users.disable` → 福建也拒（福建祖先含华南）。
 - **deny 不向上传播**：在福建 deny 不影响华南。
 - deny 覆盖 allow（explicit deny 优先），与 AWS IAM 一致。
 
-典型场景：张三是 `admin`（含 users.delete），但临时不该删用户 → 在华南 deny `users.delete`，华南及子组织都不能删。
+典型场景：张三是 `admin`（含 users.disable），但临时不该禁用用户 → 在华南 deny `users.disable`，华南及子组织都不能禁用。
 
 ## 过期
 
@@ -157,7 +166,7 @@ user_permissions(user_id, permission, org_id, effect, expires_at?)
 
 组织、用户、授权是 deployment 特定的，走自建管理 API（`/api/v1/*` + envelope，见 [ADR-0004](../../adr/0004-authorization-layer.md) 代价）。空生产从 0 开始：先 `pnpm db:bootstrap` 造根组织 + 第一个 admin 用户（授标准 admin 角色），再由 admin 通过管理 API 建组织、建角色、授角色/直接授权。
 
-管理 API 端点（`features/iam` + `features/me`，均需 `iam.read`/`organizations.manage`/`roles.manage`/`assignments.manage`，`/api/v1/me` 仅需认证）：
+管理 API 端点（`features/iam` + `features/me`，权限需求见各端点；`/api/v1/me` 仅需认证）：
 
 - `GET /api/v1/me`：当前用户信息 + 有效权限全集
 - `GET /api/v1/permissions`：权限目录（代码同步，只读）

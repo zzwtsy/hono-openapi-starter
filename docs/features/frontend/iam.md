@@ -8,7 +8,7 @@ lastReviewedAt: 2026-07-15
 
 ## 概述
 
-IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 Headless Tree 展示层级，以组织 ID 作为稳定节点 identity，并在同一页面完成节点详情与组织 CRUD。用户管理使用细粒度 `users.*` 权限（对齐后端 #14），与 `iam.*`（组织/角色/授权）分离。
+IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 Headless Tree 展示层级，以组织 ID 作为稳定节点 identity，并在同一页面完成节点详情与组织 CRUD。用户管理使用细粒度 `users.*` 权限（对齐后端 #14），与 `roles.*` / `organizations.*` / `assignments.*`（组织/角色/授权）分离。
 
 ## 范围
 
@@ -20,13 +20,13 @@ IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 
 
 | 路径 | 守卫 | loader | 组件 |
 | --- | --- | --- | --- |
-| `/iam/roles` | `requirePermission("iam.read")` | `listRoles` | `RoleList` |
-| `/iam/organizations?org=<id>` | `requirePermission("iam.read")` | `listOrganizations` | `OrganizationExplorer` |
+| `/iam/roles` | `requirePermission("roles.read")` | `listRoles` | `RoleList` |
+| `/iam/organizations?org=<id>` | `requirePermission("organizations.read")` | `listOrganizations` | `OrganizationExplorer` |
 | `/iam/users` | `requirePermission("users.read")` | `listUsers` | `UserList` |
 
 组织路由的 `org` 搜索参数保存当前选中组织。参数缺失或指向不存在的 ID 时，页面回退到第一个根组织并修正 URL。
 
-侧栏「用户」：`permission: "users.read"`（非 `iam.read`）。
+侧栏「用户」：`permission: "users.read"`（非 `roles.read` / `organizations.read`）。
 
 ## 组件结构
 
@@ -56,7 +56,7 @@ features/iam/
 - **角色授权**：列出已授角色(`listUserRoles`，含过期) + 逐条撤销(`deleteUserRole`) + 授角色表单(角色 Select + 过期 DatePicker + `assignUserRole`)。
 - **直接授权**：列出已授直接权限(`listUserDirectPermissions`，含 effect/过期) + 逐条撤销(`deleteUserPermission`) + 授直接权限表单(权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`)。deny = 阻止部分权限。
 
-过期用 DatePicker(react-day-picker v10 + Base UI Popover 薄包装)，日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET + `send` 手动刷新(双保险)。**`assignments.manage` 才显示授权入口,且对自己的行隐藏**(后端 `deleteUserRole`/`deleteUserPermission` 禁止对自己操作,防自我降级锁死)。
+过期用 DatePicker(react-day-picker v10 + Base UI Popover 薄包装)，日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET + `send` 手动刷新(双保险)。**需 `assignments.read` + `roles.read` + `permissions.read` 且至少持 `assignments.grant` 或 `assignments.revoke` 才显示授权入口**(读门控保证对话框内 listUserRoles/listUserDirectPermissions/listPermissions 不 403),且对自己的行隐藏;对话框内「授予」按钮受 `assignments.grant` 控制、「撤销」按钮受 `assignments.revoke` 控制(无权限则隐藏)(后端 `deleteUserRole`/`deleteUserPermission` 禁止对自己操作,防自我降级锁死)。
 
 ## 用户管理
 
@@ -70,7 +70,7 @@ features/iam/
 | 重置密码 | `users.reset-password` | 「重置密码」→ `reset-password-dialog`（newPassword min 8） |
 | 禁用 | `users.disable` | AlertDialog 确认；**禁止对自己**（菜单隐藏；后端亦 403） |
 | 启用 | `users.enable` | 已禁用行显示「启用」 |
-| 授权 | `assignments.manage` | 见上节 |
+| 授权 | `assignments.read` + `roles.read` + `permissions.read` + (`assignments.grant` 或 `assignments.revoke`) | 见上节 |
 
 - **disabled badge**：`disabled === true` → destructive「已禁用」，否则 secondary「正常」。
 - **currentUserId**：由路由 `auth.user.id` 传入，用于自禁用 UX。
@@ -104,10 +104,12 @@ features/iam/
 
 | 权限 | UX |
 | --- | --- |
-| `iam.read` | 角色、组织路由与侧栏 |
-| `organizations.manage` / `roles.manage` / `assignments.manage` | 组织/角色/授权写操作 |
+| `roles.read` / `organizations.read` | 角色、组织路由与侧栏 |
+| `organizations.create/update/delete` / `roles.create/update/delete/assign-permissions/revoke-permissions` / `assignments.grant/revoke` | 组织/角色/授权写操作 |
 | `users.read` | 用户路由与侧栏「用户」 |
 | `users.create` / `update` / `reset-password` / `disable` / `enable` | 对应用户管理入口 |
+
+门控 API(`@/hooks/use-permissions`):单权限 `useCan(perm)`;任一(OR,操作列可见性)`useCanAny(perms)`;全部(AND,管理入口复合门控如角色权限配置需 assign+revoke+两 read)`useCanAll(perms)`。渲染门控用 `{useCan(...) && ...}`(无声明式 `<Can>` 组件)。
 
 前端权限只控制 UX；后端 `PermissionChecker` 才是授权边界。
 
