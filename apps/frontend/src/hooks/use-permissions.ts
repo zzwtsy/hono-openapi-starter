@@ -1,5 +1,6 @@
 import type { AppPermission } from "@/types/permissions";
 import { useRouteContext } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { hasAllPermissions, hasAnyPermission, hasPermission } from "@/lib/permissions";
 
 /**
@@ -17,7 +18,7 @@ import { hasAllPermissions, hasAnyPermission, hasPermission } from "@/lib/permis
  * `select: c => c.auth?.permissions` 仅取 permissions 切片,避免无关 context 变更触发重绘(配合结构共享)。
  */
 
-function usePermissions(): readonly AppPermission[] | undefined {
+export function usePermissions(): readonly AppPermission[] | undefined {
   return useRouteContext({ strict: false, select: c => c.auth?.permissions });
 }
 
@@ -31,4 +32,29 @@ export function useCanAny(perms: readonly AppPermission[]): boolean {
 
 export function useCanAll(perms: readonly AppPermission[]): boolean {
   return hasAllPermissions(usePermissions(), perms);
+}
+
+/**
+ * 批量权限映射:一次读取权限,返回「每个权限是否持有」的布尔映射。
+ *
+ * 用于行操作菜单等需同时判多个动作的场景,替代多次 `useCan` 调用。直接消费扁平权限
+ * 字符串(对齐 TanStack 官方 RBAC how-to 的 `hasPermission(string)` 模式),不拆
+ * resource/action--批量查询与权限名格式正交,扁平 union 已有编译期校验。
+ *
+ * `permissions` 为 undefined(未登录/未加载)时,所有 key 返回 false。
+ *
+ * @example
+ * const m = useCanMap(["projects.update", "projects.delete"] as const);
+ * m["projects.update"]; // boolean
+ */
+export function useCanMap<const P extends readonly AppPermission[]>(
+  perms: P,
+): { [K in P[number]]: boolean } {
+  const owned = usePermissions();
+  return useMemo(() => {
+    const set = new Set(owned);
+    return Object.fromEntries(
+      perms.map(p => [p, set.has(p)]),
+    ) as { [K in P[number]]: boolean };
+  }, [owned, perms]);
 }
