@@ -1,29 +1,31 @@
 import type { PermissionDefinition } from "@/core/auth/permissions.js";
 
 /**
- * iam feature 权限定义:权限管理本身 + 用户身份生命周期。
+ * iam feature 权限定义:权限目录 + 组织/角色/授权管理 + 用户身份生命周期。
  *
- * **iam.*** - 组织/角色/授权/权限目录:
- * - iam.read:查询组织/角色/授权/权限目录
- * - organizations.manage:管理组织(建/改/删)
- * - roles.manage:管理角色与角色权限挂载
- * - assignments.manage:授/撤用户角色与直接权限
- *
- * **users.*** - 用户身份生命周期(细粒度,对齐 projects.* 范式,不塞进 manage):
- * - users.read:列出子树用户
- * - users.create:管理员代创建用户
- * - users.update:改 name/email
- * - users.reset-password:重置密码
- * - users.disable / users.enable:禁用·启用
- *
- * admin 角色(代码同步)含全部权限。第一版全局 admin:根组织 admin 对任意子组织
- * 检查通过(祖先遍历)。分级管理员(对目标 org 二次检查)留后续。
+ * resource 必须是业务实体(permissions/roles/organizations/assignments/users),
+ * action 必须是细粒度 verb;聚合靠 role,不靠 permission name 里的 manage。
  */
 export const iamPermissions = [
-  { name: "iam.read", description: "查看权限管理信息" },
-  { name: "organizations.manage", description: "管理组织(建/改/删)" },
-  { name: "roles.manage", description: "管理角色与角色权限挂载" },
-  { name: "assignments.manage", description: "授/撤用户角色与直接权限" },
+  // 权限目录
+  { name: "permissions.read", description: "查看权限目录" },
+  // 组织
+  { name: "organizations.read", description: "查看组织" },
+  { name: "organizations.create", description: "创建组织" },
+  { name: "organizations.update", description: "修改组织" },
+  { name: "organizations.delete", description: "删除组织" },
+  // 角色
+  { name: "roles.read", description: "查看角色" },
+  { name: "roles.create", description: "创建角色" },
+  { name: "roles.update", description: "修改角色" },
+  { name: "roles.delete", description: "删除角色" },
+  { name: "roles.assign-permissions", description: "给角色分配权限" },
+  { name: "roles.revoke-permissions", description: "撤销角色权限" },
+  // 授权
+  { name: "assignments.read", description: "查看用户授权" },
+  { name: "assignments.grant", description: "授予用户角色或直接权限" },
+  { name: "assignments.revoke", description: "撤销用户角色或直接权限" },
+  // 用户身份生命周期
   { name: "users.read", description: "查看用户" },
   { name: "users.create", description: "创建用户" },
   { name: "users.update", description: "修改用户资料" },
@@ -38,10 +40,20 @@ export type IamPermission = (typeof iamPermissions)[number]["name"];
 // core 不 import 本文件,但 requirePermission(perm: AppPermission) 能据此编译期校验漏登记。
 declare module "@/core/auth/permissions.js" {
   interface AppPermissionRegistry {
-    "iam.read": true;
-    "organizations.manage": true;
-    "roles.manage": true;
-    "assignments.manage": true;
+    "permissions.read": true;
+    "organizations.read": true;
+    "organizations.create": true;
+    "organizations.update": true;
+    "organizations.delete": true;
+    "roles.read": true;
+    "roles.create": true;
+    "roles.update": true;
+    "roles.delete": true;
+    "roles.assign-permissions": true;
+    "roles.revoke-permissions": true;
+    "assignments.read": true;
+    "assignments.grant": true;
+    "assignments.revoke": true;
     "users.read": true;
     "users.create": true;
     "users.update": true;

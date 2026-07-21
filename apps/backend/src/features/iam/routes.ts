@@ -30,11 +30,21 @@ import {
 } from "./schemas.js";
 
 /** iam feature 共享:认证 + 权限 + 401/403 响应。 */
-const iamReadMiddleware = [requireAuth(), requirePermission("iam.read")];
-const rolesManageMiddleware = [requireAuth(), requirePermission("roles.manage")];
-const assignmentsManageMiddleware = [requireAuth(), requirePermission("assignments.manage")];
-const organizationsManageMiddleware = [requireAuth(), requirePermission("organizations.manage")];
+const permissionsReadMiddleware = [requireAuth(), requirePermission("permissions.read")];
+const rolesReadMiddleware = [requireAuth(), requirePermission("roles.read")];
+const organizationsReadMiddleware = [requireAuth(), requirePermission("organizations.read")];
+const assignmentsReadMiddleware = [requireAuth(), requirePermission("assignments.read")];
 const usersReadMiddleware = [requireAuth(), requirePermission("users.read")];
+const organizationsCreateMiddleware = [requireAuth(), requirePermission("organizations.create")];
+const organizationsUpdateMiddleware = [requireAuth(), requirePermission("organizations.update")];
+const organizationsDeleteMiddleware = [requireAuth(), requirePermission("organizations.delete")];
+const rolesCreateMiddleware = [requireAuth(), requirePermission("roles.create")];
+const rolesUpdateMiddleware = [requireAuth(), requirePermission("roles.update")];
+const rolesDeleteMiddleware = [requireAuth(), requirePermission("roles.delete")];
+const rolesAssignPermissionsMiddleware = [requireAuth(), requirePermission("roles.assign-permissions")];
+const rolesRevokePermissionsMiddleware = [requireAuth(), requirePermission("roles.revoke-permissions")];
+const assignmentsGrantMiddleware = [requireAuth(), requirePermission("assignments.grant")];
+const assignmentsRevokeMiddleware = [requireAuth(), requirePermission("assignments.revoke")];
 const usersCreateMiddleware = [requireAuth(), requirePermission("users.create")];
 const usersUpdateMiddleware = [requireAuth(), requirePermission("users.update")];
 const usersResetPasswordMiddleware = [requireAuth(), requirePermission("users.reset-password")];
@@ -53,7 +63,7 @@ export const listPermissionsRoute = createRoute({
   operationId: "listPermissions",
   summary: "列出所有权限(代码同步目录)",
   description: "返回代码同步的权限目录,供管理端建角色时选择。管理 API 不建实例权限(ADR-0004)。",
-  middleware: iamReadMiddleware,
+  middleware: permissionsReadMiddleware,
   security: authedSecurity,
   responses: {
     200: jsonSuccessResponse(z.array(PermissionSchema), "权限列表"),
@@ -69,7 +79,7 @@ export const listRolesRoute = createRoute({
   operationId: "listRoles",
   summary: "列出所有角色",
   description: "返回所有角色(含 code 与 instance)。`source='code'` 为代码同步角色(admin),管理 API 不可改删。",
-  middleware: iamReadMiddleware,
+  middleware: rolesReadMiddleware,
   security: authedSecurity,
   responses: {
     200: jsonSuccessResponse(z.array(RoleSchema), "角色列表"),
@@ -83,8 +93,8 @@ export const createRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "createRole",
   summary: "创建角色(实例角色)",
-  description: "创建 instance 角色(source=instance,可改删)。角色名唯一,重名返回 409。需 roles.manage 权限。",
-  middleware: rolesManageMiddleware,
+  description: "创建 instance 角色(source=instance,可改删)。角色名唯一,重名返回 409。需 roles.create 权限。",
+  middleware: rolesCreateMiddleware,
   security: authedSecurity,
   request: { body: { content: { "application/json": { schema: CreateRoleSchema } } } },
   responses: {
@@ -100,8 +110,8 @@ export const updateRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "updateRole",
   summary: "修改角色(仅实例角色)",
-  description: "修改 instance 角色的 name/description。code 角色(source=code)或不存在返回 404;改名重名返回 409。需 roles.manage 权限。",
-  middleware: rolesManageMiddleware,
+  description: "修改 instance 角色的 name/description。code 角色(source=code)或不存在返回 404;改名重名返回 409。需 roles.update 权限。",
+  middleware: rolesUpdateMiddleware,
   security: authedSecurity,
   request: {
     params: RoleIdParamSchema,
@@ -121,8 +131,8 @@ export const deleteRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteRole",
   summary: "删除角色(仅实例角色,cascade 删 role_permissions 与 user_roles)",
-  description: "删除 instance 角色,cascade 删除其 role_permissions 与 user_roles 授权。code 角色或不存在返回 404。需 roles.manage 权限。",
-  middleware: rolesManageMiddleware,
+  description: "删除 instance 角色,cascade 删除其 role_permissions 与 user_roles 授权。code 角色或不存在返回 404。需 roles.delete 权限。",
+  middleware: rolesDeleteMiddleware,
   security: authedSecurity,
   request: { params: RoleIdParamSchema },
   responses: {
@@ -138,8 +148,8 @@ export const listRolePermissionsRoute = createRoute({
   tags: ["IAM"],
   operationId: "listRolePermissions",
   summary: "列出角色含的权限",
-  description: "返回角色已配置的权限名列表。角色不存在返回 404。需 iam.read 权限。",
-  middleware: iamReadMiddleware,
+  description: "返回角色已配置的权限名列表。角色不存在返回 404。需 roles.read 权限。",
+  middleware: rolesReadMiddleware,
   security: authedSecurity,
   request: { params: RoleIdParamSchema },
   responses: {
@@ -155,8 +165,8 @@ export const assignRolePermissionsRoute = createRoute({
   tags: ["IAM"],
   operationId: "assignRolePermissions",
   summary: "给角色批量配权限(仅实例角色)",
-  description: "批量授予 instance 角色权限(已授权的幂等跳过)。角色不存在返回 404;权限名不在目录返回 404。需 roles.manage 权限。",
-  middleware: rolesManageMiddleware,
+  description: "批量授予 instance 角色权限(已授权的幂等跳过)。角色不存在返回 404;权限名不在目录返回 404。需 roles.assign-permissions 权限。",
+  middleware: rolesAssignPermissionsMiddleware,
   security: authedSecurity,
   request: {
     params: RoleIdParamSchema,
@@ -175,8 +185,8 @@ export const deleteRolePermissionRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteRolePermission",
   summary: "撤角色的单个权限(仅实例角色)",
-  description: "撤销 instance 角色的单个权限。角色不存在返回 404。需 roles.manage 权限。",
-  middleware: rolesManageMiddleware,
+  description: "撤销 instance 角色的单个权限。角色不存在返回 404。需 roles.revoke-permissions 权限。",
+  middleware: rolesRevokePermissionsMiddleware,
   security: authedSecurity,
   request: { params: z.object({ roleId: z.string(), permission: z.string() }) },
   responses: {
@@ -305,8 +315,8 @@ export const assignUserRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "assignUserRole",
   summary: "授用户角色(绑定组织,可指定过期)",
-  description: "给用户在指定组织授予角色,可指定过期时间。重复授(续期)提供 expiresAt 则更新。用户/角色/组织不存在或不在管理子树返回 404。需 assignments.manage 权限。",
-  middleware: assignmentsManageMiddleware,
+  description: "给用户在指定组织授予角色,可指定过期时间。重复授(续期)提供 expiresAt 则更新。用户/角色/组织不存在或不在管理子树返回 404。需 assignments.grant 权限。",
+  middleware: assignmentsGrantMiddleware,
   security: authedSecurity,
   request: {
     params: UserRoleParamSchema,
@@ -325,8 +335,8 @@ export const deleteUserRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteUserRole",
   summary: "撤用户角色(需 orgId 查询参数定位)",
-  description: "撤销用户在指定组织的角色授权(需 roleId + orgId 精确定位)。禁止撤销自己的授权(防自我降级锁死)返回 403;授权不存在返回 404。需 assignments.manage 权限。",
-  middleware: assignmentsManageMiddleware,
+  description: "撤销用户在指定组织的角色授权(需 roleId + orgId 精确定位)。禁止撤销自己的授权(防自我降级锁死)返回 403;授权不存在返回 404。需 assignments.revoke 权限。",
+  middleware: assignmentsRevokeMiddleware,
   security: authedSecurity,
   request: { params: UserRoleParamSchema, query: OrgIdQuerySchema },
   responses: {
@@ -342,8 +352,8 @@ export const assignUserPermissionRoute = createRoute({
   tags: ["IAM"],
   operationId: "assignUserPermission",
   summary: "直接授用户权限(allow/deny,绑定组织)",
-  description: "给用户在指定组织直接授予权限(allow 或 deny),可指定过期。effect 总以新值为准。用户/权限/组织不存在或不在管理子树返回 404。需 assignments.manage 权限。",
-  middleware: assignmentsManageMiddleware,
+  description: "给用户在指定组织直接授予权限(allow 或 deny),可指定过期。effect 总以新值为准。用户/权限/组织不存在或不在管理子树返回 404。需 assignments.grant 权限。",
+  middleware: assignmentsGrantMiddleware,
   security: authedSecurity,
   request: {
     params: UserPermissionParamSchema,
@@ -362,8 +372,8 @@ export const deleteUserPermissionRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteUserPermission",
   summary: "撤用户直接权限(需 orgId 查询参数定位)",
-  description: "撤销用户在指定组织的直接权限授权(需 permission + orgId 精确定位)。禁止撤销自己的授权(防自我降级锁死)返回 403;授权不存在返回 404。需 assignments.manage 权限。",
-  middleware: assignmentsManageMiddleware,
+  description: "撤销用户在指定组织的直接权限授权(需 permission + orgId 精确定位)。禁止撤销自己的授权(防自我降级锁死)返回 403;授权不存在返回 404。需 assignments.revoke 权限。",
+  middleware: assignmentsRevokeMiddleware,
   security: authedSecurity,
   request: { params: UserPermissionParamSchema, query: OrgIdQuerySchema },
   responses: {
@@ -379,8 +389,8 @@ export const listUserPermissionsRoute = createRoute({
   tags: ["IAM"],
   operationId: "listUserPermissions",
   summary: "列出用户在某组织的有效权限全集",
-  description: "返回用户在目标组织的有效权限全集(含祖先继承、CTE 计算)。用户或组织不存在/不在管理子树返回 404。需 iam.read 权限。",
-  middleware: iamReadMiddleware,
+  description: "返回用户在目标组织的有效权限全集(含祖先继承、CTE 计算)。用户或组织不存在/不在管理子树返回 404。需 assignments.read 权限。",
+  middleware: assignmentsReadMiddleware,
   security: authedSecurity,
   request: { params: UserIdParamSchema, query: OrgIdQuerySchema },
   responses: {
@@ -396,8 +406,8 @@ export const listUserRolesRoute = createRoute({
   tags: ["IAM"],
   operationId: "listUserRoles",
   summary: "列出用户在某组织已授的角色记录",
-  description: "返回用户在目标组织**直接授予**的角色记录(非祖先继承),含过期时间。供管理端撤销授权用。",
-  middleware: iamReadMiddleware,
+  description: "返回用户在目标组织**直接授予**的角色记录(非祖先继承),含过期时间。供管理端撤销授权用。需 assignments.read 权限。",
+  middleware: assignmentsReadMiddleware,
   security: authedSecurity,
   request: { params: UserIdParamSchema, query: OrgIdQuerySchema },
   responses: {
@@ -413,8 +423,8 @@ export const listUserDirectPermissionsRoute = createRoute({
   tags: ["IAM"],
   operationId: "listUserDirectPermissions",
   summary: "列出用户在某组织的直接授权记录",
-  description: "返回用户在目标组织**直接授予**的权限记录(allow/deny,非祖先继承),含 effect 与过期。供管理端撤销授权用。与有效全集 `listUserPermissions`(含祖先继承、CTE 计算)区分。",
-  middleware: iamReadMiddleware,
+  description: "返回用户在目标组织**直接授予**的权限记录(allow/deny,非祖先继承),含 effect 与过期。供管理端撤销授权用。与有效全集 `listUserPermissions`(含祖先继承、CTE 计算)区分。需 assignments.read 权限。",
+  middleware: assignmentsReadMiddleware,
   security: authedSecurity,
   request: { params: UserIdParamSchema, query: OrgIdQuerySchema },
   responses: {
@@ -431,8 +441,8 @@ export const listOrganizationsRoute = createRoute({
   tags: ["IAM"],
   operationId: "listOrganizations",
   summary: "列出所有组织(扁平,前端构建树)",
-  description: "返回所有组织(扁平,带 parentId,前端构建树)。需 iam.read 权限。",
-  middleware: iamReadMiddleware,
+  description: "返回所有组织(扁平,带 parentId,前端构建树)。需 organizations.read 权限。",
+  middleware: organizationsReadMiddleware,
   security: authedSecurity,
   responses: {
     200: jsonSuccessResponse(z.array(OrganizationSchema), "组织列表"),
@@ -446,8 +456,8 @@ export const createOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "createOrganization",
   summary: "创建组织(可指定父组织)",
-  description: "创建组织,可指定 parentId 挂到父组织下。父组织不存在返回 404。需 organizations.manage 权限。",
-  middleware: organizationsManageMiddleware,
+  description: "创建组织,可指定 parentId 挂到父组织下。父组织不存在返回 404。需 organizations.create 权限。",
+  middleware: organizationsCreateMiddleware,
   security: authedSecurity,
   request: { body: { content: { "application/json": { schema: CreateOrganizationSchema } } } },
   responses: {
@@ -463,8 +473,8 @@ export const getOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "getOrganization",
   summary: "获取组织详情",
-  description: "根据组织 ID 获取组织详情。组织不存在返回 404。需 iam.read 权限。",
-  middleware: iamReadMiddleware,
+  description: "根据组织 ID 获取组织详情。组织不存在返回 404。需 organizations.read 权限。",
+  middleware: organizationsReadMiddleware,
   security: authedSecurity,
   request: { params: OrganizationIdParamSchema },
   responses: {
@@ -480,8 +490,8 @@ export const updateOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "updateOrganization",
   summary: "修改组织(改 parentId 时防环)",
-  description: "修改组织 name 或 parentId。改 parentId 时防环:新父组织祖先集含自身则成环,返回 409。组织不存在返回 404。需 organizations.manage 权限。",
-  middleware: organizationsManageMiddleware,
+  description: "修改组织 name 或 parentId。改 parentId 时防环:新父组织祖先集含自身则成环,返回 409。组织不存在返回 404。需 organizations.update 权限。",
+  middleware: organizationsUpdateMiddleware,
   security: authedSecurity,
   request: {
     params: OrganizationIdParamSchema,
@@ -501,8 +511,8 @@ export const deleteOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteOrganization",
   summary: "删除组织(有子组织或有用户拒绝)",
-  description: "删除组织。有子组织或仍有用户时返回 409(防孤儿);组织不存在返回 404。需 organizations.manage 权限。",
-  middleware: organizationsManageMiddleware,
+  description: "删除组织。有子组织或仍有用户时返回 409(防孤儿);组织不存在返回 404。需 organizations.delete 权限。",
+  middleware: organizationsDeleteMiddleware,
   security: authedSecurity,
   request: { params: OrganizationIdParamSchema },
   responses: {
