@@ -14,6 +14,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
+import { Can } from "@/components/Can";
 import { ResourceActions } from "@/components/resource-actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -34,7 +35,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCan, useCanAll, useCanAny, useCanMap } from "@/hooks/use-permissions";
+import { useCan, useCanAll, useCanAny } from "@/hooks/use-permissions";
 import { formatDate } from "@/lib/utils";
 import { buildOrganizationTree } from "../organization-tree";
 import { ResetPasswordDialog } from "./reset-password-dialog";
@@ -55,7 +56,6 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
   // 权限检查提到请求前:roles/organizations 分别需 roles.read/organizations.read,按读权限门控 immediate
   // 避免无对应权限的用户进页面即触发 403(B5 D2)。授权入口需 assignments.read + roles.read +
   // permissions.read + 至少一个写(grant/revoke),读门控保证打开授权对话框时其内部读请求不 403。
-  const canCreate = useCan("users.create");
   // 两个 hook 必须无条件调用(不能 `useCanAll(...) && useCanAny(...)` 短路,否则违反 rules-of-hooks),
   // 再用 && 组合结果:读门控保证打开授权对话框时其内部读请求不 403,写门控保证至少能授或撤。
   const canReadForAuthorize = useCanAll(["assignments.read", "roles.read", "permissions.read"]);
@@ -84,12 +84,15 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
     ];
   }, [organizations, orgId]);
 
-  const caps = useCanMap(["users.update", "users.reset-password", "users.disable", "users.enable"] as const);
+  const canUpdate = useCan("users.update");
+  const canReset = useCan("users.reset-password");
+  const canDisable = useCan("users.disable");
+  const canEnable = useCan("users.enable");
   const hasRowActions = canAuthorize
-    || caps["users.update"]
-    || caps["users.reset-password"]
-    || caps["users.disable"]
-    || caps["users.enable"];
+    || canUpdate
+    || canReset
+    || canDisable
+    || canEnable;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<UserSummary | null>(null);
@@ -163,14 +166,14 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {canCreate && (
+      <Can permission="users.create">
         <div className="flex justify-end">
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus data-icon="inline-start" />
             新建用户
           </Button>
         </div>
-      )}
+      </Can>
 
       {users?.length === 0
         ? (
@@ -217,10 +220,10 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
                                 <ResourceActions
                                   items={[
                                     { id: "authorize", allowed: canAuthorize && !isSelf, label: "授权", icon: ShieldCheck, onClick: () => { setAuthorizing(u); } },
-                                    { id: "edit", allowed: caps["users.update"], label: "编辑", icon: Pencil, onClick: () => { setEditing(u); } },
-                                    { id: "reset", allowed: caps["users.reset-password"], label: "重置密码", icon: KeyRound, onClick: () => { setResetting(u); } },
-                                    { id: "disable", allowed: caps["users.disable"] && !disabled && !isSelf, label: "禁用", icon: Ban, variant: "destructive", onClick: () => { setDisabling(u); } },
-                                    { id: "enable", allowed: caps["users.enable"] && disabled, label: "启用", icon: CircleCheck, onClick: () => { void enableUser(u); } },
+                                    { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { setEditing(u); } },
+                                    { id: "reset", allowed: canReset, label: "重置密码", icon: KeyRound, onClick: () => { setResetting(u); } },
+                                    { id: "disable", allowed: canDisable && !disabled && !isSelf, label: "禁用", icon: Ban, variant: "destructive", onClick: () => { setDisabling(u); } },
+                                    { id: "enable", allowed: canEnable && disabled, label: "启用", icon: CircleCheck, onClick: () => { void enableUser(u); } },
                                   ]}
                                 />
                               </TableCell>

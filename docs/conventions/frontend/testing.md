@@ -57,14 +57,15 @@ CI frontend job 含 `pnpm --filter frontend test`（见 `.github/workflows/ci.ym
 | `lib/safe-redirect.test.ts` | open-redirect 防御（`//`、外链、fallback） |
 | `lib/require-permission.test.ts` | 无权限抛 `redirect` → `/403`（`isRedirect` + `options.to`） |
 | `features/iam/organization-tree.test.ts` | 树索引、缺父升根、环打断、路径、编辑排除后代 |
-| `hooks/use-permissions.test.ts` | `useCanMap` 批量映射(undefined/部分/全部/空) |
+| `hooks/use-permissions.test.ts` | `usePermissions` 切片(undefined/正常) |
+| `components/Can.test.tsx` | `<Can>` permission/anyOf/allOf + render-prop + fallback |
 | `components/resource-actions.test.tsx` | `ResourceActions` 空返回 null/有项渲染/`variant`·`disabled`·`title` 透传 |
 | `api/index.test.ts` | **MSW+alova**：envelope 剥离 / `success:false` 抛错 / 401 hard-nav |
 | `features/settings/components/SettingsPage.test.tsx` | 空态占位断言（SettingsPage 简化为空态，PATCH body 覆盖待 settings feature 落地） |
 
 ## 组件测试模式
 
-- 尽量 mock 边界 hook（如 `useCan`、`useCanMap` 经 `useRouteContext`），避免 RouterProvider 样板。
+- 尽量 mock 边界 hook（如 `useCan`/`usePermissions` 经 `useRouteContext`），避免 RouterProvider 样板。
 - 需要全局 Provider 时再抽 `src/test/utils.tsx` custom render（RTL 官方推荐，按需）。
 - Base UI 控件：优先 `aria-*` / `data-*` 断言（例如 Switch 用 `aria-disabled` + `data-disabled`，非原生 `disabled` 属性）。
 

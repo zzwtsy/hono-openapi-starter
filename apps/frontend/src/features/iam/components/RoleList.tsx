@@ -4,6 +4,7 @@ import { CircleAlert, KeyRound, Pencil, Plus, ShieldCheck, Trash2 } from "lucide
 import { useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
+import { Can } from "@/components/Can";
 import { ResourceActions } from "@/components/resource-actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -25,7 +26,7 @@ import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useCan, useCanAll, useCanMap } from "@/hooks/use-permissions";
+import { useCan, useCanAll } from "@/hooks/use-permissions";
 import { formatDate } from "@/lib/utils";
 import { RoleForm } from "./role-form";
 import { RolePermissionsDialog } from "./role-permissions-dialog";
@@ -38,15 +39,15 @@ export function RoleList() {
   const [assigning, setAssigning] = useState<Role | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
 
-  const canCreate = useCan("roles.create");
   const canConfigPerms = useCanAll([
     "roles.assign-permissions",
     "roles.revoke-permissions",
     "permissions.read",
     "roles.read",
   ]);
-  const caps = useCanMap(["roles.update", "roles.delete"] as const);
-  const canManageRow = canConfigPerms || caps["roles.update"] || caps["roles.delete"];
+  const canUpdate = useCan("roles.update");
+  const canDelete = useCan("roles.delete");
+  const canManageRow = canConfigPerms || canUpdate || canDelete;
 
   const confirmDelete = async () => {
     if (deleting === null) {
@@ -96,14 +97,14 @@ export function RoleList() {
 
   return (
     <div className="flex flex-col gap-4">
-      {canCreate && (
+      <Can permission="roles.create">
         <div className="flex justify-end">
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus data-icon="inline-start" />
             新建角色
           </Button>
         </div>
-      )}
+      </Can>
       {data?.length === 0
         ? (
             <Empty>
@@ -152,8 +153,8 @@ export function RoleList() {
                                 <ResourceActions
                                   items={[
                                     { id: "perms", allowed: canConfigPerms, label: "权限分配", icon: KeyRound, onClick: () => { setAssigning(role); } },
-                                    { id: "edit", allowed: caps["roles.update"], label: "编辑", icon: Pencil, onClick: () => { setEditing(role); } },
-                                    { id: "delete", allowed: caps["roles.delete"], label: "删除", icon: Trash2, variant: "destructive", onClick: () => { setDeleting(role); } },
+                                    { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { setEditing(role); } },
+                                    { id: "delete", allowed: canDelete, label: "删除", icon: Trash2, variant: "destructive", onClick: () => { setDeleting(role); } },
                                   ]}
                                 />
                               )}

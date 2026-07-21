@@ -21,7 +21,7 @@ lastReviewedAt: 2026-07-14
 | --- | --- | --- | --- |
 | `/projects` | `requirePermission("projects.read")` | `listProjects` | `ProjectList` |
 
-写权限(`projects.create`/`update`/`delete`)不进路由守卫(必须能看列表),只在组件层用 `useCan`(单点按钮)/`useCanMap`+`<ResourceActions>`(行菜单)控入口。
+写权限(`projects.create`/`update`/`delete`)不进路由守卫(必须能看列表),只在组件层用 `<Can>`(单点按钮)/`useCan`+`<ResourceActions>`(行菜单)控入口。
 
 ## 组件结构
 
@@ -40,7 +40,7 @@ features/projects/
 
 - `projects.read`:路由 `beforeLoad`(进列表)
 - `projects.create`:`useCan` 控"新建项目"按钮
-- `projects.update`/`projects.delete`:`useCanMap(["projects.update","projects.delete"])` 批量映射,`<ResourceActions>` 数据驱动行菜单(编辑/删除)
+- `projects.update`/`projects.delete`:`useCan` 各自判断,`<ResourceActions>` 数据驱动行菜单(编辑/删除)
 - 操作列与表头:`caps["projects.update"] || caps["projects.delete"]` 才渲染(两者皆无则整列不显示)
 
 前端权限只控 UX;后端 `PermissionChecker` 才是授权边界。

@@ -11,7 +11,7 @@ import {
 
 interface ResourceAction {
   id: string;
-  /** 是否渲染该项(通常来自 `useCanMap` 的布尔映射)。false 时该项不进入菜单。 */
+  /** 是否渲染该项(通常来自 `useCan` 的布尔)。false 时该项不进入菜单。 */
   allowed: boolean;
   label: ReactNode;
   icon: ComponentType<{ className?: string }>;
@@ -36,7 +36,7 @@ interface ResourceActionsProps {
  * - `allowed`:权限级显隐;全部为 false 时返回 null(整列不渲染)。
  * - `disabled`/`title`:业务级禁用,对齐 CASL `<Can passThrough>` 的「禁用而非隐藏」语义。
  *
- * 权限判断由调用方经 `useCanMap` 算好布尔传入;本组件不耦合权限 hook,便于在非路由
+ * 权限判断由调用方经 `useCan` 算好布尔传入;本组件不耦合权限 hook,便于在非路由
  * 上下文(如测试)中渲染。后端仍是唯一授权边界,本组件只做 UX。
  */
 export function ResourceActions({ items, label = "操作" }: ResourceActionsProps) {

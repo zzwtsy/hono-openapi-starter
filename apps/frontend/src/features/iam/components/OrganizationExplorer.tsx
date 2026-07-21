@@ -4,6 +4,7 @@ import { Building2, CircleAlert, Plus } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
+import { Can } from "@/components/Can";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -29,7 +30,6 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { useCan } from "@/hooks/use-permissions";
 import { buildOrganizationTree } from "../organization-tree";
 import { OrganizationDetails } from "./organization-details";
 import { OrganizationForm } from "./organization-form";
@@ -61,7 +61,6 @@ export function OrganizationExplorer({
   onSelectedOrganizationChange,
 }: OrganizationExplorerProps) {
   const { data, loading, error, send } = useRequest(() => Apis.IAM.listOrganizations());
-  const canCreate = useCan("organizations.create");
   const [creatingParentId, setCreatingParentId] = useState<string | null>();
   const [editing, setEditing] = useState<Organization>();
   const [deleting, setDeleting] = useState<Organization>();
@@ -156,14 +155,14 @@ export function OrganizationExplorer({
           <EmptyTitle>暂无组织</EmptyTitle>
           <EmptyDescription>创建第一个根组织，开始搭建组织结构。</EmptyDescription>
         </EmptyHeader>
-        {canCreate && (
+        <Can permission="organizations.create">
           <EmptyContent>
             <Button onClick={() => { setCreatingParentId(null); }}>
               <Plus data-icon="inline-start" />
               新建根组织
             </Button>
           </EmptyContent>
-        )}
+        </Can>
       </Empty>
     );
   } else {
@@ -234,12 +233,12 @@ export function OrganizationExplorer({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 p-4 sm:p-6">
       <PageHeader title="组织管理" description="浏览和维护组织层级。">
-        {canCreate && (
+        <Can permission="organizations.create">
           <Button onClick={() => { setCreatingParentId(null); }}>
             <Plus data-icon="inline-start" />
             新建根组织
           </Button>
-        )}
+        </Can>
       </PageHeader>
 
       {content}
