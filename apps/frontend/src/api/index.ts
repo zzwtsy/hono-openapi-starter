@@ -58,7 +58,21 @@ export const alovaInstance = createAlova({
 // createApis 把 configMap[key] merge 进每次调用)。loader/hooks 调 Apis.xxx() 不再传 cacheFor,单一来源。
 // GET 标 cacheFor + hitSource,mutation 标 name;mutation 成功自动失效相关 GET 缓存。
 export const $$userConfigMap = withConfigType({
-  "Me.getMe": { cacheFor: 5 * 60_000 },
+  // Me.getMe:权限变更(授/撤角色、授/撤直接权限、角色权限变更)后失效缓存,下次 beforeLoad
+  // (刷新/重进 _authenticated)拿新权限。无差别 hitSource:给别人授权也失效自己 Me(多一次
+  // 重拉,无害)。限制:SPA 内不刷新则 context.auth.permissions 不即时更新(需 router.invalidate
+  // 重跑 beforeLoad,留待后续)。
+  "Me.getMe": {
+    cacheFor: 5 * 60_000,
+    hitSource: [
+      "IAM.assignUserRole",
+      "IAM.deleteUserRole",
+      "IAM.assignUserPermission",
+      "IAM.deleteUserPermission",
+      "IAM.assignRolePermissions",
+      "IAM.deleteRolePermission",
+    ],
+  },
   "IAM.listRoles": {
     cacheFor: 60_000,
     hitSource: ["IAM.createRole", "IAM.updateRole", "IAM.deleteRole"],

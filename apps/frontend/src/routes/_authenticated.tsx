@@ -24,10 +24,9 @@ export const Route = createFileRoute("/_authenticated")({
 
 // 受保护区布局:Sidebar 导航 + Inset 内容。/login、/403 不在此 layout,不带 Sidebar。
 function AuthenticatedLayout() {
-  const { auth } = Route.useRouteContext();
   return (
     <SidebarProvider>
-      <AppSidebar auth={auth} />
+      <AppSidebar />
       <SidebarInset>
         <header className="flex h-14 items-center gap-2 border-b px-4">
           <SidebarTrigger />

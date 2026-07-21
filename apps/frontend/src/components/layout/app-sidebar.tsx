@@ -1,5 +1,4 @@
 import type { LucideIcon } from "lucide-react";
-import type { AuthState } from "@/types/auth";
 import type { AppPermission } from "@/types/permissions";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Building2, ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, Settings, ShieldCheck, Users } from "lucide-react";
@@ -27,6 +26,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useLogout } from "@/features/auth/hooks";
+import { useAuth } from "@/hooks/use-auth";
 import { hasPermission } from "@/lib/permissions";
 
 // 受保护区的侧边栏:导航按 permissions 显隐(前端 UX,后端 PermissionChecker 才是授权边界);
@@ -51,19 +51,16 @@ const navItems: NavItem[] = [
   { to: "/settings", title: "系统设置", icon: Settings, permission: "settings.read", match: p => p.startsWith("/settings") },
 ];
 
-interface AppSidebarProps {
-  auth: AuthState;
-}
-
-export function AppSidebar({ auth }: AppSidebarProps) {
+export function AppSidebar() {
+  const auth = useAuth();
   const pathname = useRouterState({ select: s => s.location.pathname });
   const { logout } = useLogout();
 
   const visible = navItems.filter(
-    item => item.permission === undefined || hasPermission(auth.permissions, item.permission),
+    item => item.permission === undefined || hasPermission(auth?.permissions, item.permission),
   );
-  const name = auth.user?.name ?? "";
-  const email = auth.user?.email ?? "";
+  const name = auth?.user?.name ?? "";
+  const email = auth?.user?.email ?? "";
   const initial = name.charAt(0).toUpperCase();
 
   return (

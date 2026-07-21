@@ -1,7 +1,8 @@
-import { createFileRoute, useRouteContext } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ShieldOff } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { PageHeader } from "@/components/ui/page-header";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 // 概览页:新用户(无业务权限)显示空状态提示,引导联系管理员授权;有权限显示占位(待实现)。
 // permissions 来自 _authenticated beforeLoad 的 me.permissions(相对 home org 的有效权限全集)。
 export function Dashboard() {
-  const permissions = useRouteContext({ strict: false, select: c => c.auth?.permissions }) ?? [];
+  const permissions = usePermissions() ?? [];
   if (permissions.length === 0) {
     return (
       <div className="flex flex-col gap-4 p-6">
