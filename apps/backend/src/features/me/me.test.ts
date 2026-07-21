@@ -49,7 +49,7 @@ describe("me routes", () => {
 
   it("已绑定组织时返回 user + 有效权限全集", async () => {
     authed();
-    mockListEffective.mockResolvedValue(["projects.read", "organizations.manage"]);
+    mockListEffective.mockResolvedValue(["projects.read", "organizations.read"]);
 
     const res = await buildApp().request("/me");
     expect(res.status).toBe(200);
@@ -57,7 +57,7 @@ describe("me routes", () => {
     expect(body.success).toBe(true);
     expect(body.data.user.id).toBe("u-1");
     expect(body.data.user.orgId).toBe("org-1");
-    expect(body.data.permissions).toEqual(["projects.read", "organizations.manage"]);
+    expect(body.data.permissions).toEqual(["projects.read", "organizations.read"]);
     expect(mockListEffective).toHaveBeenCalledWith("u-1", "org-1");
   });
 

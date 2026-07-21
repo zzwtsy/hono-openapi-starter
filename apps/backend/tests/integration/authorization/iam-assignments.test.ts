@@ -51,9 +51,9 @@ describe("iam user assignments", () => {
 
   it("直接 allow 后 checkPermission 通过", async () => {
     await setup();
-    await IamService.assignUserPermission("org-root", "u-1", "iam.read", { orgId: "org-root", effect: "allow" });
+    await IamService.assignUserPermission("org-root", "u-1", "assignments.read", { orgId: "org-root", effect: "allow" });
 
-    expect(await checker.check("u-1", "iam.read", "org-root")).toBe(true);
+    expect(await checker.check("u-1", "assignments.read", "org-root")).toBe(true);
   });
 
   it("deny 覆盖角色权限", async () => {
