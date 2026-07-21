@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useCan } from "@/hooks/use-permissions";
 
 interface UserAuthorizationDialogProps {
   user: UserSummary;
@@ -163,6 +164,7 @@ function RoleAssignmentsTab({ userId, orgId, roles, onChanged }: {
   roles: Role[];
   onChanged: () => void;
 }) {
+  const canGrant = useCan("assignments.grant");
   const {
     data: assignments,
     loading,
@@ -270,7 +272,7 @@ function RoleAssignmentsTab({ userId, orgId, roles, onChanged }: {
           </Field>
         </FieldGroup>
         <div className="flex justify-end">
-          <Button disabled={selectedRoleId === "" || assigning} onClick={() => { void assignRole(); }}>
+          <Button disabled={!canGrant || selectedRoleId === "" || assigning} onClick={() => { void assignRole(); }}>
             {assigning && <Spinner data-icon="inline-start" />}
             <ShieldCheck />
             授予
@@ -282,6 +284,7 @@ function RoleAssignmentsTab({ userId, orgId, roles, onChanged }: {
 }
 
 function RoleAssignmentRow({ assignment, onRevoke }: { assignment: UserRoleAssignment; onRevoke: () => void }) {
+  const canRevoke = useCan("assignments.revoke");
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border p-2">
       <div className="flex flex-col gap-0.5">
@@ -293,10 +296,12 @@ function RoleAssignmentRow({ assignment, onRevoke }: { assignment: UserRoleAssig
           </span>
         )}
       </div>
-      <Button variant="ghost" size="sm" onClick={onRevoke}>
-        <X />
-        撤销
-      </Button>
+      {canRevoke && (
+        <Button variant="ghost" size="sm" onClick={onRevoke}>
+          <X />
+          撤销
+        </Button>
+      )}
     </div>
   );
 }
@@ -307,6 +312,7 @@ function DirectPermissionsTab({ userId, orgId, onChanged }: {
   orgId: string;
   onChanged: () => void;
 }) {
+  const canGrant = useCan("assignments.grant");
   const { data: catalog } = useRequest(() => Apis.IAM.listPermissions());
   const {
     data: directPerms,
@@ -439,7 +445,7 @@ function DirectPermissionsTab({ userId, orgId, onChanged }: {
           </Field>
         </FieldGroup>
         <div className="flex justify-end">
-          <Button disabled={selectedPermission === "" || assigning} onClick={() => { void assignPermission(); }}>
+          <Button disabled={!canGrant || selectedPermission === "" || assigning} onClick={() => { void assignPermission(); }}>
             {assigning && <Spinner data-icon="inline-start" />}
             <ShieldCheck />
             授予
@@ -451,6 +457,7 @@ function DirectPermissionsTab({ userId, orgId, onChanged }: {
 }
 
 function DirectPermissionRow({ perm, onRevoke }: { perm: UserDirectPermission; onRevoke: () => void }) {
+  const canRevoke = useCan("assignments.revoke");
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border p-2">
       <div className="flex flex-col gap-0.5">
@@ -467,10 +474,12 @@ function DirectPermissionRow({ perm, onRevoke }: { perm: UserDirectPermission; o
           </span>
         )}
       </div>
-      <Button variant="ghost" size="sm" onClick={onRevoke}>
-        <X />
-        撤销
-      </Button>
+      {canRevoke && (
+        <Button variant="ghost" size="sm" onClick={onRevoke}>
+          <X />
+          撤销
+        </Button>
+      )}
     </div>
   );
 }

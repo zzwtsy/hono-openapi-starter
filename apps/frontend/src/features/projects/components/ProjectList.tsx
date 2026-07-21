@@ -29,7 +29,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCan } from "@/hooks/use-permissions";
+import { useCan, useCanAny } from "@/hooks/use-permissions";
 import { formatDate } from "@/lib/utils";
 import { ProjectForm } from "./project-form";
 
@@ -39,7 +39,7 @@ export function ProjectList() {
   const canCreate = useCan("projects.create");
   const canUpdate = useCan("projects.update");
   const canDelete = useCan("projects.delete");
-  const canManage = canUpdate || canDelete;
+  const canManage = useCanAny(["projects.update", "projects.delete"]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState<Project | null>(null);

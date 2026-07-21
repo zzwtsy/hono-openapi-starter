@@ -1,7 +1,6 @@
 import type { OrganizationTreeIndex } from "../organization-tree";
 import type { Organization } from "@/api/globals";
 import { Building2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
-import { Can } from "@/components/Can";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
+import { useCan, useCanAny } from "@/hooks/use-permissions";
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" });
 
@@ -40,6 +40,11 @@ export function OrganizationDetails({
   onEdit,
   onSelect,
 }: OrganizationDetailsProps) {
+  const canCreate = useCan("organizations.create");
+  const canUpdate = useCan("organizations.update");
+  const canDelete = useCan("organizations.delete");
+  const canManage = useCanAny(["organizations.create", "organizations.update", "organizations.delete"]);
+
   if (organization === undefined) {
     return (
       <Card className="h-full">
@@ -66,43 +71,49 @@ export function OrganizationDetails({
       <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
         <CardTitle className="break-words text-lg">{organization.name}</CardTitle>
         <CardDescription className="break-words">{index.getDisplayPath(organization.id)}</CardDescription>
-        <Can perm="organizations.manage">
+        {canManage && (
           <CardAction className="col-start-1 row-span-1 row-start-auto mt-3 flex flex-wrap items-center justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
-            <Button variant="outline" size="sm" onClick={() => { onCreateChild(organization); }}>
-              <Plus data-icon="inline-start" />
-              新建子组织
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => { onEdit(organization); }}>
-              <Pencil data-icon="inline-start" />
-              编辑
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={(
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`更多组织操作：${organization.name}`}
-                  />
-                )}
-              >
-                <MoreHorizontal />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={children.length > 0}
-                    onClick={() => { onDelete(organization); }}
-                  >
-                    <Trash2 />
-                    {children.length > 0 ? "请先处理子组织" : "删除组织"}
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {canCreate && (
+              <Button variant="outline" size="sm" onClick={() => { onCreateChild(organization); }}>
+                <Plus data-icon="inline-start" />
+                新建子组织
+              </Button>
+            )}
+            {canUpdate && (
+              <Button variant="ghost" size="sm" onClick={() => { onEdit(organization); }}>
+                <Pencil data-icon="inline-start" />
+                编辑
+              </Button>
+            )}
+            {canDelete && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={(
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`更多组织操作：${organization.name}`}
+                    />
+                  )}
+                >
+                  <MoreHorizontal />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={children.length > 0}
+                      onClick={() => { onDelete(organization); }}
+                    >
+                      <Trash2 />
+                      {children.length > 0 ? "请先处理子组织" : "删除组织"}
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </CardAction>
-        </Can>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">

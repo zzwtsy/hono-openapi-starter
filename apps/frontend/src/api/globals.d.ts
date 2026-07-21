@@ -162,10 +162,20 @@ export interface Me {
     | 'projects.create'
     | 'projects.update'
     | 'projects.delete'
-    | 'iam.read'
-    | 'organizations.manage'
-    | 'roles.manage'
-    | 'assignments.manage'
+    | 'permissions.read'
+    | 'organizations.read'
+    | 'organizations.create'
+    | 'organizations.update'
+    | 'organizations.delete'
+    | 'roles.read'
+    | 'roles.create'
+    | 'roles.update'
+    | 'roles.delete'
+    | 'roles.assign-permissions'
+    | 'roles.revoke-permissions'
+    | 'assignments.read'
+    | 'assignments.grant'
+    | 'assignments.revoke'
     | 'users.read'
     | 'users.create'
     | 'users.update'
@@ -480,10 +490,20 @@ declare global {
        *     | 'projects.create'
        *     | 'projects.update'
        *     | 'projects.delete'
-       *     | 'iam.read'
-       *     | 'organizations.manage'
-       *     | 'roles.manage'
-       *     | 'assignments.manage'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
        *     | 'users.read'
        *     | 'users.create'
        *     | 'users.update'
@@ -1686,6 +1706,7 @@ declare global {
        * **Path Parameters**
        * ```ts
        * type PathParameters = {
+       *   // 用户 ID
        *   userId: string
        * }
        * ```
@@ -1710,6 +1731,9 @@ declare global {
       listUserPermissions<
         Config extends Alova2MethodConfig<string[]> & {
           pathParams: {
+            /**
+             * 用户 ID
+             */
             userId: string;
           };
           params: {
@@ -1734,6 +1758,7 @@ declare global {
        * **Path Parameters**
        * ```ts
        * type PathParameters = {
+       *   // 用户 ID
        *   userId: string
        * }
        * ```
@@ -1767,6 +1792,9 @@ declare global {
       listUserRoles<
         Config extends Alova2MethodConfig<UserRoleAssignment[]> & {
           pathParams: {
+            /**
+             * 用户 ID
+             */
             userId: string;
           };
           params: {
@@ -1791,6 +1819,7 @@ declare global {
        * **Path Parameters**
        * ```ts
        * type PathParameters = {
+       *   // 用户 ID
        *   userId: string
        * }
        * ```
@@ -1824,6 +1853,9 @@ declare global {
       listUserDirectPermissions<
         Config extends Alova2MethodConfig<UserDirectPermission[]> & {
           pathParams: {
+            /**
+             * 用户 ID
+             */
             userId: string;
           };
           params: {
