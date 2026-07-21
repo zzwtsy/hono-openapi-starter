@@ -41,7 +41,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCan } from "@/hooks/use-permissions";
+import { useCan, useCanAll, useCanAny } from "@/hooks/use-permissions";
 import { formatDate } from "@/lib/utils";
 import { buildOrganizationTree } from "../organization-tree";
 import { ResetPasswordDialog } from "./reset-password-dialog";
@@ -59,20 +59,26 @@ interface UserListProps {
 }
 
 export function UserList({ orgId, currentUserId }: UserListProps) {
-  // 权限检查提到请求前:roles/organizations 仅在需授权或建用户时用到,
-  // 用 immediate 门控避免无 iam.read 权限的用户进页面即触发 403(B5 D2)。
+  // 权限检查提到请求前:roles/organizations 分别需 roles.read/organizations.read,按读权限门控 immediate
+  // 避免无对应权限的用户进页面即触发 403(B5 D2)。授权入口需 assignments.read + roles.read +
+  // permissions.read + 至少一个写(grant/revoke),读门控保证打开授权对话框时其内部读请求不 403。
   const canCreate = useCan("users.create");
-  const canAuthorize = useCan("assignments.manage");
-  const needsAux = canCreate || canAuthorize;
+  // 两个 hook 必须无条件调用(不能 `useCanAll(...) && useCanAny(...)` 短路,否则违反 rules-of-hooks),
+  // 再用 && 组合结果:读门控保证打开授权对话框时其内部读请求不 403,写门控保证至少能授或撤。
+  const canReadForAuthorize = useCanAll(["assignments.read", "roles.read", "permissions.read"]);
+  const canWriteAuthorize = useCanAny(["assignments.grant", "assignments.revoke"]);
+  const canAuthorize = canReadForAuthorize && canWriteAuthorize;
+  const canReadRoles = useCan("roles.read");
+  const canReadOrgs = useCan("organizations.read");
 
   const { data: users, loading, error, send } = useRequest(() => Apis.IAM.listUsers());
-  // roles 用于授权对话框;organizations 用于建用户选 org + 授权 org。
-  // 两者均需 iam.read;无该权限时 immediate:false 不请求,降级为 undefined(对话框条件渲染容错)。
-  const { data: roles } = useRequest(() => Apis.IAM.listRoles(), { immediate: needsAux });
-  const { data: organizations } = useRequest(() => Apis.IAM.listOrganizations(), { immediate: needsAux });
+  // roles 用于授权对话框(角色下拉);organizations 用于建用户选 org + 授权 org 切换。
+  // 各自按读权限 immediate 门控:无对应读权限不请求,降级为 undefined(对话框/表单条件渲染容错)。
+  const { data: roles } = useRequest(() => Apis.IAM.listRoles(), { immediate: canReadRoles });
+  const { data: organizations } = useRequest(() => Apis.IAM.listOrganizations(), { immediate: canReadOrgs });
 
   // create 用户时选归属组织:操作者管理子树(自身+子孙),复用 organization-tree 的 getDescendantIds。
-  // listOrganizations 需 iam.read;无该权限(如仅 users.create 无 iam.read)时 organizations 为 undefined,
+  // listOrganizations 需 organizations.read;无该权限(如仅 users.create 无 organizations.read)时 organizations 为 undefined,
   // 降级为仅操作者 home org(建用户仍可用默认 org,只是不能选子组织)。
   const orgOptions = useMemo<UserOrgOption[]>(() => {
     if (organizations == null) {
@@ -89,7 +95,7 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
   const canReset = useCan("users.reset-password");
   const canDisable = useCan("users.disable");
   const canEnable = useCan("users.enable");
-  const hasRowActions = canUpdate || canReset || canDisable || canEnable || canAuthorize;
+  const hasRowActions = useCanAny(["users.update", "users.reset-password", "users.disable", "users.enable"]) || canAuthorize;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<UserSummary | null>(null);

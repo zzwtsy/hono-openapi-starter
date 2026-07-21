@@ -22,7 +22,7 @@ import { resetDb } from "../../helpers/db.js";
 
 const ORG = { hq: "org-hq", south: "org-south", fujian: "org-fujian" } as const;
 const ROLE = { admin: "role-admin", editor: "role-editor" } as const;
-const PERM = { usersRead: "users.read", usersWrite: "users.write", usersDelete: "users.delete" } as const;
+const PERM = { usersRead: "users.read", usersWrite: "users.update", usersDelete: "users.disable" } as const;
 const USER_ID = "user-test";
 
 /** seed 基础数据:组织树(总部→华南→福建)、权限、角色、Better Auth user。 */
@@ -76,14 +76,14 @@ describe("checkPermission", () => {
     expect(allowed).toBe(true);
   });
 
-  it("deny 在父组织 → 子组织也拒(华南 deny users.delete,福建检查拒)", async () => {
-    // 福建继承华南 admin(含 users.delete)
+  it("deny 在父组织 → 子组织也拒(华南 deny users.disable,福建检查拒)", async () => {
+    // 福建继承华南 admin(含 users.disable)
     await db.insert(userRoles).values({
       userId: USER_ID,
       roleId: ROLE.admin,
       orgId: ORG.south,
     });
-    // 华南直接 deny users.delete,向下传播到福建
+    // 华南直接 deny users.disable,向下传播到福建
     await db.insert(userPermissions).values({
       userId: USER_ID,
       permission: PERM.usersDelete,

@@ -142,7 +142,7 @@ export const UserRoleAssignmentSchema = z.object({
 
 /** 用户在某组织的直接授权记录(原始授权,allow/deny,非祖先继承)。 */
 export const UserDirectPermissionSchema = z.object({
-  permission: z.string().openapi({ description: "权限名 <resource>.<action>", example: "users.delete" }),
+  permission: z.string().openapi({ description: "权限名 <resource>.<action>", example: "users.disable" }),
   effect: z.enum(["allow", "deny"]).openapi({ description: "允许或拒绝" }),
   orgId: z.string().openapi({ description: "授权绑定的组织 ID", example: "org-root" }),
   expiresAt: z.iso.datetime().nullable().openapi({ description: "过期时间(ISO 8601),null 表示永不过期" }),

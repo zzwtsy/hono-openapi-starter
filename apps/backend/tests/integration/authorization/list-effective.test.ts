@@ -82,9 +82,9 @@ describe("listEffectivePermissions", () => {
 
   it("直接 allow 进入全集", async () => {
     await setup();
-    await db.insert(userPermissions).values({ userId: "u-1", permission: "iam.read", orgId: "org-fujian", effect: "allow" });
+    await db.insert(userPermissions).values({ userId: "u-1", permission: "permissions.read", orgId: "org-fujian", effect: "allow" });
 
     const perms = await checker.listEffectivePermissions("u-1", "org-fujian");
-    expect(perms).toContain("iam.read");
+    expect(perms).toContain("permissions.read");
   });
 });

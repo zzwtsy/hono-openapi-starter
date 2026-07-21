@@ -5,13 +5,13 @@ import { requirePermission } from "./require-permission";
 describe("requirePermission", () => {
   it("持有权限时不抛错", () => {
     expect(() => {
-      requirePermission(["users.read", "organizations.manage"], "users.read");
+      requirePermission(["users.read", "organizations.create"], "users.read");
     }).not.toThrow();
   });
 
   it("缺少权限时抛 redirect 到 /403", () => {
     try {
-      requirePermission(["iam.read"], "users.read");
+      requirePermission(["organizations.read"], "users.read");
       expect.unreachable("应抛出 redirect");
     } catch (err) {
       expect(isRedirect(err)).toBe(true);

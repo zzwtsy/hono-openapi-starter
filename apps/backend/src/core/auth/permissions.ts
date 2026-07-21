@@ -1,5 +1,29 @@
+/** 受约束的 resource 前缀:必须是可被授予的业务实体,不能是模块名。 */
+export type ResourceName
+  = "permissions"
+    | "roles"
+    | "organizations"
+    | "assignments"
+    | "users"
+    | "projects"
+    | "settings";
+
+/** 受约束的 action 动词:细粒度 verb,不能是聚合词 manage。 */
+export type Action
+  = "read"
+    | "create"
+    | "update"
+    | "delete"
+    | "grant"
+    | "revoke"
+    | "assign-permissions"
+    | "revoke-permissions"
+    | "reset-password"
+    | "disable"
+    | "enable";
+
 /** 权限名格式:`<resource>.<action>`(如 `users.read`)。 */
-export type PermissionName = `${string}.${string}`;
+export type PermissionName = `${ResourceName}.${Action}`;
 
 /**
  * 权限定义:name + 可选 description。

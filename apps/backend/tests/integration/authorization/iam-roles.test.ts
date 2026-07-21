@@ -31,15 +31,15 @@ describe("iam role management", () => {
 
   it("给实例角色配权限后 listRolePermissions 含", async () => {
     const role = await IamService.createRole({ name: "viewer" });
-    await IamService.assignRolePermissions(role.id, ["projects.read", "iam.read"]);
+    await IamService.assignRolePermissions(role.id, ["projects.read", "permissions.read"]);
 
     const perms = await IamService.listRolePermissions(role.id);
-    expect(perms).toEqual(expect.arrayContaining(["projects.read", "iam.read"]));
+    expect(perms).toEqual(expect.arrayContaining(["projects.read", "permissions.read"]));
   });
 
   it("assignRolePermissions 传不存在权限名抛 PERMISSION_NOT_FOUND", async () => {
     const role = await IamService.createRole({ name: "viewer" });
-    // permissions.read 不在权限目录,FK 违例修复前会 500,修复后应 404(B2 D3)。
+    // permissions.nonexistent 不在权限目录,FK 违例修复前会 500,修复后应 404(B2 D3)。
     await expect(
       IamService.assignRolePermissions(role.id, ["projects.read", "permissions.nonexistent"]),
     ).rejects.toMatchObject({ code: "PERMISSION_NOT_FOUND" });
@@ -75,10 +75,10 @@ describe("iam role management", () => {
 
   it("撤角色的单个权限", async () => {
     const role = await IamService.createRole({ name: "viewer" });
-    await IamService.assignRolePermissions(role.id, ["projects.read", "iam.read"]);
+    await IamService.assignRolePermissions(role.id, ["projects.read", "permissions.read"]);
     await IamService.deleteRolePermission(role.id, "projects.read");
 
     const perms = await IamService.listRolePermissions(role.id);
-    expect(perms).toEqual(["iam.read"]);
+    expect(perms).toEqual(["permissions.read"]);
   });
 });

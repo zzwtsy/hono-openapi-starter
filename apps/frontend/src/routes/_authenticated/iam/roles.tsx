@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/require-permission";
 
 export const Route = createFileRoute("/_authenticated/iam/roles")({
   beforeLoad: ({ context }) => {
-    requirePermission(context.auth.permissions, "iam.read");
+    requirePermission(context.auth.permissions, "roles.read");
   },
   loader: async () => {
     // 关键路由预取:写 alova cache,组件 useRequest 命中(cacheFor 在 api/index.ts 集中配置)

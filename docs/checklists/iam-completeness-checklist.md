@@ -69,7 +69,7 @@ lastReviewedAt: 2026-07-19
 - [x] `requirePermission(perm, { orgId })` 支持显式目标组织
 - [x] `requireOrgUser`：无 user → 401；`orgId == null` → 403
 - [x] 业务路由（如 projects）按 home org 做数据隔离
-- [ ] 管理类写操作「显式传 orgId 做 PEP」= 分级管理员（Non-goal，见 §13）；当前全局 admin 模型：用户/授权写操作用 home org PEP + service 子树校验（安全），组织写操作无子树校验（仅全局 admin 持有 `organizations.manage`，见 iam.md §6）。分级管理员落地时补组织写操作子树校验。
+- [ ] 管理类写操作「显式传 orgId 做 PEP」= 分级管理员（Non-goal，见 §13）；当前全局 admin 模型：用户/授权写操作用 home org PEP + service 子树校验（安全），组织写操作无子树校验（仅全局 admin 持有 `organizations.*`，见 iam.md §6）。分级管理员落地时补组织写操作子树校验。
 
 ---
 
@@ -89,15 +89,15 @@ lastReviewedAt: 2026-07-19
 - [x] `projects.*` 细粒度（read/create/update/delete）
 - [x] `users.*` 细粒度（read/create/update/reset-password/disable/enable）
 - [x] `settings.read` / `settings.update`
-- [x] `iam.read` / `organizations.manage` / `roles.manage` / `assignments.manage`（写侧三分）
+- [x] `permissions.read` / `roles.read` / `organizations.read` / `assignments.read` + 细粒度写权限（见下）
 
-模板推荐默认（**消灭 `iam.manage` 一锅，但不要拆到每 HTTP 动词**）：
+模板推荐默认（**消灭 `iam.manage` / `*.manage` 一锅，写操作按 entity verb 拆分**）：
 
-- [x] 删除或停止使用单一写权限 `iam.manage`
-- [x] `organizations.manage`（或等价命名）：组织树 create/update/delete
-- [x] `roles.manage`：实例角色 CRUD + 角色权限挂载
-- [x] `assignments.manage`：用户角色/直接权限的授与撤
-- [x] 保留单一 `iam.read` 覆盖 IAM 只读面（不必再拆三个 `*.read`）
+- [x] 删除或停止使用单一写权限 `iam.manage` / `*.manage`
+- [x] `organizations.create/update/delete`：组织树写操作
+- [x] `roles.create/update/delete/assign-permissions/revoke-permissions`：实例角色 CRUD + 角色权限挂载
+- [x] `assignments.grant/revoke`：用户角色/直接权限的授与撤
+- [x] IAM 只读面按实体拆分为 `permissions.read` / `roles.read` / `organizations.read` / `assignments.read`
 - [x] 前端 Can / 路由与后端 middleware 同步上述三分
 - [x] admin 角色仍同步全部权限；文档说明自定义角色如何勾选
 
@@ -141,9 +141,9 @@ lastReviewedAt: 2026-07-19
 
 - [x] 组织 CRUD、改 parent 防环、有子拒删
 - [x] 扁平 list + 前端建树
-- [x] `listOrganizations` 需 `iam.read`
-- [ ] 读路径按子树过滤 = 分级管理员需求（Non-goal，见 §13）；当前全局 admin 模型，`listOrganizations` 全表返回可接受（仅全局 admin 持有 `iam.read`）。「仅全局 admin 可读全树」文档约束已在 iam.md §6 显式；分级管理员落地时按子树过滤。
-- [x] 写路径与 `organizations.manage`/`roles.manage`/`assignments.manage` + 子树约束一致
+- [x] `listOrganizations` 需 `organizations.read`
+- [ ] 读路径按子树过滤 = 分级管理员需求（Non-goal，见 §13）；当前全局 admin 模型，`listOrganizations` 全表返回可接受（仅全局 admin 持有 `organizations.read`）。「仅全局 admin 可读全树」文档约束已在 iam.md §6 显式；分级管理员落地时按子树过滤。
+- [x] 写路径与 `organizations.*`/`roles.*`/`assignments.grant/revoke` + 子树约束一致
 
 ---
 
@@ -153,7 +153,7 @@ lastReviewedAt: 2026-07-19
 - [x] admin 代码角色同步全部权限
 - [x] 角色权限挂载 API + UI
 - [x] 权限从代码移除后 DB 行清理策略（sync upsert-only 不删旧行;fork 升级需手动 `DELETE FROM role_permissions WHERE permission='iam.manage'; DELETE FROM permissions WHERE name='iam.manage';`）
-- [x] 与 `roles.manage` 细粒度对齐（见 §3.2）--角色写操作统一 `roles.manage`、读操作 `iam.read`，已对齐
+- [x] 与细粒度角色权限对齐（见 §3.2）--角色写操作拆为 `roles.create/update/delete/assign-permissions/revoke-permissions`、读操作 `roles.read`，已对齐
 
 ---
 
@@ -191,7 +191,7 @@ lastReviewedAt: 2026-07-19
 ## 10. 前端门控与契约
 
 - [x] 前端权限名来自 OpenAPI / gen:api
-- [x] 路由/侧栏与后端权限名对齐（users / projects / settings / iam.read）
+- [x] 路由/侧栏与后端权限名对齐（users / projects / settings / roles / organizations / assignments / permissions）
 - [x] 前端仅 UX，后端 PermissionChecker 为权威
 - [x] 去掉 `iam.manage` 后 UI 全量改为三分 manage
 - [x] 用户列表/表单与「子树管理范围」一致（创建选 org、列表见子树用户）
@@ -243,7 +243,7 @@ lastReviewedAt: 2026-07-19
 2. **去注册**：消灭无 home 供给路径
 3. **成员子树**：create 选 org + list/写操作子树 +（建议）调岗
 4. **授权写路径子树校验** + 授角色续期语义
-5. **拆 `iam.manage`** → `organizations|roles|assignments.manage`
+5. **拆 `iam.manage` / `*.manage`** → 细粒度 entity + verb
 6. **体验**：空状态或默认 member
 7. **运营**：audit / userId 日志（可并行）
 

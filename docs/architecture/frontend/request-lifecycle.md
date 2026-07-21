@@ -28,7 +28,7 @@ flowchart TD
 1. **路由匹配**:TanStack Router 文件路由匹配 URL。
 2. **beforeLoad 守卫**:
    - `_authenticated` layout:无 session -> `redirect /login`;有 -> `await Apis.Me.getMe()` 取 permissions,合并到 context 下钻子路由。
-   - 单路由 `beforeLoad`:调 `requirePermission(context.auth.permissions, "iam.read")`,不足 `redirect /403`。
+   - 单路由 `beforeLoad`:调 `requirePermission(context.auth.permissions, "roles.read")`,不足 `redirect /403`。
 3. **loader 预取**(仅关键路由):`await Apis.IAM.listRoles()` 写 alova cache。
 4. **组件挂载**:`useRequest(() => Apis.IAM.listRoles())` 命中 loader 写入的 cache,无二次请求。
 5. **alova 请求**(cache 未命中):fetch(同源 proxy 带 cookie)-> `responded` 剥 envelope -> 返回 data。

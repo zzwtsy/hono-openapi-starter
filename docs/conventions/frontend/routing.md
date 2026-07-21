@@ -19,7 +19,7 @@ TanStack Router 文件路由,`src/routes/` 下文件即路由。`routeTree.gen.t
 | 路由 | 职责 |
 | --- | --- |
 | `_authenticated.tsx` | 登录守卫 layout:无 session -> /login;有 -> getMe 取 permissions 下钻 |
-| 单路由 `beforeLoad` | 权限守卫:`requirePermission(context.auth.permissions, "iam.read")` |
+| 单路由 `beforeLoad` | 权限守卫:`requirePermission(context.auth.permissions, "roles.read")` |
 | `login.tsx` / `403.tsx` | 公开路由(不在 _authenticated 下);`login` 已登录则跳 `/dashboard`,并声明 `redirect` 搜索参数供登录后回跳 |
 | `index.tsx` | / -> redirect /dashboard |
 
@@ -41,11 +41,11 @@ beforeLoad: async ({ context, location }) => {
 
 ```tsx
 beforeLoad: ({ context }) => {
-  requirePermission(context.auth.permissions, "iam.read");
+  requirePermission(context.auth.permissions, "roles.read");
 }
 ```
 
-权限名与后端 `AppPermission` 一致(如 `iam.read`、`assignments.manage`、`projects.read`)。
+权限名与后端 `AppPermission` 一致(如 `roles.read`、`assignments.grant`、`projects.read`)。
 
 ## router context
 

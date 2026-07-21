@@ -4,7 +4,6 @@ import { CircleAlert, KeyRound, MoreHorizontal, Pencil, Plus, ShieldCheck, Trash
 import { useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
-import { Can } from "@/components/Can";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -32,6 +31,7 @@ import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCan, useCanAll } from "@/hooks/use-permissions";
 import { formatDate } from "@/lib/utils";
 import { RoleForm } from "./role-form";
 import { RolePermissionsDialog } from "./role-permissions-dialog";
@@ -43,6 +43,17 @@ export function RoleList() {
   const [deleting, setDeleting] = useState<Role | null>(null);
   const [assigning, setAssigning] = useState<Role | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+
+  const canCreate = useCan("roles.create");
+  const canUpdate = useCan("roles.update");
+  const canDelete = useCan("roles.delete");
+  const canConfigPerms = useCanAll([
+    "roles.assign-permissions",
+    "roles.revoke-permissions",
+    "permissions.read",
+    "roles.read",
+  ]);
+  const canManageRow = canConfigPerms || canUpdate || canDelete;
 
   const confirmDelete = async () => {
     if (deleting === null) {
@@ -92,14 +103,14 @@ export function RoleList() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Can perm="roles.manage">
+      {canCreate && (
         <div className="flex justify-end">
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus data-icon="inline-start" />
             新建角色
           </Button>
         </div>
-      </Can>
+      )}
       {data?.length === 0
         ? (
             <Empty>
@@ -123,9 +134,7 @@ export function RoleList() {
                         <TableHead>描述</TableHead>
                         <TableHead>来源</TableHead>
                         <TableHead>创建时间</TableHead>
-                        <Can perm="roles.manage">
-                          <TableHead className="text-right">操作</TableHead>
-                        </Can>
+                        {canManageRow && <TableHead className="text-right">操作</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -144,7 +153,7 @@ export function RoleList() {
                               : <Badge>实例</Badge>}
                           </TableCell>
                           <TableCell className="text-muted-foreground">{formatDate(role.createdAt)}</TableCell>
-                          <Can perm="roles.manage">
+                          {canManageRow && (
                             <TableCell className="text-right">
                               {role.source === "instance" && (
                                 <DropdownMenu>
@@ -153,24 +162,30 @@ export function RoleList() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                     <DropdownMenuGroup>
-                                      <DropdownMenuItem onClick={() => { setAssigning(role); }}>
-                                        <KeyRound />
-                                        权限分配
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => { setEditing(role); }}>
-                                        <Pencil />
-                                        编辑
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem variant="destructive" onClick={() => { setDeleting(role); }}>
-                                        <Trash2 />
-                                        删除
-                                      </DropdownMenuItem>
+                                      {canConfigPerms && (
+                                        <DropdownMenuItem onClick={() => { setAssigning(role); }}>
+                                          <KeyRound />
+                                          权限分配
+                                        </DropdownMenuItem>
+                                      )}
+                                      {canUpdate && (
+                                        <DropdownMenuItem onClick={() => { setEditing(role); }}>
+                                          <Pencil />
+                                          编辑
+                                        </DropdownMenuItem>
+                                      )}
+                                      {canDelete && (
+                                        <DropdownMenuItem variant="destructive" onClick={() => { setDeleting(role); }}>
+                                          <Trash2 />
+                                          删除
+                                        </DropdownMenuItem>
+                                      )}
                                     </DropdownMenuGroup>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               )}
                             </TableCell>
-                          </Can>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>

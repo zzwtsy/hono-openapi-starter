@@ -57,7 +57,7 @@ describe("PermissionService.check", () => {
 
     await runWithPermissionCache(async () => {
       await PermissionService.check("u-1", "users.read", "org-1");
-      await PermissionService.check("u-1", "users.write", "org-1");
+      await PermissionService.check("u-1", "users.update", "org-1");
     });
 
     expect(mockCheck).toHaveBeenCalledTimes(2);
