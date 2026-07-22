@@ -21,7 +21,7 @@ export const getHealthzRoute = createRoute({
   path: "/healthz",
   tags: ["Health"],
   operationId: "getHealthz",
-  summary: "存活探针(liveness)",
+  summary: "存活探针",
   description: "进程存活即返回 ok,不检查依赖。供 K8s livenessProbe。",
   responses: {
     200: jsonSuccessResponse(HealthzSchema, "存活"),
@@ -34,7 +34,7 @@ export const getReadyzRoute = createRoute({
   path: "/readyz",
   tags: ["Health"],
   operationId: "getReadyz",
-  summary: "就绪探针(readiness)",
+  summary: "就绪探针",
   description: "检查 DB 连接;就绪返回 ready,否则 503。供 K8s readinessProbe。",
   responses: {
     200: jsonSuccessResponse(ReadyzSchema, "就绪"),

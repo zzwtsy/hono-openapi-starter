@@ -31,7 +31,7 @@ export const updateSettingRoute = createRoute({
   path: "/settings/{key}",
   tags: ["Settings"],
   operationId: "updateSetting",
-  summary: "修改(或创建)一条系统配置",
+  summary: "修改或创建系统配置",
   description: "upsert 一条配置。需 settings.update 权限。",
   middleware: [requireAuth(), requirePermission("settings.update")] as const,
   security: authedSecurity,
