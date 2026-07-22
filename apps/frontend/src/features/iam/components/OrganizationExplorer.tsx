@@ -168,8 +168,8 @@ export function OrganizationExplorer({
   } else {
     content = (
       <>
-        <div className="grid min-h-[32rem] flex-1 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
-          <Card className="min-h-[32rem]">
+        <div className="grid min-h-128 flex-1 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+          <Card className="min-h-128">
             <CardHeader>
               <CardTitle>组织结构</CardTitle>
               <CardDescription className="tabular-nums">
@@ -318,7 +318,7 @@ export function OrganizationExplorer({
 
 function OrganizationExplorerSkeleton() {
   return (
-    <div className="grid min-h-[32rem] gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+    <div className="grid min-h-128 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
       {[0, 1].map(panel => (
         <Card key={panel}>
           <CardContent className="flex flex-col gap-3 p-4">

@@ -64,8 +64,8 @@ export function OrganizationDetails({
   return (
     <Card className="h-full">
       <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
-        <CardTitle className="break-words text-lg">{organization.name}</CardTitle>
-        <CardDescription className="break-words">{index.getDisplayPath(organization.id)}</CardDescription>
+        <CardTitle className="wrap-break-word text-lg">{organization.name}</CardTitle>
+        <CardDescription className="wrap-break-word">{index.getDisplayPath(organization.id)}</CardDescription>
         <Can anyOf={["organizations.create", "organizations.update", "organizations.delete"]}>
           <CardAction className="col-start-1 row-span-1 row-start-auto mt-3 flex flex-wrap items-center justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
             <Can permission="organizations.create">
@@ -114,7 +114,7 @@ export function OrganizationDetails({
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <dt className="text-xs text-muted-foreground">上级组织</dt>
-            <dd className="break-words font-medium">{parent?.name ?? "无（根组织）"}</dd>
+            <dd className="wrap-break-word font-medium">{parent?.name ?? "无（根组织）"}</dd>
           </div>
           <div className="flex flex-col gap-1">
             <dt className="text-xs text-muted-foreground">直接子组织</dt>
