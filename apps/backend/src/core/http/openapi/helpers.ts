@@ -60,3 +60,21 @@ export function jsonErrorResponse(description: string, code: ErrorCode) {
     },
   };
 }
+
+/**
+ * 多错误码响应：同 status 下多个业务码（如 deleteOrganization 409 可抛
+ * `ORG_HAS_CHILDREN` 或 `ORG_HAS_USERS`）。用 OpenAPI `examples`（复数），
+ * 每个 example 按 OpenAPI 3.0 规范包 `{ value }`（key 为 example 名，value 为
+ * envelope 示例）；Scalar 各码展示独立示例。schema 仍统一 `ErrorEnvelopeSchema`。
+ */
+export function jsonErrorResponses(description: string, codes: ErrorCode[]) {
+  return {
+    description,
+    content: {
+      "application/json": {
+        schema: ErrorEnvelopeSchema,
+        examples: Object.fromEntries(codes.map(c => [c, { value: errorExample(c) }])),
+      },
+    },
+  };
+}

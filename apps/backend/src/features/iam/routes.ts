@@ -2,7 +2,7 @@ import { createRoute, z } from "@hono/zod-openapi";
 
 import { requireAuth } from "@/core/auth/require-auth.js";
 import { requirePermission } from "@/core/auth/require-permission.js";
-import { jsonErrorResponse, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
+import { jsonErrorResponse, jsonErrorResponses, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
 import {
   AssignRolePermissionsSchema,
@@ -61,7 +61,7 @@ export const listPermissionsRoute = createRoute({
   path: "/permissions",
   tags: ["IAM"],
   operationId: "listPermissions",
-  summary: "列出所有权限(代码同步目录)",
+  summary: "列出所有权限",
   description: "返回代码同步的权限目录,供管理端建角色时选择。管理 API 不建实例权限(ADR-0004)。",
   middleware: permissionsReadMiddleware,
   security: authedSecurity,
@@ -92,7 +92,7 @@ export const createRoleRoute = createRoute({
   path: "/roles",
   tags: ["IAM"],
   operationId: "createRole",
-  summary: "创建角色(实例角色)",
+  summary: "创建角色",
   description: "创建 instance 角色(source=instance,可改删)。角色名唯一,重名返回 409。需 roles.create 权限。",
   middleware: rolesCreateMiddleware,
   security: authedSecurity,
@@ -109,7 +109,7 @@ export const updateRoleRoute = createRoute({
   path: "/roles/{roleId}",
   tags: ["IAM"],
   operationId: "updateRole",
-  summary: "修改角色(仅实例角色)",
+  summary: "修改角色",
   description: "修改 instance 角色的 name/description。code 角色(source=code)或不存在返回 404;改名重名返回 409。需 roles.update 权限。",
   middleware: rolesUpdateMiddleware,
   security: authedSecurity,
@@ -130,7 +130,7 @@ export const deleteRoleRoute = createRoute({
   path: "/roles/{roleId}",
   tags: ["IAM"],
   operationId: "deleteRole",
-  summary: "删除角色(仅实例角色,cascade 删 role_permissions 与 user_roles)",
+  summary: "删除角色",
   description: "删除 instance 角色,cascade 删除其 role_permissions 与 user_roles 授权。code 角色或不存在返回 404。需 roles.delete 权限。",
   middleware: rolesDeleteMiddleware,
   security: authedSecurity,
@@ -164,7 +164,7 @@ export const assignRolePermissionsRoute = createRoute({
   path: "/roles/{roleId}/permissions",
   tags: ["IAM"],
   operationId: "assignRolePermissions",
-  summary: "给角色批量配权限(仅实例角色)",
+  summary: "给角色批量配权限",
   description: "批量授予 instance 角色权限(已授权的幂等跳过)。角色不存在返回 404;权限名不在目录返回 404。需 roles.assign-permissions 权限。",
   middleware: rolesAssignPermissionsMiddleware,
   security: authedSecurity,
@@ -175,7 +175,7 @@ export const assignRolePermissionsRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(z.string()), "角色当前权限列表"),
     ...authErrorResponses,
-    404: jsonErrorResponse("角色或权限不存在", "COMMON_NOT_FOUND"),
+    404: jsonErrorResponses("角色或权限不存在", ["ROLE_NOT_FOUND", "PERMISSION_NOT_FOUND"]),
   },
 });
 
@@ -184,7 +184,7 @@ export const deleteRolePermissionRoute = createRoute({
   path: "/roles/{roleId}/permissions/{permission}",
   tags: ["IAM"],
   operationId: "deleteRolePermission",
-  summary: "撤角色的单个权限(仅实例角色)",
+  summary: "撤角色的单个权限",
   description: "撤销 instance 角色的单个权限。角色不存在返回 404。需 roles.revoke-permissions 权限。",
   middleware: rolesRevokePermissionsMiddleware,
   security: authedSecurity,
@@ -270,7 +270,7 @@ export const resetUserPasswordRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string() }), "重置成功"),
     ...authErrorResponses,
-    404: jsonErrorResponse("用户不存在或无密码账号", "COMMON_NOT_FOUND"),
+    404: jsonErrorResponses("用户不存在或无密码账号", ["USER_NOT_FOUND", "USER_NO_CREDENTIAL_ACCOUNT"]),
   },
 });
 
@@ -286,7 +286,8 @@ export const disableUserRoute = createRoute({
   request: { params: UserIdParamSchema },
   responses: {
     200: jsonSuccessResponse(UserSummarySchema, "已禁用"),
-    ...authErrorResponses,
+    401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
+    403: jsonErrorResponses("无权限或禁止禁用自己", ["COMMON_FORBIDDEN", "USER_CANNOT_DISABLE_SELF"]),
     404: jsonErrorResponse("用户不存在", "USER_NOT_FOUND"),
   },
 });
@@ -314,7 +315,7 @@ export const assignUserRoleRoute = createRoute({
   path: "/users/{userId}/roles/{roleId}",
   tags: ["IAM"],
   operationId: "assignUserRole",
-  summary: "授用户角色(绑定组织,可指定过期)",
+  summary: "授用户角色",
   description: "给用户在指定组织授予角色,可指定过期时间。重复授(续期)提供 expiresAt 则更新。用户/角色/组织不存在或不在管理子树返回 404。需 assignments.grant 权限。",
   middleware: assignmentsGrantMiddleware,
   security: authedSecurity,
@@ -334,14 +335,15 @@ export const deleteUserRoleRoute = createRoute({
   path: "/users/{userId}/roles/{roleId}",
   tags: ["IAM"],
   operationId: "deleteUserRole",
-  summary: "撤用户角色(需 orgId 查询参数定位)",
+  summary: "撤用户角色",
   description: "撤销用户在指定组织的角色授权(需 roleId + orgId 精确定位)。禁止撤销自己的授权(防自我降级锁死)返回 403;授权不存在返回 404。需 assignments.revoke 权限。",
   middleware: assignmentsRevokeMiddleware,
   security: authedSecurity,
   request: { params: UserRoleParamSchema, query: OrgIdQuerySchema },
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string(), roleId: z.string(), orgId: z.string() }), "已撤销"),
-    ...authErrorResponses,
+    401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
+    403: jsonErrorResponses("无权限或禁止撤销自己的授权", ["COMMON_FORBIDDEN", "USER_CANNOT_REVOKE_OWN_AUTH"]),
     404: jsonErrorResponse("授权不存在", "COMMON_NOT_FOUND"),
   },
 });
@@ -351,7 +353,7 @@ export const assignUserPermissionRoute = createRoute({
   path: "/users/{userId}/permissions/{permission}",
   tags: ["IAM"],
   operationId: "assignUserPermission",
-  summary: "直接授用户权限(allow/deny,绑定组织)",
+  summary: "直接授用户权限",
   description: "给用户在指定组织直接授予权限(allow 或 deny),可指定过期。effect 总以新值为准。用户/权限/组织不存在或不在管理子树返回 404。需 assignments.grant 权限。",
   middleware: assignmentsGrantMiddleware,
   security: authedSecurity,
@@ -362,7 +364,7 @@ export const assignUserPermissionRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string(), permission: z.string(), orgId: z.string(), effect: z.enum(["allow", "deny"]) }), "已授予"),
     ...authErrorResponses,
-    404: jsonErrorResponse("权限或组织不存在", "COMMON_NOT_FOUND"),
+    404: jsonErrorResponses("权限或组织不存在", ["PERMISSION_NOT_FOUND", "ORG_NOT_FOUND"]),
   },
 });
 
@@ -371,14 +373,15 @@ export const deleteUserPermissionRoute = createRoute({
   path: "/users/{userId}/permissions/{permission}",
   tags: ["IAM"],
   operationId: "deleteUserPermission",
-  summary: "撤用户直接权限(需 orgId 查询参数定位)",
+  summary: "撤用户直接权限",
   description: "撤销用户在指定组织的直接权限授权(需 permission + orgId 精确定位)。禁止撤销自己的授权(防自我降级锁死)返回 403;授权不存在返回 404。需 assignments.revoke 权限。",
   middleware: assignmentsRevokeMiddleware,
   security: authedSecurity,
   request: { params: UserPermissionParamSchema, query: OrgIdQuerySchema },
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string(), permission: z.string(), orgId: z.string() }), "已撤销"),
-    ...authErrorResponses,
+    401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
+    403: jsonErrorResponses("无权限或禁止撤销自己的授权", ["COMMON_FORBIDDEN", "USER_CANNOT_REVOKE_OWN_AUTH"]),
     404: jsonErrorResponse("授权不存在", "COMMON_NOT_FOUND"),
   },
 });
@@ -440,7 +443,7 @@ export const listOrganizationsRoute = createRoute({
   path: "/organizations",
   tags: ["IAM"],
   operationId: "listOrganizations",
-  summary: "列出所有组织(扁平,前端构建树)",
+  summary: "列出所有组织",
   description: "返回所有组织(扁平,带 parentId,前端构建树)。需 organizations.read 权限。",
   middleware: organizationsReadMiddleware,
   security: authedSecurity,
@@ -455,7 +458,7 @@ export const createOrganizationRoute = createRoute({
   path: "/organizations",
   tags: ["IAM"],
   operationId: "createOrganization",
-  summary: "创建组织(可指定父组织)",
+  summary: "创建组织",
   description: "创建组织,可指定 parentId 挂到父组织下。父组织不存在返回 404。需 organizations.create 权限。",
   middleware: organizationsCreateMiddleware,
   security: authedSecurity,
@@ -489,7 +492,7 @@ export const updateOrganizationRoute = createRoute({
   path: "/organizations/{orgId}",
   tags: ["IAM"],
   operationId: "updateOrganization",
-  summary: "修改组织(改 parentId 时防环)",
+  summary: "修改组织",
   description: "修改组织 name 或 parentId。改 parentId 时防环:新父组织祖先集含自身则成环,返回 409。组织不存在返回 404。需 organizations.update 权限。",
   middleware: organizationsUpdateMiddleware,
   security: authedSecurity,
@@ -510,7 +513,7 @@ export const deleteOrganizationRoute = createRoute({
   path: "/organizations/{orgId}",
   tags: ["IAM"],
   operationId: "deleteOrganization",
-  summary: "删除组织(有子组织或有用户拒绝)",
+  summary: "删除组织",
   description: "删除组织。有子组织或仍有用户时返回 409(防孤儿);组织不存在返回 404。需 organizations.delete 权限。",
   middleware: organizationsDeleteMiddleware,
   security: authedSecurity,
@@ -519,7 +522,7 @@ export const deleteOrganizationRoute = createRoute({
     200: jsonSuccessResponse(z.object({ id: z.string() }), "删除成功"),
     ...authErrorResponses,
     404: jsonErrorResponse("组织不存在", "ORG_NOT_FOUND"),
-    409: jsonErrorResponse("有子组织或有用户", "COMMON_CONFLICT"),
+    409: jsonErrorResponses("有子组织或有用户", ["ORG_HAS_CHILDREN", "ORG_HAS_USERS"]),
   },
 });
 
