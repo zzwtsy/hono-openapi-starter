@@ -7,7 +7,7 @@ interface Operation {
   operationId?: string;
   description?: string;
   tags?: string[];
-  responses?: Record<string, { description?: string; content?: Record<string, { schema?: unknown; example?: unknown }> }>;
+  responses?: Record<string, { description?: string; content?: Record<string, { schema?: unknown; example?: unknown; examples?: Record<string, { value?: unknown }> }> }>;
 }
 interface Spec {
   paths: Record<string, Record<string, Operation>>;
@@ -85,7 +85,9 @@ describe("OpenAPI contract", () => {
         if (code.startsWith("2")) {
           continue;
         }
-        const example = response.content?.["application/json"]?.example;
+        const mediaType = response.content?.["application/json"];
+        // 兼容 example(单数)与 examples(复数,jsonErrorResponses 产生);OpenAPI 3.0 二者互斥但都合法。
+        const example = mediaType?.example ?? Object.values(mediaType?.examples ?? {})[0]?.value;
         expect(example, `操作 ${op.operationId} 的 ${code} 错误响应缺 example`).toBeDefined();
         const ex = example as { code?: string } | undefined;
         expect(ex?.code, `操作 ${op.operationId} 的 ${code} 错误响应 example 缺 code`).toBeTruthy();
