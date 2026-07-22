@@ -6,6 +6,7 @@ import { Ban, CalendarClock, Check, CircleAlert, KeyRound, ShieldCheck, X } from
 import { useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
+import { Can } from "@/components/Can";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -284,7 +285,6 @@ function RoleAssignmentsTab({ userId, orgId, roles, onChanged }: {
 }
 
 function RoleAssignmentRow({ assignment, onRevoke }: { assignment: UserRoleAssignment; onRevoke: () => void }) {
-  const canRevoke = useCan("assignments.revoke");
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border p-2">
       <div className="flex flex-col gap-0.5">
@@ -296,12 +296,12 @@ function RoleAssignmentRow({ assignment, onRevoke }: { assignment: UserRoleAssig
           </span>
         )}
       </div>
-      {canRevoke && (
+      <Can permission="assignments.revoke">
         <Button variant="ghost" size="sm" onClick={onRevoke}>
           <X />
           撤销
         </Button>
-      )}
+      </Can>
     </div>
   );
 }
@@ -457,7 +457,6 @@ function DirectPermissionsTab({ userId, orgId, onChanged }: {
 }
 
 function DirectPermissionRow({ perm, onRevoke }: { perm: UserDirectPermission; onRevoke: () => void }) {
-  const canRevoke = useCan("assignments.revoke");
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border p-2">
       <div className="flex flex-col gap-0.5">
@@ -474,12 +473,12 @@ function DirectPermissionRow({ perm, onRevoke }: { perm: UserDirectPermission; o
           </span>
         )}
       </div>
-      {canRevoke && (
+      <Can permission="assignments.revoke">
         <Button variant="ghost" size="sm" onClick={onRevoke}>
           <X />
           撤销
         </Button>
-      )}
+      </Can>
     </div>
   );
 }

@@ -32,6 +32,10 @@ export function configureOpenApi(app: AppOpenAPI) {
       withDefaultFonts: false,
       telemetry: false,
       showDeveloperTools: "never",
+      localization: {
+        locale: "zh-CN",
+        direction: "auto",
+      },
       spec: {
         url: "/openapi.json",
       },

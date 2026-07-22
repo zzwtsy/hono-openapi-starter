@@ -19,6 +19,7 @@ import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field"
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { useCanAll } from "@/hooks/use-permissions";
 
 // 角色权限分配(批量编辑):全量目录(listPermissions,10min 缓存) + 角色已有(listRolePermissions)合并出初始态。
 // 本地 working set(勾选只改本地、不发请求)-> diff(toAdd/toRemove)-> 一次提交(assign 批量 + revoke 逐个)。
@@ -43,13 +44,20 @@ interface RolePermissionsDialogProps {
 }
 
 export function RolePermissionsDialog({ role, onClose }: RolePermissionsDialogProps) {
-  const { data: allPerms, loading: permsLoading, error: permsError, send: sendPerms } = useRequest(() => Apis.IAM.listPermissions());
+  // 自检权限:不依赖父组件门控,防其他入口复用越权。无权限时不发请求(避免 403)。
+  const canConfig = useCanAll([
+    "roles.assign-permissions",
+    "roles.revoke-permissions",
+    "permissions.read",
+    "roles.read",
+  ]);
+  const { data: allPerms, loading: permsLoading, error: permsError, send: sendPerms } = useRequest(() => Apis.IAM.listPermissions(), { immediate: canConfig });
   const {
     data: granted,
     loading: grantedLoading,
     error: grantedError,
     send: sendGranted,
-  } = useRequest(() => Apis.IAM.listRolePermissions({ pathParams: { roleId: role.id } }));
+  } = useRequest(() => Apis.IAM.listRolePermissions({ pathParams: { roleId: role.id } }), { immediate: canConfig });
   const loading = permsLoading || grantedLoading;
   const error = permsError ?? grantedError;
   const initial = useMemo(() => new Set(granted ?? []), [granted]);
@@ -121,6 +129,19 @@ export function RolePermissionsDialog({ role, onClose }: RolePermissionsDialogPr
     }
   };
 
+  if (!canConfig) {
+    return (
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>无权限</DialogTitle>
+          <DialogDescription>你没有分配角色权限的权限。</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>关闭</Button>
+        </DialogFooter>
+      </DialogContent>
+    );
+  }
   return (
     <DialogContent>
       <DialogHeader>

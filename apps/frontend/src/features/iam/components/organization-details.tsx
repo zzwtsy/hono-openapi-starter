@@ -1,6 +1,7 @@
 import type { OrganizationTreeIndex } from "../organization-tree";
 import type { Organization } from "@/api/globals";
 import { Building2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { Can } from "@/components/Can";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
-import { useCan, useCanAny } from "@/hooks/use-permissions";
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" });
 
@@ -40,11 +40,6 @@ export function OrganizationDetails({
   onEdit,
   onSelect,
 }: OrganizationDetailsProps) {
-  const canCreate = useCan("organizations.create");
-  const canUpdate = useCan("organizations.update");
-  const canDelete = useCan("organizations.delete");
-  const canManage = useCanAny(["organizations.create", "organizations.update", "organizations.delete"]);
-
   if (organization === undefined) {
     return (
       <Card className="h-full">
@@ -69,23 +64,23 @@ export function OrganizationDetails({
   return (
     <Card className="h-full">
       <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
-        <CardTitle className="break-words text-lg">{organization.name}</CardTitle>
-        <CardDescription className="break-words">{index.getDisplayPath(organization.id)}</CardDescription>
-        {canManage && (
+        <CardTitle className="wrap-break-word text-lg">{organization.name}</CardTitle>
+        <CardDescription className="wrap-break-word">{index.getDisplayPath(organization.id)}</CardDescription>
+        <Can anyOf={["organizations.create", "organizations.update", "organizations.delete"]}>
           <CardAction className="col-start-1 row-span-1 row-start-auto mt-3 flex flex-wrap items-center justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
-            {canCreate && (
+            <Can permission="organizations.create">
               <Button variant="outline" size="sm" onClick={() => { onCreateChild(organization); }}>
                 <Plus data-icon="inline-start" />
                 新建子组织
               </Button>
-            )}
-            {canUpdate && (
+            </Can>
+            <Can permission="organizations.update">
               <Button variant="ghost" size="sm" onClick={() => { onEdit(organization); }}>
                 <Pencil data-icon="inline-start" />
                 编辑
               </Button>
-            )}
-            {canDelete && (
+            </Can>
+            <Can permission="organizations.delete">
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={(
@@ -111,15 +106,15 @@ export function OrganizationDetails({
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
+            </Can>
           </CardAction>
-        )}
+        </Can>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <dt className="text-xs text-muted-foreground">上级组织</dt>
-            <dd className="break-words font-medium">{parent?.name ?? "无（根组织）"}</dd>
+            <dd className="wrap-break-word font-medium">{parent?.name ?? "无（根组织）"}</dd>
           </div>
           <div className="flex flex-col gap-1">
             <dt className="text-xs text-muted-foreground">直接子组织</dt>

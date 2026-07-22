@@ -6,7 +6,6 @@ import {
   CircleAlert,
   CircleCheck,
   KeyRound,
-  MoreHorizontal,
   Pencil,
   Plus,
   ShieldCheck,
@@ -15,6 +14,8 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
+import { Can } from "@/components/Can";
+import { ResourceActions } from "@/components/resource-actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -30,13 +31,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -62,7 +56,6 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
   // 权限检查提到请求前:roles/organizations 分别需 roles.read/organizations.read,按读权限门控 immediate
   // 避免无对应权限的用户进页面即触发 403(B5 D2)。授权入口需 assignments.read + roles.read +
   // permissions.read + 至少一个写(grant/revoke),读门控保证打开授权对话框时其内部读请求不 403。
-  const canCreate = useCan("users.create");
   // 两个 hook 必须无条件调用(不能 `useCanAll(...) && useCanAny(...)` 短路,否则违反 rules-of-hooks),
   // 再用 && 组合结果:读门控保证打开授权对话框时其内部读请求不 403,写门控保证至少能授或撤。
   const canReadForAuthorize = useCanAll(["assignments.read", "roles.read", "permissions.read"]);
@@ -95,7 +88,11 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
   const canReset = useCan("users.reset-password");
   const canDisable = useCan("users.disable");
   const canEnable = useCan("users.enable");
-  const hasRowActions = useCanAny(["users.update", "users.reset-password", "users.disable", "users.enable"]) || canAuthorize;
+  const hasRowActions = canAuthorize
+    || canUpdate
+    || canReset
+    || canDisable
+    || canEnable;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<UserSummary | null>(null);
@@ -169,14 +166,14 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {canCreate && (
+      <Can permission="users.create">
         <div className="flex justify-end">
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus data-icon="inline-start" />
             新建用户
           </Button>
         </div>
-      )}
+      </Can>
 
       {users?.length === 0
         ? (
@@ -220,48 +217,15 @@ export function UserList({ orgId, currentUserId }: UserListProps) {
                             <TableCell className="text-muted-foreground">{formatDate(u.createdAt)}</TableCell>
                             {hasRowActions && (
                               <TableCell className="text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="操作" />}>
-                                    <MoreHorizontal />
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuGroup>
-                                      {canAuthorize && !isSelf && (
-                                        <DropdownMenuItem onClick={() => { setAuthorizing(u); }}>
-                                          <ShieldCheck />
-                                          授权
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canUpdate && (
-                                        <DropdownMenuItem onClick={() => { setEditing(u); }}>
-                                          <Pencil />
-                                          编辑
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canReset && (
-                                        <DropdownMenuItem onClick={() => { setResetting(u); }}>
-                                          <KeyRound />
-                                          重置密码
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canDisable && !disabled && !isSelf && (
-                                        <DropdownMenuItem
-                                          variant="destructive"
-                                          onClick={() => { setDisabling(u); }}
-                                        >
-                                          <Ban />
-                                          禁用
-                                        </DropdownMenuItem>
-                                      )}
-                                      {canEnable && disabled && (
-                                        <DropdownMenuItem onClick={() => { void enableUser(u); }}>
-                                          <CircleCheck />
-                                          启用
-                                        </DropdownMenuItem>
-                                      )}
-                                    </DropdownMenuGroup>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <ResourceActions
+                                  items={[
+                                    { id: "authorize", allowed: canAuthorize && !isSelf, label: "授权", icon: ShieldCheck, onClick: () => { setAuthorizing(u); } },
+                                    { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { setEditing(u); } },
+                                    { id: "reset", allowed: canReset, label: "重置密码", icon: KeyRound, onClick: () => { setResetting(u); } },
+                                    { id: "disable", allowed: canDisable && !disabled && !isSelf, label: "禁用", icon: Ban, variant: "destructive", onClick: () => { setDisabling(u); } },
+                                    { id: "enable", allowed: canEnable && disabled, label: "启用", icon: CircleCheck, onClick: () => { void enableUser(u); } },
+                                  ]}
+                                />
                               </TableCell>
                             )}
                           </TableRow>

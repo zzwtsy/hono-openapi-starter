@@ -66,7 +66,7 @@ src/
 
     authorization/
       permission-service.ts
-      check.ts
+      permission-checker.ts
 
   db/
     client.ts

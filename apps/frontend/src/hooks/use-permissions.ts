@@ -17,7 +17,7 @@ import { hasAllPermissions, hasAnyPermission, hasPermission } from "@/lib/permis
  * `select: c => c.auth?.permissions` 仅取 permissions 切片,避免无关 context 变更触发重绘(配合结构共享)。
  */
 
-function usePermissions(): readonly AppPermission[] | undefined {
+export function usePermissions(): readonly AppPermission[] | undefined {
   return useRouteContext({ strict: false, select: c => c.auth?.permissions });
 }
 

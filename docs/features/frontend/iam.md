@@ -109,7 +109,7 @@ features/iam/
 | `users.read` | 用户路由与侧栏「用户」 |
 | `users.create` / `update` / `reset-password` / `disable` / `enable` | 对应用户管理入口 |
 
-门控 API(`@/hooks/use-permissions`):单权限 `useCan(perm)`;任一(OR,操作列可见性)`useCanAny(perms)`;全部(AND,管理入口复合门控如角色权限配置需 assign+revoke+两 read)`useCanAll(perms)`。渲染门控用 `{useCan(...) && ...}`(无声明式 `<Can>` 组件)。
+门控 API:声明式门控用 `<Can>`(`@/components/Can`),`permission`/`anyOf`/`allOf` 三选一互斥(单/或/与),支持 render-prop `{({ allowed }) => ...}`(disable 模式)+ `fallback`;命令式或混合 AND+OR 组合用 hook(`@/hooks/use-permissions`):`useCan`、`useCanAny`(OR)、`useCanAll`(AND)。行操作菜单用 `<ResourceActions items=[{allowed,label,icon,onClick}]>`(`@/components/resource-actions`,数据驱动消除 `{canX && <DropdownMenuItem>}` 堆叠,`allowed` 由 `useCan` 算好传入)。
 
 前端权限只控制 UX；后端 `PermissionChecker` 才是授权边界。
 

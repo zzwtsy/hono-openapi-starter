@@ -1,9 +1,11 @@
 import type { Project } from "@/api/globals";
 import { useRequest } from "alova/client";
-import { CircleAlert, FolderKanban, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { CircleAlert, FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
+import { Can } from "@/components/Can";
+import { ResourceActions } from "@/components/resource-actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -18,28 +20,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCan, useCanAny } from "@/hooks/use-permissions";
+import { useCan } from "@/hooks/use-permissions";
 import { formatDate } from "@/lib/utils";
 import { ProjectForm } from "./project-form";
 
 export function ProjectList() {
   const { data, loading, error, send } = useRequest(() => Apis.Projects.listProjects());
   // 细粒度写权限:创建/编辑/删除各自独立(非 IAM 的三分 manage)。
-  const canCreate = useCan("projects.create");
   const canUpdate = useCan("projects.update");
   const canDelete = useCan("projects.delete");
-  const canManage = useCanAny(["projects.update", "projects.delete"]);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState<Project | null>(null);
@@ -93,14 +86,14 @@ export function ProjectList() {
 
   return (
     <div className="flex flex-col gap-4">
-      {canCreate && (
+      <Can permission="projects.create">
         <div className="flex justify-end">
           <Button onClick={() => { setCreateOpen(true); }}>
             <Plus data-icon="inline-start" />
             新建项目
           </Button>
         </div>
-      )}
+      </Can>
       {data?.length === 0
         ? (
             <Empty>
@@ -124,7 +117,7 @@ export function ProjectList() {
                         <TableHead>描述</TableHead>
                         <TableHead>组织</TableHead>
                         <TableHead>创建时间</TableHead>
-                        {canManage && <TableHead className="text-right">操作</TableHead>}
+                        <Can anyOf={["projects.update", "projects.delete"]}><TableHead className="text-right">操作</TableHead></Can>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -134,31 +127,16 @@ export function ProjectList() {
                           <TableCell className="text-muted-foreground">{project.description ?? "-"}</TableCell>
                           <TableCell className="text-muted-foreground">{project.orgId}</TableCell>
                           <TableCell className="text-muted-foreground">{formatDate(project.createdAt)}</TableCell>
-                          {canManage && (
+                          <Can anyOf={["projects.update", "projects.delete"]}>
                             <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="操作" />}>
-                                  <MoreHorizontal />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuGroup>
-                                    {canUpdate && (
-                                      <DropdownMenuItem onClick={() => { setEditing(project); }}>
-                                        <Pencil />
-                                        编辑
-                                      </DropdownMenuItem>
-                                    )}
-                                    {canDelete && (
-                                      <DropdownMenuItem variant="destructive" onClick={() => { setDeleting(project); }}>
-                                        <Trash2 />
-                                        删除
-                                      </DropdownMenuItem>
-                                    )}
-                                  </DropdownMenuGroup>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <ResourceActions
+                                items={[
+                                  { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { setEditing(project); } },
+                                  { id: "delete", allowed: canDelete, label: "删除", icon: Trash2, variant: "destructive", onClick: () => { setDeleting(project); } },
+                                ]}
+                              />
                             </TableCell>
-                          )}
+                          </Can>
                         </TableRow>
                       ))}
                     </TableBody>

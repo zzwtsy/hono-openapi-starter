@@ -44,6 +44,16 @@ async function requireInstanceRole(id: string) {
   }
 }
 
+/**
+ * 断言操作者未对自己执行敏感写操作(禁用自己 / 撤销自己的授权),否则抛 `code`。
+ * 复用 disableUser / deleteUserRole / deleteUserPermission 三处的自检,统一 null-handling。
+ */
+function assertNotSelf(actorUserId: string, targetUserId: string, code: "USER_CANNOT_DISABLE_SELF" | "USER_CANNOT_REVOKE_OWN_AUTH") {
+  if (targetUserId === actorUserId) {
+    throw new AppError(code);
+  }
+}
+
 /** 校验角色存在(授角色时可引用任意角色,含 code)。 */
 async function requireExistingRole(id: string) {
   const [role] = await db.select({ id: roles.id }).from(roles).where(eq(roles.id, id));
@@ -354,9 +364,7 @@ export const IamService = {
    * 禁止禁用自己 → 403。
    */
   async disableUser(actorOrgId: string, actorUserId: string, userId: string) {
-    if (userId === actorUserId) {
-      throw new AppError("USER_CANNOT_DISABLE_SELF");
-    }
+    assertNotSelf(actorUserId, userId, "USER_CANNOT_DISABLE_SELF");
     await requireUserInSubtree(actorOrgId, userId);
     // 事务保证 update disabled + delete session 原子:delete 失败则 disabled 回滚,
     // 避免"disabled=true 但旧 session 仍有效"的安全语义破坏(B2 D1)。
@@ -419,9 +427,7 @@ export const IamService = {
    *  禁止撤销自己的授权 -> 403(防自我降级锁死,对齐 disableUser)。
    */
   async deleteUserRole(actorOrgId: string, actorUserId: string, userId: string, roleId: string, orgId: string) {
-    if (userId === actorUserId) {
-      throw new AppError("USER_CANNOT_REVOKE_OWN_AUTH");
-    }
+    assertNotSelf(actorUserId, userId, "USER_CANNOT_REVOKE_OWN_AUTH");
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, orgId);
     const [row] = await db
@@ -467,9 +473,7 @@ export const IamService = {
    *  禁止撤销自己的授权 -> 403(防自我降级锁死,对齐 disableUser)。
    */
   async deleteUserPermission(actorOrgId: string, actorUserId: string, userId: string, permission: string, orgId: string) {
-    if (userId === actorUserId) {
-      throw new AppError("USER_CANNOT_REVOKE_OWN_AUTH");
-    }
+    assertNotSelf(actorUserId, userId, "USER_CANNOT_REVOKE_OWN_AUTH");
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, orgId);
     const [row] = await db
