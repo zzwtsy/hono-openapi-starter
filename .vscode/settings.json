@@ -52,7 +52,7 @@
     "strings": "on"
   },
   "files.associations": {
-    "*.css": "tailwindcss"
+    "**/*.css": "tailwindcss"
   },
   "tailwindCSS.classFunctions": [
     "defineAppConfig"
