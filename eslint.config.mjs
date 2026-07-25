@@ -115,24 +115,27 @@ export default antfu({
       { type: "ui", pattern: "apps/frontend/src/components/ui/**", partialMatch: false },
       { type: "api", pattern: "apps/frontend/src/api/**", partialMatch: false },
       { type: "layout", pattern: "apps/frontend/src/components/layout/**", partialMatch: false },
+      { type: "shared", pattern: "apps/frontend/src/components/shared/**", partialMatch: false },
       { type: "hooks", pattern: "apps/frontend/src/hooks/**", partialMatch: false },
       { type: "types", pattern: "apps/frontend/src/types/**", partialMatch: false },
     ],
   },
   rules: {
-    // routes(装配层)-> features/lib/ui/api/layout/hooks/types;features(能力层)-> lib/ui/api/hooks/types;
+    // routes(装配层)-> features/lib/ui/api/layout/shared/hooks/types;features(能力层)-> lib/ui/api/shared/hooks/types;
     // lib -> lib/types;ui -> ui/lib/types/hooks(展示组件可用通用 hook,如 useIsMobile);api -> api/lib/types;
-    // layout(装配层)-> features/lib/ui/hooks/types;hooks -> lib/ui/types/hooks;
+    // layout(装配层)-> features/lib/ui/shared/hooks/types;hooks -> lib/ui/types/hooks;
+    // shared(自定义跨 feature 复用组件,如 PageHeader/DatePicker)-> shared/ui/lib/types/hooks(同 ui 层);
     // types 聚合 api/lib 的生成类型(AppPermission/Me/Session),故 types -> api/lib/types。
     "boundaries/dependencies": ["error", {
       default: "disallow",
       policies: [
-        { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["features", "lib", "ui", "api", "layout", "hooks", "types"] } } } },
-        { from: { element: { type: "features" } }, allow: { to: { element: { type: ["lib", "ui", "api", "hooks", "types"] } } } },
+        { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["features", "lib", "ui", "api", "layout", "shared", "hooks", "types"] } } } },
+        { from: { element: { type: "features" } }, allow: { to: { element: { type: ["lib", "ui", "api", "shared", "hooks", "types"] } } } },
         { from: { element: { type: "lib" } }, allow: { to: { element: { type: ["lib", "types"] } } } },
         { from: { element: { type: "ui" } }, allow: { to: { element: { type: ["ui", "lib", "types", "hooks"] } } } },
         { from: { element: { type: "api" } }, allow: { to: { element: { type: ["api", "lib", "types"] } } } },
-        { from: { element: { type: "layout" } }, allow: { to: { element: { type: ["features", "lib", "ui", "hooks", "types"] } } } },
+        { from: { element: { type: "layout" } }, allow: { to: { element: { type: ["features", "lib", "ui", "shared", "hooks", "types"] } } } },
+        { from: { element: { type: "shared" } }, allow: { to: { element: { type: ["shared", "ui", "lib", "types", "hooks"] } } } },
         { from: { element: { type: "hooks" } }, allow: { to: { element: { type: ["lib", "ui", "types", "hooks"] } } } },
         { from: { element: { type: "types" } }, allow: { to: { element: { type: ["api", "lib", "types"] } } } },
       ],
