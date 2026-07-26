@@ -141,4 +141,25 @@ export default antfu({
       ],
     }],
   },
+}).append({
+  // 代码品味:渐进 warn,存量修完升 error(见 docs/conventions/frontend/code-style.md)
+  files: ["apps/frontend/src/**/*.{ts,tsx}"],
+  rules: {
+    "complexity": ["warn", 15],
+    "max-lines-per-function": ["warn", { max: 150, skipComments: true }],
+    "max-lines": ["warn", 300],
+    "no-nested-ternary": "warn",
+    // 文件名统一 kebab-case(api/* 已 ignore,ui/* 在下方豁免)
+    "unicorn/filename-case": ["error", { cases: { kebabCase: true } }],
+  },
+}).append({
+  // shadcn 生成物:豁免品味规则(cva 变体、单文件多导出、嵌套结构、文件名由 CLI 决定)
+  files: ["apps/frontend/src/components/ui/**/*.{ts,tsx}"],
+  rules: {
+    "complexity": "off",
+    "max-lines-per-function": "off",
+    "max-lines": "off",
+    "no-nested-ternary": "off",
+    "unicorn/filename-case": "off",
+  },
 });
