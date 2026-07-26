@@ -34,7 +34,11 @@ IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 
 features/iam/
   organization-tree.ts                  # 树索引、祖先/后代、路径与父节点候选
   components/
-    organization-explorer.tsx           # 请求、页面布局、URL 选择和 CRUD orchestration
+    organization-explorer/              # 请求、页面布局、URL 选择和 CRUD orchestration(目录)
+      index.tsx                         # 容器:data + 选中 + effect + 装配
+      organization-explorer-content.tsx # 双栏 + Sheet(抽 OrganizationDetails 重复)
+      organization-dialogs.tsx          # 创建/编辑 Dialog + 删除确认
+      organization-explorer-skeleton.tsx
     organization-tree.tsx               # Headless Tree 渲染、搜索与键盘交互
     organization-details.tsx            # 节点详情和上下文动作
     organization-form.tsx               # 创建、编辑与移动组织
