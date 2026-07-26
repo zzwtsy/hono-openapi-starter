@@ -1,30 +1,19 @@
 import type { Project } from "@/api/globals";
 import { useRequest } from "alova/client";
-import { CircleAlert, FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
+import { FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import Apis from "@/api";
 import { Can } from "@/components/can";
 import { ResourceActions } from "@/components/resource-actions";
-import { ListSkeleton } from "@/components/shared/list-skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AsyncListState } from "@/components/shared/async-list";
+import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-permissions";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { formatDate } from "@/lib/utils";
 import { ProjectForm } from "./project-form";
 
@@ -36,23 +25,19 @@ export function ProjectList() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState<Project | null>(null);
-  const [deletingBusy, setDeletingBusy] = useState(false);
+  const { mutate: runWithToast, busy: deletingBusy } = useToastMutation();
 
   const confirmDelete = async () => {
     if (deleting === null) {
       return;
     }
-    const project = deleting;
-    setDeletingBusy(true);
-    try {
-      await Apis.Projects.deleteProject({ pathParams: { projectId: project.id } });
-      toast.success("项目已删除");
+    const ok = await runWithToast(
+      () => Apis.Projects.deleteProject({ pathParams: { projectId: deleting.id } }),
+      { successMessage: "项目已删除", errorMessage: "删除失败" },
+    );
+    if (ok) {
       setDeleting(null);
       void send();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "删除失败");
-    } finally {
-      setDeletingBusy(false);
     }
   };
 
@@ -66,132 +51,97 @@ export function ProjectList() {
     void send();
   };
 
-  if (loading && data === undefined) {
-    return <ListSkeleton />;
-  }
-  if (error !== null && data === undefined) {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <Alert variant="destructive">
-          <CircleAlert />
-          <AlertTitle>加载失败</AlertTitle>
-          <AlertDescription>无法获取项目列表。</AlertDescription>
-        </Alert>
-        <Button variant="outline" size="sm" onClick={() => { void send(); }}>
-          重试
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-4">
-      <Can permission="projects.create">
-        <div className="flex justify-end">
-          <Button onClick={() => { setCreateOpen(true); }}>
-            <Plus data-icon="inline-start" />
-            新建项目
-          </Button>
-        </div>
-      </Can>
-      {data?.length === 0
-        ? (
-            <Empty>
-              <EmptyMedia variant="icon">
-                <FolderKanban />
-              </EmptyMedia>
-              <EmptyHeader>
-                <EmptyTitle>暂无项目</EmptyTitle>
-                <EmptyDescription>当前组织下还没有项目。</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )
-        : (
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>名称</TableHead>
-                        <TableHead>描述</TableHead>
-                        <TableHead>组织</TableHead>
-                        <TableHead>创建时间</TableHead>
-                        <Can anyOf={["projects.update", "projects.delete"]}><TableHead className="text-right">操作</TableHead></Can>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data?.map(project => (
-                        <TableRow key={project.id}>
-                          <TableCell className="font-medium">{project.name}</TableCell>
-                          <TableCell className="text-muted-foreground">{project.description ?? "-"}</TableCell>
-                          <TableCell className="text-muted-foreground">{project.orgId}</TableCell>
-                          <TableCell className="text-muted-foreground">{formatDate(project.createdAt)}</TableCell>
-                          <Can anyOf={["projects.update", "projects.delete"]}>
-                            <TableCell className="text-right">
-                              <ResourceActions
-                                items={[
-                                  { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { setEditing(project); } },
-                                  { id: "delete", allowed: canDelete, label: "删除", icon: Trash2, variant: "destructive", onClick: () => { setDeleting(project); } },
-                                ]}
-                              />
-                            </TableCell>
-                          </Can>
+    <AsyncListState loading={loading} error={error} data={data} onRetry={() => { void send(); }} errorDescription="无法获取项目列表。">
+      <div className="flex flex-col gap-4">
+        <Can permission="projects.create">
+          <div className="flex justify-end">
+            <Button onClick={() => { setCreateOpen(true); }}>
+              <Plus data-icon="inline-start" />
+              新建项目
+            </Button>
+          </div>
+        </Can>
+        {data?.length === 0
+          ? (
+              <Empty>
+                <EmptyMedia variant="icon">
+                  <FolderKanban />
+                </EmptyMedia>
+                <EmptyHeader>
+                  <EmptyTitle>暂无项目</EmptyTitle>
+                  <EmptyDescription>当前组织下还没有项目。</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )
+          : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>名称</TableHead>
+                          <TableHead>描述</TableHead>
+                          <TableHead>组织</TableHead>
+                          <TableHead>创建时间</TableHead>
+                          <Can anyOf={["projects.update", "projects.delete"]}><TableHead className="text-right">操作</TableHead></Can>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                      </TableHeader>
+                      <TableBody>
+                        {data?.map(project => (
+                          <TableRow key={project.id}>
+                            <TableCell className="font-medium">{project.name}</TableCell>
+                            <TableCell className="text-muted-foreground">{project.description ?? "-"}</TableCell>
+                            <TableCell className="text-muted-foreground">{project.orgId}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatDate(project.createdAt)}</TableCell>
+                            <Can anyOf={["projects.update", "projects.delete"]}>
+                              <TableCell className="text-right">
+                                <ResourceActions
+                                  items={[
+                                    { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { setEditing(project); } },
+                                    { id: "delete", allowed: canDelete, label: "删除", icon: Trash2, variant: "destructive", onClick: () => { setDeleting(project); } },
+                                  ]}
+                                />
+                              </TableCell>
+                            </Can>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          {createOpen && <ProjectForm onSuccess={handleCreated} />}
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={editing !== null}
-        onOpenChange={(o) => {
-          if (!o)
-            setEditing(null);
-        }}
-      >
-        <DialogContent>
-          {editing !== null && (
-            <ProjectForm key={editing.id} project={editing} onSuccess={handleUpdated} />
-          )}
-        </DialogContent>
-      </Dialog>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogContent>
+            {createOpen && <ProjectForm onSuccess={handleCreated} />}
+          </DialogContent>
+        </Dialog>
+        <Dialog
+          open={editing !== null}
+          onOpenChange={(o) => {
+            if (!o)
+              setEditing(null);
+          }}
+        >
+          <DialogContent>
+            {editing !== null && (
+              <ProjectForm key={editing.id} project={editing} onSuccess={handleUpdated} />
+            )}
+          </DialogContent>
+        </Dialog>
 
-      <AlertDialog
-        open={deleting !== null}
-        onOpenChange={(o) => {
-          if (!o && !deletingBusy)
-            setDeleting(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>删除项目</AlertDialogTitle>
-            <AlertDialogDescription>
-              {`确认删除项目"${deleting?.name}"?此操作不可撤销。`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingBusy}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={deletingBusy}
-              onClick={() => { void confirmDelete(); }}
-            >
-              {deletingBusy && <Spinner data-icon="inline-start" />}
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <ConfirmDeleteDialog
+          open={deleting !== null}
+          busy={deletingBusy}
+          title="删除项目"
+          description={`确认删除项目"${deleting?.name}"?此操作不可撤销。`}
+          onConfirm={() => { void confirmDelete(); }}
+          onClose={() => setDeleting(null)}
+        />
+      </div>
+    </AsyncListState>
   );
 }
