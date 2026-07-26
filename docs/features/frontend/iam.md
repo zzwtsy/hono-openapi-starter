@@ -34,14 +34,21 @@ IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 
 features/iam/
   organization-tree.ts                  # 树索引、祖先/后代、路径与父节点候选
   components/
-    OrganizationExplorer.tsx            # 请求、页面布局、URL 选择和 CRUD orchestration
+    organization-explorer.tsx           # 请求、页面布局、URL 选择和 CRUD orchestration
     organization-tree.tsx               # Headless Tree 渲染、搜索与键盘交互
     organization-details.tsx            # 节点详情和上下文动作
     organization-form.tsx               # 创建、编辑与移动组织
-    RoleList.tsx                        # 左列表 + 搜索 + 选中回调 + 新建按钮
-    UserList.tsx                        # 左列表 + 搜索 + 选中回调 + disabled badge + 新建按钮
+    role-list.tsx                       # 左列表 + 搜索 + 选中回调 + 新建按钮
+    user-list.tsx                       # 左列表 + 搜索 + 选中回调 + disabled badge + 新建按钮
     role-detail-panel.tsx               # 角色详情:信息 / 权限分配(diff + 批量) / 已授用户
-    user-detail-panel.tsx               # 用户详情:组织选择器 + 信息 / 角色授权 / 直接授权 / 有效权限
+    user-detail-panel/                  # 用户详情(目录):组织选择器 + 信息 / 角色授权 / 直接授权 / 有效权限
+      index.tsx                         # 容器:组织选择器 + Tabs + 编辑/重置/禁用对话框
+      user-info-tab.tsx
+      effective-permissions-panel.tsx   # 含 SourceBadge
+      role-assignments-tab.tsx
+      role-assignment-row.tsx
+      direct-permissions-tab.tsx
+      direct-permission-row.tsx
     user-form.tsx                       # 创建/编辑用户(TanStack Form + zod)
     reset-password-dialog.tsx           # 重置密码弹窗
 ```
