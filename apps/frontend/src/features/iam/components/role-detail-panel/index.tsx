@@ -1,24 +1,14 @@
 import type { Role } from "@/api/globals";
 import { useState } from "react";
-import { toast } from "sonner";
 import Apis from "@/api";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCan } from "@/hooks/use-permissions";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { IAM_ACTIONS, refreshIam } from "../../iam-actions";
 import { RoleForm } from "../role-form";
 import { RoleInfoTab } from "./role-info-tab";
@@ -38,7 +28,7 @@ export function RoleDetailPanel({ role, tab, onTabChange, onNavigateUser, getOrg
   const canDelete = useCan("roles.delete");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deletingBusy, setDeletingBusy] = useState(false);
+  const { mutate: runWithToast, busy: deletingBusy } = useToastMutation();
 
   const handleEditSuccess = () => {
     setEditing(false);
@@ -46,16 +36,13 @@ export function RoleDetailPanel({ role, tab, onTabChange, onNavigateUser, getOrg
   };
 
   const confirmDelete = async () => {
-    setDeletingBusy(true);
-    try {
-      await Apis.IAM.deleteRole({ pathParams: { roleId: role.id } });
-      toast.success("角色已删除");
+    const ok = await runWithToast(
+      () => Apis.IAM.deleteRole({ pathParams: { roleId: role.id } }),
+      { successMessage: "角色已删除", errorMessage: "删除失败" },
+    );
+    if (ok) {
       setDeleting(false);
       refreshIam(IAM_ACTIONS.rolesList);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "删除失败");
-    } finally {
-      setDeletingBusy(false);
     }
   };
 
@@ -111,34 +98,14 @@ export function RoleDetailPanel({ role, tab, onTabChange, onNavigateUser, getOrg
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
+      <ConfirmDeleteDialog
         open={deleting}
-        onOpenChange={(o) => {
-          if (o || !deletingBusy) {
-            setDeleting(o);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>删除角色</AlertDialogTitle>
-            <AlertDialogDescription>
-              {`确认删除角色"${role.name}"?此操作不可撤销。`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingBusy}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={deletingBusy}
-              onClick={() => { void confirmDelete(); }}
-            >
-              {deletingBusy && <Spinner data-icon="inline-start" />}
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        busy={deletingBusy}
+        title="删除角色"
+        description={`确认删除角色"${role.name}"?此操作不可撤销。`}
+        onConfirm={() => { void confirmDelete(); }}
+        onClose={() => setDeleting(false)}
+      />
     </Card>
   );
 }
