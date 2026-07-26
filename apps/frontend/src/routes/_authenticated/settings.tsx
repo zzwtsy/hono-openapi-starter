@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Apis from "@/api";
-import { PageHeader } from "@/components/shared/page-header";
-import { SettingsPage } from "@/features/settings/components/settings-page";
 import { requirePermission } from "@/lib/require-permission";
+import { SettingsPage } from "@/pages/settings";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   beforeLoad: ({ context }) => {
@@ -11,10 +10,5 @@ export const Route = createFileRoute("/_authenticated/settings")({
   loader: async () => {
     await Apis.Settings.listSettings();
   },
-  component: () => (
-    <div className="flex flex-col gap-4 p-6">
-      <PageHeader title="系统设置" description="运行时可编辑的配置项。" />
-      <SettingsPage />
-    </div>
-  ),
+  component: SettingsPage,
 });

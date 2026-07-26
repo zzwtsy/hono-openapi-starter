@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Apis from "@/api";
-import { OrganizationExplorer } from "@/features/iam/components/organization-explorer";
 import { requirePermission } from "@/lib/require-permission";
+import { OrganizationsPage } from "@/pages/iam/organizations";
 
 export const Route = createFileRoute("/_authenticated/iam/organizations")({
   validateSearch: (search: Record<string, unknown>): { org?: string } => ({
@@ -13,19 +13,16 @@ export const Route = createFileRoute("/_authenticated/iam/organizations")({
   loader: async () => {
     await Apis.IAM.listOrganizations();
   },
-  component: OrganizationsPage,
+  component: OrganizationsRouteComponent,
 });
 
-function OrganizationsPage() {
+function OrganizationsRouteComponent() {
   const { org } = Route.useSearch();
   const navigate = Route.useNavigate();
-
   return (
-    <OrganizationExplorer
+    <OrganizationsPage
       selectedOrganizationId={org}
-      onSelectedOrganizationChange={(id) => {
-        void navigate({ search: { org: id } });
-      }}
+      onSelectedOrganizationChange={(id) => { void navigate({ search: { org: id } }); }}
     />
   );
 }
