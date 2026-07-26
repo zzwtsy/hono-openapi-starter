@@ -1,15 +1,15 @@
-import type { PermissionSource } from "@/api/globals";
+import type { PermissionSource } from "@/shared/api/globals";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
 import { format } from "date-fns";
 import { CalendarClock, CircleAlert, KeyRound } from "lucide-react";
-import Apis from "@/api";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import Apis from "@/shared/api";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { Separator } from "@/shared/ui/separator";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { groupByResource } from "../../lib/group-by-resource";
 import { IAM_ACTIONS } from "../../model/iam-actions";
 

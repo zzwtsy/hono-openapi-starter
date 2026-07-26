@@ -1,9 +1,9 @@
-import type { Permission, Role } from "@/api/globals";
+import type { Permission, Role } from "@/shared/api/globals";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
 import { useMemo, useState } from "react";
-import Apis from "@/api";
-import { useCanAll } from "@/hooks/use-permissions";
-import { useToastMutation } from "@/hooks/use-toast-mutation";
+import Apis from "@/shared/api";
+import { useCanAll } from "@/shared/lib/use-permissions";
+import { useToastMutation } from "@/shared/lib/use-toast-mutation";
 import { groupByResource } from "../../../lib/group-by-resource";
 import { IAM_ACTIONS, refreshIam } from "../../../model/iam-actions";
 

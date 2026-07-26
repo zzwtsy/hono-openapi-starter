@@ -18,8 +18,8 @@ export default antfu({
     "apps/frontend/src/routeTree.gen.ts",
     "apps/backend/src/db/migrations",
     "apps/backend/src/db/schema/auth-schema.ts",
-    "apps/frontend/src/api/*",
-    "!apps/frontend/src/api/index.ts",
+    "apps/frontend/src/shared/api/*",
+    "!apps/frontend/src/shared/api/index.ts",
   ],
   overrides: {
     javascript: {
@@ -75,7 +75,7 @@ export default antfu({
     }],
   },
 }).append({
-  files: ["apps/frontend/src/components/ui/**/*.{ts,tsx}"],
+  files: ["apps/frontend/src/shared/ui/**/*.{ts,tsx}"],
   rules: {
     // shadcn 组件导出 cva 变体(如 buttonVariants),ui 是生成的设计系统层,豁免
     "react-refresh/only-export-components": "off",
@@ -109,35 +109,24 @@ export default antfu({
       typescript: { project: "apps/frontend/tsconfig.json" },
     },
     "boundaries/elements": [
+      { type: "app", pattern: "apps/frontend/src/app/**", partialMatch: false },
       { type: "routes", pattern: "apps/frontend/src/routes/**", partialMatch: false },
+      { type: "pages", pattern: "apps/frontend/src/pages/**", partialMatch: false },
       { type: "features", pattern: "apps/frontend/src/features/*" },
-      { type: "lib", pattern: "apps/frontend/src/lib/**", partialMatch: false },
-      { type: "ui", pattern: "apps/frontend/src/components/ui/**", partialMatch: false },
-      { type: "api", pattern: "apps/frontend/src/api/**", partialMatch: false },
-      { type: "layout", pattern: "apps/frontend/src/components/layout/**", partialMatch: false },
-      { type: "shared", pattern: "apps/frontend/src/components/shared/**", partialMatch: false },
-      { type: "hooks", pattern: "apps/frontend/src/hooks/**", partialMatch: false },
-      { type: "types", pattern: "apps/frontend/src/types/**", partialMatch: false },
+      { type: "shared", pattern: "apps/frontend/src/shared/**", partialMatch: false },
     ],
   },
   rules: {
-    // routes(装配层)-> features/lib/ui/api/layout/shared/hooks/types;features(能力层)-> lib/ui/api/shared/hooks/types;
-    // lib -> lib/types;ui -> ui/lib/types/hooks(展示组件可用通用 hook,如 useIsMobile);api -> api/lib/types;
-    // layout(装配层)-> features/lib/ui/shared/hooks/types;hooks -> lib/ui/types/hooks;
-    // shared(自定义跨 feature 复用组件,如 PageHeader/DatePicker)-> shared/ui/lib/types/hooks(同 ui 层);
-    // types 聚合 api/lib 的生成类型(AppPermission/Me/Session),故 types -> api/lib/types。
+    // FSD 4 层:app(入口)-> all;routes(路由定义)-> pages/features/shared;
+    // pages(页面组装)-> features/shared;features(业务)-> shared;shared(基础设施)-> shared(内部自由)。
     "boundaries/dependencies": ["error", {
       default: "disallow",
       policies: [
-        { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["features", "lib", "ui", "api", "layout", "shared", "hooks", "types"] } } } },
-        { from: { element: { type: "features" } }, allow: { to: { element: { type: ["lib", "ui", "api", "shared", "hooks", "types"] } } } },
-        { from: { element: { type: "lib" } }, allow: { to: { element: { type: ["lib", "types"] } } } },
-        { from: { element: { type: "ui" } }, allow: { to: { element: { type: ["ui", "lib", "types", "hooks"] } } } },
-        { from: { element: { type: "api" } }, allow: { to: { element: { type: ["api", "lib", "types"] } } } },
-        { from: { element: { type: "layout" } }, allow: { to: { element: { type: ["features", "lib", "ui", "shared", "hooks", "types"] } } } },
-        { from: { element: { type: "shared" } }, allow: { to: { element: { type: ["shared", "ui", "lib", "types", "hooks"] } } } },
-        { from: { element: { type: "hooks" } }, allow: { to: { element: { type: ["lib", "ui", "types", "hooks"] } } } },
-        { from: { element: { type: "types" } }, allow: { to: { element: { type: ["api", "lib", "types"] } } } },
+        { from: { element: { type: "app" } }, allow: { to: { element: { type: ["app", "routes", "pages", "features", "shared"] } } } },
+        { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["app", "pages", "features", "shared"] } } } },
+        { from: { element: { type: "pages" } }, allow: { to: { element: { type: ["features", "shared"] } } } },
+        { from: { element: { type: "features" } }, allow: { to: { element: { type: ["shared"] } } } },
+        { from: { element: { type: "shared" } }, allow: { to: { element: { type: ["shared"] } } } },
       ],
     }],
   },
@@ -154,7 +143,7 @@ export default antfu({
   },
 }).append({
   // shadcn 生成物:豁免品味规则(cva 变体、单文件多导出、嵌套结构、文件名由 CLI 决定)
-  files: ["apps/frontend/src/components/ui/**/*.{ts,tsx}"],
+  files: ["apps/frontend/src/shared/ui/**/*.{ts,tsx}"],
   rules: {
     "complexity": "off",
     "max-lines-per-function": "off",

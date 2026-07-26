@@ -2,11 +2,11 @@ import type { FormEvent } from "react";
 import { CircleAlert } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
+import { Button } from "@/shared/ui/button";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { Spinner } from "@/shared/ui/spinner";
 import { useLogin } from "../model/hooks";
 
 // 登录表单:Field 模式 + a11y(label/autocomplete/aria-invalid)+ zod safeParse(不引表单库)+

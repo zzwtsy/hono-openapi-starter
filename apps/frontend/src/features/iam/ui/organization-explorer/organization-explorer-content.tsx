@@ -1,13 +1,13 @@
 import type { OrganizationTreeIndex } from "../../model/organization-tree";
-import type { Organization } from "@/api/globals";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Organization } from "@/shared/api/globals";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@/shared/ui/sheet";
 import { OrganizationDetails } from "../organization-details";
 import { OrganizationTree } from "../organization-tree";
 

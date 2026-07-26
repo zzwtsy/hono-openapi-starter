@@ -1,8 +1,8 @@
 import type { OrganizationTreeIndex } from "../model/organization-tree";
-import type { Organization } from "@/api/globals";
+import type { Organization } from "@/shared/api/globals";
 import { Building2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
-import { Can } from "@/components/can";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
+import { Can } from "@/shared/ui/can";
 import {
   Card,
   CardAction,
@@ -10,16 +10,16 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/shared/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Separator } from "@/components/ui/separator";
+} from "@/shared/ui/dropdown-menu";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { Separator } from "@/shared/ui/separator";
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" });
 

@@ -1,16 +1,16 @@
-import type { UserSummary } from "@/api/globals";
+import type { UserSummary } from "@/shared/api/globals";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
 import { Plus, Search, Users } from "lucide-react";
 import { useMemo, useState } from "react";
-import Apis from "@/api";
-import { Can } from "@/components/can";
-import { AsyncListState } from "@/components/shared/async-list";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import Apis from "@/shared/api";
+import { cn } from "@/shared/lib/utils";
+import { AsyncListState } from "@/shared/ui/async-list";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Can } from "@/shared/ui/can";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { Input } from "@/shared/ui/input";
 import { IAM_ACTIONS } from "../model/iam-actions";
 
 interface UserListPanelProps {

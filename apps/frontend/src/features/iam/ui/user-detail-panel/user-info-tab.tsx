@@ -1,9 +1,9 @@
-import type { UserSummary } from "@/api/globals";
+import type { UserSummary } from "@/shared/api/globals";
 import { Ban, CircleCheck, KeyRound, Pencil } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@/shared/lib/utils";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Separator } from "@/shared/ui/separator";
 
 interface UserInfoTabProps {
   user: UserSummary;

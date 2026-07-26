@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { CalendarClock, X } from "lucide-react";
-import { Can } from "@/components/can";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
+import { Can } from "@/shared/ui/can";
 
 interface RoleAssignmentRowProps {
   assignment: { roleId: string; roleName: string; orgId: string; expiresAt: string | null };

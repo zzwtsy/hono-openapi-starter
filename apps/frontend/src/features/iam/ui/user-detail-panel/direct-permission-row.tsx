@@ -1,8 +1,8 @@
 import { format } from "date-fns";
 import { CalendarClock, X } from "lucide-react";
-import { Can } from "@/components/can";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Can } from "@/shared/ui/can";
 
 interface DirectPermissionRowProps {
   perm: { permission: string; effect: "allow" | "deny"; orgId: string; expiresAt: string | null };

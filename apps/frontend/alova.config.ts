@@ -6,7 +6,7 @@ export default defineConfig({
   generator: [
     {
       input: "http://localhost:3001/openapi.json",
-      output: "src/api",
+      output: "src/shared/api",
       global: "Apis",
       type: "typescript",
       // 后端 envelope { success, code, message, data, error, meta };

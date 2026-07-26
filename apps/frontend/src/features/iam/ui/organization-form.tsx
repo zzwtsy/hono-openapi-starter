@@ -1,14 +1,14 @@
-import type { Organization } from "@/api/globals";
+import type { Organization } from "@/shared/api/globals";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import Apis from "@/api";
-import { Button } from "@/components/ui/button";
-import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
+import Apis from "@/shared/api";
+import { Button } from "@/shared/ui/button";
+import { DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Spinner } from "@/shared/ui/spinner";
 import { buildOrganizationTree } from "../model/organization-tree";
 
 const organizationSchema = z.object({

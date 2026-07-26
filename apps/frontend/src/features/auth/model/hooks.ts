@@ -1,7 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { signIn, signOut, useSession } from "@/lib/auth-client";
-import { safeRedirect } from "@/lib/safe-redirect";
+import { signIn, signOut, useSession } from "@/shared/lib/auth-client";
+import { safeRedirect } from "@/shared/lib/safe-redirect";
 
 // 登录:signIn 成功后 session 异步变 truthy(App 重渲染 -> RouterProvider context 更新),
 // 但 await signIn 不等 store 真正更新;直接 navigate 会让 _authenticated beforeLoad 抢跑读到

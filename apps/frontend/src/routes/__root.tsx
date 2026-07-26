@@ -1,7 +1,7 @@
-import type { AuthState } from "@/types/auth";
+import type { AuthState } from "@/shared/lib/types/auth";
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 
 // router context:session 来自 Better Auth useSession(React-land 注入);
 // user/permissions 在 _authenticated beforeLoad 由 getMe 填充,下钻给子路由。

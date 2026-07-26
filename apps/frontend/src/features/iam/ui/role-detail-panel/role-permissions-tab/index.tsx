@@ -1,16 +1,16 @@
-import type { Role } from "@/api/globals";
+import type { Role } from "@/shared/api/globals";
 import { KeyRound, Search } from "lucide-react";
-import { AsyncListState } from "@/components/shared/async-list";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
+import { AsyncListState } from "@/shared/ui/async-list";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { Spinner } from "@/shared/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/shared/ui/toggle-group";
 import { formatPermission } from "../../../model/permission-format";
 import { useRolePermissions } from "./use-role-permissions";
 

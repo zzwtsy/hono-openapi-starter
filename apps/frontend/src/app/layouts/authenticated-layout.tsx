@@ -1,6 +1,6 @@
 import { Outlet } from "@tanstack/react-router";
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/shared/ui/sidebar";
+import { AppSidebar } from "./app-sidebar";
 
 // 受保护区布局:Sidebar 导航 + Inset 内容。/login、/403 不在此 layout,不带 Sidebar。
 export function AuthenticatedLayout() {

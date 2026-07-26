@@ -1,5 +1,5 @@
 import { RouterProvider } from "@tanstack/react-router";
-import { useSession } from "@/lib/auth-client";
+import { useSession } from "@/shared/lib/auth-client";
 import { router } from "./router";
 
 export function App() {

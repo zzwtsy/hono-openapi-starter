@@ -1,20 +1,20 @@
-import type { Project } from "@/api/globals";
+import type { Project } from "@/shared/api/globals";
 import { useRequest } from "alova/client";
 import { FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import Apis from "@/api";
-import { Can } from "@/components/can";
-import { ResourceActions } from "@/components/resource-actions";
-import { AsyncListState } from "@/components/shared/async-list";
-import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCan } from "@/hooks/use-permissions";
-import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { formatDate } from "@/lib/utils";
+import Apis from "@/shared/api";
+import { useCan } from "@/shared/lib/use-permissions";
+import { useToastMutation } from "@/shared/lib/use-toast-mutation";
+import { formatDate } from "@/shared/lib/utils";
+import { AsyncListState } from "@/shared/ui/async-list";
+import { Button } from "@/shared/ui/button";
+import { Can } from "@/shared/ui/can";
+import { Card, CardContent } from "@/shared/ui/card";
+import { ConfirmDeleteDialog } from "@/shared/ui/confirm-delete-dialog";
+import { Dialog, DialogContent } from "@/shared/ui/dialog";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { ResourceActions } from "@/shared/ui/resource-actions";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { ProjectForm } from "./project-form";
 
 export function ProjectList() {

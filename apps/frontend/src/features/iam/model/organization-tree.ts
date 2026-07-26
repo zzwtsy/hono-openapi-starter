@@ -1,4 +1,4 @@
-import type { Organization } from "@/api/globals";
+import type { Organization } from "@/shared/api/globals";
 
 export const ORGANIZATION_TREE_ROOT_ID = "__organization-tree-root__";
 

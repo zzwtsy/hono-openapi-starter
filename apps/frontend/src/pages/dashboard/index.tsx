@@ -1,7 +1,7 @@
 import { ShieldOff } from "lucide-react";
-import { PageHeader } from "@/components/shared/page-header";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { usePermissions } from "@/hooks/use-permissions";
+import { usePermissions } from "@/shared/lib/use-permissions";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { PageHeader } from "@/shared/ui/page-header";
 
 // 概览页:新用户(无业务权限)显示空状态提示,引导联系管理员授权;有权限显示占位(待实现)。
 // permissions 来自 _authenticated beforeLoad 的 me.permissions(相对 home org 的有效权限全集)。

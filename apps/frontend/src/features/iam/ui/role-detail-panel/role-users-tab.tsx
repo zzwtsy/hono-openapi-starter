@@ -1,13 +1,13 @@
-import type { Role } from "@/api/globals";
+import type { Role } from "@/shared/api/globals";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
 import { format } from "date-fns";
 import { CalendarClock, Users } from "lucide-react";
-import Apis from "@/api";
-import { AsyncListState } from "@/components/shared/async-list";
-import { Badge } from "@/components/ui/badge";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useCan } from "@/hooks/use-permissions";
+import Apis from "@/shared/api";
+import { useCan } from "@/shared/lib/use-permissions";
+import { AsyncListState } from "@/shared/ui/async-list";
+import { Badge } from "@/shared/ui/badge";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { IAM_ACTIONS } from "../../model/iam-actions";
 
 interface RoleUsersTabProps {
