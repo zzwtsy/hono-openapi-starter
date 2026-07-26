@@ -30,7 +30,7 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useLogout } from "@/features/auth/hooks";
+import { useLogout } from "@/features/auth/model/hooks";
 import { useAuth } from "@/hooks/use-auth";
 import { hasPermission } from "@/lib/permissions";
 

@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { formatPermission } from "../permission-format";
-import { groupByResource } from "./shared/group-by-resource";
+import { groupByResource } from "../lib/group-by-resource";
+import { formatPermission } from "../model/permission-format";
 
 interface PermissionComboboxProps {
   value: string | null;

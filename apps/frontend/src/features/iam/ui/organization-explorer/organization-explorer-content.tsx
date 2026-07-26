@@ -1,4 +1,4 @@
-import type { OrganizationTreeIndex } from "../../organization-tree";
+import type { OrganizationTreeIndex } from "../../model/organization-tree";
 import type { Organization } from "@/api/globals";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {

@@ -1,6 +1,6 @@
 import type { Organization } from "@/api/globals";
 import { describe, expect, it } from "vitest";
-import { buildOrganizationTree } from "./organization-tree";
+import { buildOrganizationTree } from "./model/organization-tree";
 
 /** 构造最小 Organization 行(仅树算法需要的字段)。 */
 function org(

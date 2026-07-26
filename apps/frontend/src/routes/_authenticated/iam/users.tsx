@@ -13,11 +13,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { UserDetailPanel } from "@/features/iam/components/user-detail-panel";
-import { UserForm } from "@/features/iam/components/user-form";
-import { UserListPanel } from "@/features/iam/components/user-list";
-import { IAM_ACTIONS, refreshIam } from "@/features/iam/iam-actions";
-import { buildOrganizationTree } from "@/features/iam/organization-tree";
+import { IAM_ACTIONS, refreshIam } from "@/features/iam/model/iam-actions";
+import { buildOrganizationTree } from "@/features/iam/model/organization-tree";
+import { UserDetailPanel } from "@/features/iam/ui/user-detail-panel";
+import { UserForm } from "@/features/iam/ui/user-form";
+import { UserListPanel } from "@/features/iam/ui/user-list";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useCan } from "@/hooks/use-permissions";
 import { requirePermission } from "@/lib/require-permission";

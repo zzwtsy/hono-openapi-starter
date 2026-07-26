@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/shared/page-header";
-import { SettingsPage as SettingsView } from "@/features/settings/components/settings-page";
+import { SettingsPage as SettingsView } from "@/features/settings/ui/settings-page";
 
 export function SettingsPage() {
   return (

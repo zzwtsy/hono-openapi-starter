@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { IAM_ACTIONS, refreshIam } from "../../iam-actions";
+import { IAM_ACTIONS, refreshIam } from "../../model/iam-actions";
 import { RoleForm } from "../role-form";
 import { RoleInfoTab } from "./role-info-tab";
 import { RolePermissionsTab } from "./role-permissions-tab";

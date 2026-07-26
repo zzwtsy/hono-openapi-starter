@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCan } from "@/hooks/use-permissions";
-import { IAM_ACTIONS } from "../../iam-actions";
+import { IAM_ACTIONS } from "../../model/iam-actions";
 
 interface RoleUsersTabProps {
   role: Role;

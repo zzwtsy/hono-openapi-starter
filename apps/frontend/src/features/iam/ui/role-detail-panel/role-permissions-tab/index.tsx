@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { formatPermission } from "../../../permission-format";
+import { formatPermission } from "../../../model/permission-format";
 import { useRolePermissions } from "./use-role-permissions";
 
 interface RolePermissionsTabProps {

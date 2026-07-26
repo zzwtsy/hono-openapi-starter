@@ -9,7 +9,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { buildOrganizationTree } from "../organization-tree";
+import { buildOrganizationTree } from "../model/organization-tree";
 
 const organizationSchema = z.object({
   name: z.string().min(1, "请输入组织名"),

@@ -1,4 +1,4 @@
-import type { OrganizationTreeIndex } from "../organization-tree";
+import type { OrganizationTreeIndex } from "../model/organization-tree";
 import type { Organization } from "@/api/globals";
 import { Building2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { Can } from "@/components/can";

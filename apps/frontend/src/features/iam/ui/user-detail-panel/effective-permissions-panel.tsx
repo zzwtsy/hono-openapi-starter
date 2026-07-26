@@ -10,8 +10,8 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { IAM_ACTIONS } from "../../iam-actions";
-import { groupByResource } from "../shared/group-by-resource";
+import { groupByResource } from "../../lib/group-by-resource";
+import { IAM_ACTIONS } from "../../model/iam-actions";
 
 function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange }: {
   source: PermissionSource;
