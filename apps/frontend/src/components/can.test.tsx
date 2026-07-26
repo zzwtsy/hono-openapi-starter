@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Can } from "./Can";
+import { Can } from "./can";
 
 const { usePermissionsMock } = vi.hoisted(() => ({ usePermissionsMock: vi.fn() }));
 vi.mock("@/hooks/use-permissions", () => ({ usePermissions: usePermissionsMock }));

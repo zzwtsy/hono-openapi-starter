@@ -48,7 +48,21 @@ const { send } = useRequest(() => Apis.IAM.createRole({ data: {...} }));
 
 ## 跨组件触发
 
-跨组件刷新数据用 `actionDelegationMiddleware` + `accessAction`(无需 prop-drifting 或全局 store)。见 alova 文档。
+跨组件刷新数据用 `actionDelegationMiddleware` + `accessAction`(无需 prop-drifting 或全局 store)。
+
+**关键**:alova `hitSource` 只**删缓存**,不重拉已挂载的 `useRequest`(源码 `hitCacheBySource` 仅 `cacheAdapter.remove`,无通知逻辑)。mutation 后要让列表 UI 更新,必须显式触发 send。同组件可直接 `send()`(见 ProjectList);跨组件用 action delegation:
+
+```ts
+// 列表组件:注册 action
+const { data } = useRequest(() => Apis.IAM.listRoles(), {
+  middleware: actionDelegationMiddleware("iam-roles-list"),
+});
+
+// 任意组件 mutation 后:触发已注册的 useRequest send(第三参 true 静默未挂载,如非当前 tab)
+accessAction("iam-roles-list", (a) => { void a.send(); }, true);
+```
+
+action 名集中常量 + `refreshIam(...names)` 封装见 `features/iam/iam-actions.ts`(IAM 实践)。
 
 ## cache 与 loader 协作
 

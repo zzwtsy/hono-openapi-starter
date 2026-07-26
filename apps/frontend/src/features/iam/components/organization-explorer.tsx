@@ -4,7 +4,7 @@ import { Building2, CircleAlert, Plus } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
-import { Can } from "@/components/Can";
+import { Can } from "@/components/can";
 import { PageHeader } from "@/components/shared/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {

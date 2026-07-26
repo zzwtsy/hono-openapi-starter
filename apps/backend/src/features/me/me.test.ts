@@ -49,7 +49,13 @@ describe("me routes", () => {
 
   it("已绑定组织时返回 user + 有效权限全集", async () => {
     authed();
-    mockListEffective.mockResolvedValue(["projects.read", "organizations.read"]);
+    mockListEffective.mockResolvedValue({
+      effective: [
+        { permission: "projects.read", sources: [] },
+        { permission: "organizations.read", sources: [] },
+      ],
+      denied: [],
+    });
 
     const res = await buildApp().request("/me");
     expect(res.status).toBe(200);

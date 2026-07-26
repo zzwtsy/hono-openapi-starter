@@ -20,11 +20,11 @@ IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 
 
 | 路径 | 守卫 | loader | 组件 |
 | --- | --- | --- | --- |
-| `/iam/roles` | `requirePermission("roles.read")` | `listRoles` | `RoleList` |
+| `/iam/roles?role=<id>&tab=info\|permissions\|users` | `requirePermission("roles.read")` | `listRoles` | `RoleListPanel` + `RoleDetailPanel` |
 | `/iam/organizations?org=<id>` | `requirePermission("organizations.read")` | `listOrganizations` | `OrganizationExplorer` |
-| `/iam/users` | `requirePermission("users.read")` | `listUsers` | `UserList` |
+| `/iam/users?user=<id>&org=<id>&tab=info\|roles\|direct\|effective` | `requirePermission("users.read")` | `listUsers` | `UserListPanel` + `UserDetailPanel` |
 
-组织路由的 `org` 搜索参数保存当前选中组织。参数缺失或指向不存在的 ID 时，页面回退到第一个根组织并修正 URL。
+组织路由的 `org` 搜索参数保存当前选中组织。参数缺失或指向不存在的 ID 时，页面回退到第一个根组织并修正 URL。用户/角色路由的 `user`/`role` 保存当前选中项（缺失时回退首条），`tab` 保存详情面板当前 Tab（缺失默认 `info`），`org`（仅用户）保存授权视角组织（默认被选用户的 home org）——支持深链接与刷新保位。
 
 侧栏「用户」：`permission: "users.read"`（非 `roles.read` / `organizations.read`）。
 
@@ -38,25 +38,29 @@ features/iam/
     organization-tree.tsx               # Headless Tree 渲染、搜索与键盘交互
     organization-details.tsx            # 节点详情和上下文动作
     organization-form.tsx               # 创建、编辑与移动组织
-    RoleList.tsx
-    UserList.tsx                        # 列表 + 新建/操作菜单 + disabled badge
+    RoleList.tsx                        # 左列表 + 搜索 + 选中回调 + 新建按钮
+    UserList.tsx                        # 左列表 + 搜索 + 选中回调 + disabled badge + 新建按钮
+    role-detail-panel.tsx               # 角色详情:信息 / 权限分配(diff + 批量) / 已授用户
+    user-detail-panel.tsx               # 用户详情:组织选择器 + 信息 / 角色授权 / 直接授权 / 有效权限
     user-form.tsx                       # 创建/编辑用户(TanStack Form + zod)
     reset-password-dialog.tsx           # 重置密码弹窗
-    role-permissions-dialog.tsx         # 角色权限分配(批量编辑 + diff)
-    user-authorization-dialog.tsx       # 用户授权(角色 + 直接 allow/deny + 撤销 + 过期)
 ```
 
 `@headless-tree/core` / `@headless-tree/react` 只负责树状态、ARIA 和键盘行为；节点视觉继续使用项目的 shadcn/Base UI、Tailwind 语义 token 和 Lucide。
 
 ## 用户授权
 
-`UserList` 的「授权」按钮打开 `user-authorization-dialog`，按 Tabs 分两页管理某用户在**选中组织**的授权，顶部共享「有效权限」(后端 `IAM.listUserPermissions`，含祖先继承 + deny 减法)：
+`UserDetailPanel` 顶部「授权视角组织」选择器（操作者管理子树内 org，带路径）+ 四 Tab 管理某用户在选中组织的授权。`org`/`tab` 进 URL，支持深链接。
 
-- **组织下拉**：可选操作者管理子树内任意 org(默认用户 home org)。切换后重新拉该 org 的有效权限与已授角色/直接权限记录,授予/撤销也绑定该 org。解决「祖先 org 授的授权在 home org 视角不可见不可撤销」(`listUserRoles`/`listUserDirectPermissions` 用 `eq(orgId)` 直接相等,只返回该 org 的直接授权;有效权限走祖先继承 CTE,故二者在固定单 org 下会分裂)。
-- **角色授权**：列出已授角色(`listUserRoles`，含过期) + 逐条撤销(`deleteUserRole`) + 授角色表单(角色 Select + 过期 DatePicker + `assignUserRole`)。
-- **直接授权**：列出已授直接权限(`listUserDirectPermissions`，含 effect/过期) + 逐条撤销(`deleteUserPermission`) + 授直接权限表单(权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`)。deny = 阻止部分权限。
+- **有效权限**：后端 `IAM.listUserPermissions` 直接返回带来源链的结构（`effective` + `denied`），无需前端 N+1 拼。每条权限展示来源 badge（角色名可点击跳转角色详情，组织可点击切到该 org 视角），祖先继承的权限来源 orgId 即祖先组织。被 deny 抵消的权限单独成区，标注本会来自的来源（`suppressedSources`）与哪些 org deny（`deniedBy`）。
+- **角色授权**：列出已授角色（`listUserRoles`，含过期，角色名可点击跳转） + 逐条撤销（`deleteUserRole`） + 授角色表单（角色 Select + 过期 DatePicker + `assignUserRole`）。选中角色后内联预览其权限，并对比当前有效权限高亮「授予后将新增」的权限，消除盲选。
+- **直接授权**：列出已授直接权限（`listUserDirectPermissions`，含 effect/过期） + 逐条撤销（`deleteUserPermission`） + 授直接权限表单（权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`）。deny = 阻止部分权限。
 
-过期用 DatePicker(react-day-picker v10 + Base UI Popover 薄包装)，日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET + `send` 手动刷新(双保险)。**需 `assignments.read` + `roles.read` + `permissions.read` 且至少持 `assignments.grant` 或 `assignments.revoke` 才显示授权入口**(读门控保证对话框内 listUserRoles/listUserDirectPermissions/listPermissions 不 403),且对自己的行隐藏;对话框内「授予」按钮受 `assignments.grant` 控制、「撤销」按钮受 `assignments.revoke` 控制(无权限则隐藏)(后端 `deleteUserRole`/`deleteUserPermission` 禁止对自己操作,防自我降级锁死)。
+**组织选择器**解决「祖先 org 授的授权在 home org 视角不可见不可撤销」：`listUserRoles`/`listUserDirectPermissions` 用 `eq(orgId)` 只返回该 org 直接授权，有效权限走祖先继承 CTE；切换组织选择器可逐个 org 查看直接授权与生效全集，来源 badge 的组织点击可快速跳到祖先 org 视角。
+
+过期用 DatePicker（react-day-picker v10 + Base UI Popover 薄包装），日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET。**需 `assignments.read` + `roles.read` + `permissions.read` 且至少持 `assignments.grant` 或 `assignments.revoke` 才显示授权入口**，且对自己的行隐藏；「授予」按钮受 `assignments.grant` 控制、「撤销」按钮受 `assignments.revoke` 控制（无权限则隐藏）；后端 `deleteUserRole`/`deleteUserPermission` 禁止对自己操作，防自我降级锁死。
+
+> 续期语义：重复授角色/权限时，提供 `expiresAt` 则更新（续期），省略则保留原过期时间（不清空）；UI 标注「暂不支持从有限期改回永不过期」（后端 `onConflictDoUpdate` 不支持显式清空，留后续）。
 
 ## 用户管理
 
@@ -66,10 +70,10 @@ features/iam/
 | --- | --- | --- |
 | 进页 / 列表 | `users.read` | 路由守卫 + 侧栏 |
 | 新建 | `users.create` | 顶部「新建用户」→ Dialog + `user-form`（name/email/password） |
-| 编辑 | `users.update` | 操作菜单「编辑」→ `user-form`（name/email，无密码） |
-| 重置密码 | `users.reset-password` | 「重置密码」→ `reset-password-dialog`（newPassword min 8） |
-| 禁用 | `users.disable` | AlertDialog 确认；**禁止对自己**（菜单隐藏；后端亦 403） |
-| 启用 | `users.enable` | 已禁用行显示「启用」 |
+| 编辑 | `users.update` | UserDetailPanel 信息 Tab「编辑」→ `user-form`（name/email，无密码） |
+| 重置密码 | `users.reset-password` | 信息 Tab「重置密码」→ `reset-password-dialog`（newPassword min 8） |
+| 禁用 | `users.disable` | 信息 Tab AlertDialog 确认；**禁止对自己**（按钮隐藏；后端亦 403） |
+| 启用 | `users.enable` | 信息 Tab（已禁用用户显示「启用」） |
 | 授权 | `assignments.read` + `roles.read` + `permissions.read` + (`assignments.grant` 或 `assignments.revoke`) | 见上节 |
 
 - **disabled badge**：`disabled === true` → destructive「已禁用」，否则 secondary「正常」。

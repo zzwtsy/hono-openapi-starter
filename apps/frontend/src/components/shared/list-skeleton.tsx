@@ -8,7 +8,7 @@ interface ListSkeletonProps {
 
 /**
  * 列表加载骨架:Card 内 N 行 Skeleton。
- * RoleList/UserList/ProjectList 共用,提取避免三处重复。
+ * role-list/user-list/project-list 共用,提取避免三处重复。
  */
 export function ListSkeleton({ rows = 5 }: ListSkeletonProps) {
   return (

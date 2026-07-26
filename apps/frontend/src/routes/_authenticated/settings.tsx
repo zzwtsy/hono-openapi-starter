@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Apis from "@/api";
 import { PageHeader } from "@/components/shared/page-header";
-import { SettingsPage } from "@/features/settings/components/SettingsPage";
+import { SettingsPage } from "@/features/settings/components/settings-page";
 import { requirePermission } from "@/lib/require-permission";
 
 export const Route = createFileRoute("/_authenticated/settings")({

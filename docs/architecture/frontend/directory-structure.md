@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-10
+lastReviewedAt: 2026-07-26
 ---
 
 # 前端目录结构
@@ -29,14 +29,17 @@ apps/frontend/src/
   features/               # 垂直切片(能力层)
     auth/
       hooks.ts            # useLogin/useLogout(signIn + router.invalidate)
-      components/LoginForm.tsx
+      components/login-form.tsx
     iam/
       organization-tree.ts # 组织树索引、路径与后代计算
       components/
-        RoleList.tsx
-        OrganizationExplorer.tsx
+        organization-explorer.tsx        # 组织浏览器(待重构,见 iam-refactor-plan)
         organization-tree.tsx
         organization-details.tsx
+        role-list.tsx                    # 左列表 + 搜索 + 选中
+        user-list.tsx                    # 左列表 + 搜索 + 选中
+        role-detail-panel.tsx             # 角色详情(待重构:信息/权限/已授用户拆分)
+        user-detail-panel.tsx             # 用户详情(待重构:信息/角色/直接/有效权限拆分)
     projects/
       components/ProjectList.tsx
 
@@ -60,6 +63,8 @@ apps/frontend/src/
 ```
 
 ## 顶层目录职责
+
+> 文件命名、文件大小、条件渲染、状态副作用、重复治理等代码品味见 [code-style](../../conventions/frontend/code-style.md);依赖边界与分层见本文件。
 
 ### `routes/`(装配层)
 

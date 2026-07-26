@@ -17,6 +17,7 @@ import type {
   ListPermissionsRoute,
   ListRolePermissionsRoute,
   ListRolesRoute,
+  ListRoleUsersRoute,
   ListUserDirectPermissionsRoute,
   ListUserPermissionsRoute,
   ListUserRolesRoute,
@@ -81,6 +82,13 @@ export const deleteRolePermissionHandler: AppRouteHandler<DeleteRolePermissionRo
   const { roleId, permission } = c.req.valid("param");
   await IamService.deleteRolePermission(roleId, permission);
   return successResponse(c, { permission });
+};
+
+export const listRoleUsersHandler: AppRouteHandler<ListRoleUsersRoute> = async (c) => {
+  const { orgId: actorOrgId } = requireOrgUser(c);
+  const { roleId } = c.req.valid("param");
+  const users = await IamService.listRoleUsers(actorOrgId, roleId);
+  return successResponse(c, users);
 };
 
 // --- 用户 ---

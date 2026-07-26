@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { db } from "@/db/client.js";
-import { rolePermissions, roles } from "@/db/schema/authorization-schema.js";
+import { user } from "@/db/schema/auth-schema.js";
+import { organizations, rolePermissions, roles, userRoles } from "@/db/schema/authorization-schema.js";
 import { IamService } from "@/features/iam/service.js";
 import { allPermissions } from "@/permissions-catalog.js";
 import { resetDb } from "../../helpers/db.js";
@@ -80,5 +81,65 @@ describe("iam role management", () => {
 
     const perms = await IamService.listRolePermissions(role.id);
     expect(perms).toEqual(["permissions.read"]);
+  });
+});
+
+describe("listRoleUsers", () => {
+  it("返回管理子树内授了该角色的用户(含 userName/email/orgId/expiresAt)", async () => {
+    // 组织树 root -> south,操作者 home=root(管理子树={root,south})
+    await db.insert(organizations).values([
+      { id: "org-root", name: "Root" },
+      { id: "org-south", name: "South", parentId: "org-root" },
+    ]);
+    await db.insert(user).values({ id: "u-2", name: "U2", email: "u2@x.com", orgId: "org-south" });
+    const role = await IamService.createRole({ name: "viewer" });
+    await db.insert(userRoles).values({ userId: "u-2", roleId: role.id, orgId: "org-south" });
+
+    const users = await IamService.listRoleUsers("org-root", role.id);
+    expect(users).toHaveLength(1);
+    expect(users[0]).toMatchObject({
+      userId: "u-2",
+      userName: "U2",
+      email: "u2@x.com",
+      orgId: "org-south",
+      expiresAt: null,
+    });
+  });
+
+  it("管理子树外的授权不返回", async () => {
+    // root -> south,操作者 home=south(管理子树={south}),root 在子树外
+    await db.insert(organizations).values([
+      { id: "org-root", name: "Root" },
+      { id: "org-south", name: "South", parentId: "org-root" },
+    ]);
+    await db.insert(user).values([
+      { id: "u-1", name: "U1", email: "u1@x.com", orgId: "org-root" },
+      { id: "u-2", name: "U2", email: "u2@x.com", orgId: "org-south" },
+    ]);
+    const role = await IamService.createRole({ name: "viewer" });
+    // u-1 在 root 授(子树外),u-2 在 south 授(子树内)
+    await db.insert(userRoles).values([
+      { userId: "u-1", roleId: role.id, orgId: "org-root" },
+      { userId: "u-2", roleId: role.id, orgId: "org-south" },
+    ]);
+
+    const users = await IamService.listRoleUsers("org-south", role.id);
+    expect(users).toHaveLength(1);
+    expect(users[0].userId).toBe("u-2");
+  });
+
+  it("角色不存在抛 ROLE_NOT_FOUND", async () => {
+    await expect(IamService.listRoleUsers("org-root", "role-nope")).rejects.toMatchObject({ code: "ROLE_NOT_FOUND" });
+  });
+
+  it("code 角色可查(admin)", async () => {
+    // admin 角色由 syncAuthorizationCatalog 创建,code 角色 listRoleUsers 也能查
+    await db.insert(organizations).values({ id: "org-root", name: "Root" });
+    await db.insert(user).values({ id: "u-1", name: "U1", email: "u1@x.com", orgId: "org-root" });
+    await db.insert(userRoles).values({ userId: "u-1", roleId: "role-admin", orgId: "org-root" });
+
+    const users = await IamService.listRoleUsers("org-root", "role-admin");
+    expect(users).toHaveLength(1);
+    expect(users[0].userId).toBe("u-1");
   });
 });

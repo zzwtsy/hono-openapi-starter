@@ -222,6 +222,10 @@ export interface Permission {
    */
   description: string | null;
   /**
+   * 资源中文 label,供管理界面分组展示
+   */
+  resourceLabel: string;
+  /**
    * 创建时间(ISO 8601)
    */
   createdAt: string;
@@ -359,6 +363,93 @@ export interface UpdateSetting {
    */
   value?: null;
 }
+export interface RoleUserAssignment {
+  /**
+   * 用户 ID
+   */
+  userId: string;
+  /**
+   * 用户名
+   */
+  userName: string;
+  /**
+   * 邮箱
+   */
+  email: string;
+  /**
+   * 授权绑定的组织 ID
+   */
+  orgId: string;
+  /**
+   * 过期时间(ISO 8601),null 表示永不过期
+   */
+  expiresAt: string | null;
+}
+export interface PermissionSource {
+  /**
+   * 来源类型:role=角色授予,direct=直接授权
+   */
+  type: 'role' | 'direct';
+  /**
+   * 角色 ID(role 类型有值,direct 为 null)
+   */
+  roleId: string | null;
+  /**
+   * 角色名(role 类型有值,direct 为 null)
+   */
+  roleName: string | null;
+  /**
+   * 授权绑定的组织 ID(可能是祖先组织,经继承生效)
+   */
+  orgId: string;
+  /**
+   * 过期时间(ISO 8601),null 表示永不过期
+   */
+  expiresAt: string | null;
+}
+export interface EffectivePermission {
+  /**
+   * 权限名 <resource>.<action>
+   */
+  permission: string;
+  /**
+   * 来源链:角色/直接/继承
+   */
+  sources: PermissionSource[];
+}
+export interface DeniedPermission {
+  /**
+   * 权限名 <resource>.<action>
+   */
+  permission: string;
+  /**
+   * 哪些组织的 deny 扣掉了此权限(deny 是全局减法,可多 org)
+   */
+  deniedBy: Array<{
+    /**
+     * 施加 deny 的组织 ID(可能是祖先组织)
+     */
+    orgId: string;
+    /**
+     * deny 的过期时间,null 表示永久 deny
+     */
+    expiresAt: string | null;
+  }>;
+  /**
+   * 本会生效的来源(被 deny 抵消)
+   */
+  suppressedSources: PermissionSource[];
+}
+export interface UserPermissionsResult {
+  /**
+   * 生效权限全集(含祖先继承,带来源)
+   */
+  effective: EffectivePermission[];
+  /**
+   * 被直接 deny 抵消的权限(本会生效但被扣掉)
+   */
+  denied: DeniedPermission[];
+}
 export interface UserRoleAssignment {
   /**
    * 角色 ID
@@ -401,7 +492,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 存活探针(liveness)
+       * [GET] 存活探针
        *
        * **path:** /healthz
        *
@@ -421,7 +512,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 就绪探针(readiness)
+       * [GET] 就绪探针
        *
        * **path:** /readyz
        *
@@ -764,7 +855,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出所有权限(代码同步目录)
+       * [GET] 列出所有权限
        *
        * **path:** /api/v1/permissions
        *
@@ -777,6 +868,8 @@ declare global {
        *   name: string
        *   // 权限描述
        *   description: string | null
+       *   // 资源中文 label,供管理界面分组展示
+       *   resourceLabel: string
        *   // 创建时间(ISO 8601)
        *   createdAt: string
        *   // 更新时间(ISO 8601)
@@ -1117,7 +1210,7 @@ declare global {
       /**
        * ---
        *
-       * [POST] 创建角色(实例角色)
+       * [POST] 创建角色
        *
        * **path:** /api/v1/roles
        *
@@ -1172,7 +1265,7 @@ declare global {
       /**
        * ---
        *
-       * [PATCH] 修改角色(仅实例角色)
+       * [PATCH] 修改角色
        *
        * **path:** /api/v1/roles/{roleId}
        *
@@ -1232,7 +1325,7 @@ declare global {
       /**
        * ---
        *
-       * [DELETE] 删除角色(仅实例角色,cascade 删 role_permissions 与 user_roles)
+       * [DELETE] 删除角色
        *
        * **path:** /api/v1/roles/{roleId}
        *
@@ -1314,7 +1407,7 @@ declare global {
       /**
        * ---
        *
-       * [POST] 给角色批量配权限(仅实例角色)
+       * [POST] 给角色批量配权限
        *
        * **path:** /api/v1/roles/{roleId}/permissions
        *
@@ -1368,7 +1461,7 @@ declare global {
       /**
        * ---
        *
-       * [DELETE] 撤角色的单个权限(仅实例角色)
+       * [DELETE] 撤角色的单个权限
        *
        * **path:** /api/v1/roles/{roleId}/permissions/{permission}
        *
@@ -1412,7 +1505,54 @@ declare global {
       /**
        * ---
        *
-       * [POST] 授用户角色(绑定组织,可指定过期)
+       * [GET] 列出授了某角色的用户
+       *
+       * **path:** /api/v1/roles/{roleId}/users
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 角色 ID
+       *   roleId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = Array<{
+       *   // 用户 ID
+       *   userId: string
+       *   // 用户名
+       *   userName: string
+       *   // 邮箱
+       *   email: string
+       *   // 授权绑定的组织 ID
+       *   orgId: string
+       *   // 过期时间(ISO 8601),null 表示永不过期
+       *   expiresAt: string | null
+       * }>
+       * ```
+       */
+      listRoleUsers<
+        Config extends Alova2MethodConfig<RoleUserAssignment[]> & {
+          pathParams: {
+            /**
+             * 角色 ID
+             */
+            roleId: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<RoleUserAssignment[], 'IAM.listRoleUsers', Config>;
+      /**
+       * ---
+       *
+       * [POST] 授用户角色
        *
        * **path:** /api/v1/users/{userId}/roles/{roleId}
        *
@@ -1484,7 +1624,7 @@ declare global {
       /**
        * ---
        *
-       * [DELETE] 撤用户角色(需 orgId 查询参数定位)
+       * [DELETE] 撤用户角色
        *
        * **path:** /api/v1/users/{userId}/roles/{roleId}
        *
@@ -1550,7 +1690,7 @@ declare global {
       /**
        * ---
        *
-       * [POST] 直接授用户权限(allow/deny,绑定组织)
+       * [POST] 直接授用户权限
        *
        * **path:** /api/v1/users/{userId}/permissions/{permission}
        *
@@ -1631,7 +1771,7 @@ declare global {
       /**
        * ---
        *
-       * [DELETE] 撤用户直接权限(需 orgId 查询参数定位)
+       * [DELETE] 撤用户直接权限
        *
        * **path:** /api/v1/users/{userId}/permissions/{permission}
        *
@@ -1697,7 +1837,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出用户在某组织的有效权限全集
+       * [GET] 列出用户在某组织的有效权限全集(带来源链)
        *
        * **path:** /api/v1/users/{userId}/permissions
        *
@@ -1725,11 +1865,65 @@ declare global {
        *
        * **Response**
        * ```ts
-       * type Response = string[]
+       * type Response = {
+       *   // 生效权限全集(含祖先继承,带来源)
+       *   // [items] start
+       *   // [items] end
+       *   effective: Array<{
+       *     // 权限名 <resource>.<action>
+       *     permission: string
+       *     // 来源链:角色/直接/继承
+       *     // [items] start
+       *     // [items] end
+       *     sources: Array<{
+       *       // 来源类型:role=角色授予,direct=直接授权
+       *       type: 'role' | 'direct'
+       *       // 角色 ID(role 类型有值,direct 为 null)
+       *       roleId: string | null
+       *       // 角色名(role 类型有值,direct 为 null)
+       *       roleName: string | null
+       *       // 授权绑定的组织 ID(可能是祖先组织,经继承生效)
+       *       orgId: string
+       *       // 过期时间(ISO 8601),null 表示永不过期
+       *       expiresAt: string | null
+       *     }>
+       *   }>
+       *   // 被直接 deny 抵消的权限(本会生效但被扣掉)
+       *   // [items] start
+       *   // [items] end
+       *   denied: Array<{
+       *     // 权限名 <resource>.<action>
+       *     permission: string
+       *     // 哪些组织的 deny 扣掉了此权限(deny 是全局减法,可多 org)
+       *     // [items] start
+       *     // [items] end
+       *     deniedBy: Array<{
+       *       // 施加 deny 的组织 ID(可能是祖先组织)
+       *       orgId: string
+       *       // deny 的过期时间,null 表示永久 deny
+       *       expiresAt: string | null
+       *     }>
+       *     // 本会生效的来源(被 deny 抵消)
+       *     // [items] start
+       *     // [items] end
+       *     suppressedSources: Array<{
+       *       // 来源类型:role=角色授予,direct=直接授权
+       *       type: 'role' | 'direct'
+       *       // 角色 ID(role 类型有值,direct 为 null)
+       *       roleId: string | null
+       *       // 角色名(role 类型有值,direct 为 null)
+       *       roleName: string | null
+       *       // 授权绑定的组织 ID(可能是祖先组织,经继承生效)
+       *       orgId: string
+       *       // 过期时间(ISO 8601),null 表示永不过期
+       *       expiresAt: string | null
+       *     }>
+       *   }>
+       * }
        * ```
        */
       listUserPermissions<
-        Config extends Alova2MethodConfig<string[]> & {
+        Config extends Alova2MethodConfig<UserPermissionsResult> & {
           pathParams: {
             /**
              * 用户 ID
@@ -1745,7 +1939,7 @@ declare global {
         }
       >(
         config: Config
-      ): Alova2Method<string[], 'IAM.listUserPermissions', Config>;
+      ): Alova2Method<UserPermissionsResult, 'IAM.listUserPermissions', Config>;
       /**
        * ---
        *
@@ -1871,7 +2065,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出所有组织(扁平,前端构建树)
+       * [GET] 列出所有组织
        *
        * **path:** /api/v1/organizations
        *
@@ -1899,7 +2093,7 @@ declare global {
       /**
        * ---
        *
-       * [POST] 创建组织(可指定父组织)
+       * [POST] 创建组织
        *
        * **path:** /api/v1/organizations
        *
@@ -1990,7 +2184,7 @@ declare global {
       /**
        * ---
        *
-       * [PATCH] 修改组织(改 parentId 时防环)
+       * [PATCH] 修改组织
        *
        * **path:** /api/v1/organizations/{orgId}
        *
@@ -2049,7 +2243,7 @@ declare global {
       /**
        * ---
        *
-       * [DELETE] 删除组织(有子组织或有用户拒绝)
+       * [DELETE] 删除组织
        *
        * **path:** /api/v1/organizations/{orgId}
        *
@@ -2123,7 +2317,7 @@ declare global {
       /**
        * ---
        *
-       * [PATCH] 修改(或创建)一条系统配置
+       * [PATCH] 修改或创建系统配置
        *
        * **path:** /api/v1/settings/{key}
        *

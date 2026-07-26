@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 
+import { getResourceLabel } from "@/core/auth/permissions.js";
 import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
@@ -111,7 +112,10 @@ async function requireUserInSubtree(actorOrgId: string, userId: string) {
 export const IamService = {
   // --- 权限目录 ---
   async listPermissions() {
-    return db.select().from(permissions).orderBy(asc(permissions.name));
+    const rows = await db.select().from(permissions).orderBy(asc(permissions.name));
+    // resourceLabel 运行时 join(不存 DB,免 migration):代码是 resource label 真相来源,
+    // 经此暴露给前端分组展示,前端零维护映射。
+    return rows.map(r => ({ ...r, resourceLabel: getResourceLabel(r.name) }));
   },
 
   // --- 角色 ---
@@ -211,6 +215,24 @@ export const IamService = {
     await db
       .delete(rolePermissions)
       .where(and(eq(rolePermissions.roleId, id), eq(rolePermissions.permission, permission)));
+  },
+
+  /** 列出操作者管理子树内,直接授予某角色的 (user, org) 记录(含过期)。角色不存在 404;code/instance 均可查。 */
+  async listRoleUsers(actorOrgId: string, roleId: string) {
+    await requireExistingRole(roleId);
+    const subtree = await getManagedSubtree(actorOrgId);
+    return db
+      .select({
+        userId: user.id,
+        userName: user.name,
+        email: user.email,
+        orgId: userRoles.orgId,
+        expiresAt: userRoles.expiresAt,
+      })
+      .from(userRoles)
+      .innerJoin(user, eq(userRoles.userId, user.id))
+      .where(and(eq(userRoles.roleId, roleId), inArray(userRoles.orgId, subtree)))
+      .orderBy(asc(user.name), asc(userRoles.orgId));
   },
 
   // --- 用户 ---

@@ -275,7 +275,7 @@ describe("iam user assignments", () => {
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
     await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-south" });
     const perms = await IamService.listUserEffectivePermissions("org-root", "u-1", "org-south");
-    expect(perms).toContain("projects.read");
+    expect(perms.effective.map(p => p.permission)).toContain("projects.read");
   });
 
   // 防自我锁死:撤销自己的授权 -> 403(对齐 disableUser)。actor-1 撤 actor-1 自己。

@@ -16,6 +16,7 @@ import {
   ResetPasswordSchema,
   RoleIdParamSchema,
   RoleSchema,
+  RoleUserAssignmentSchema,
   UpdateOrganizationSchema,
   UpdateRoleSchema,
   UpdateUserSchema,
@@ -23,6 +24,7 @@ import {
   UserIdParamSchema,
   UserPermissionBodySchema,
   UserPermissionParamSchema,
+  UserPermissionsResultSchema,
   UserRoleAssignmentSchema,
   UserRoleBodySchema,
   UserRoleParamSchema,
@@ -191,6 +193,23 @@ export const deleteRolePermissionRoute = createRoute({
   request: { params: z.object({ roleId: z.string(), permission: z.string() }) },
   responses: {
     200: jsonSuccessResponse(z.object({ permission: z.string() }), "已撤销"),
+    ...authErrorResponses,
+    404: jsonErrorResponse("角色不存在", "ROLE_NOT_FOUND"),
+  },
+});
+
+export const listRoleUsersRoute = createRoute({
+  method: "get",
+  path: "/roles/{roleId}/users",
+  tags: ["IAM"],
+  operationId: "listRoleUsers",
+  summary: "列出授了某角色的用户",
+  description: "返回操作者管理子树内,直接授予该角色的 (user, org) 记录(含过期)。供角色详情展示影响面。角色不存在返回 404;code/instance 角色均可查。需 assignments.read 权限。",
+  middleware: assignmentsReadMiddleware,
+  security: authedSecurity,
+  request: { params: RoleIdParamSchema },
+  responses: {
+    200: jsonSuccessResponse(z.array(RoleUserAssignmentSchema), "已授用户记录列表"),
     ...authErrorResponses,
     404: jsonErrorResponse("角色不存在", "ROLE_NOT_FOUND"),
   },
@@ -391,13 +410,13 @@ export const listUserPermissionsRoute = createRoute({
   path: "/users/{userId}/permissions",
   tags: ["IAM"],
   operationId: "listUserPermissions",
-  summary: "列出用户在某组织的有效权限全集",
-  description: "返回用户在目标组织的有效权限全集(含祖先继承、CTE 计算)。用户或组织不存在/不在管理子树返回 404。需 assignments.read 权限。",
+  summary: "列出用户在某组织的有效权限全集(带来源链)",
+  description: "返回用户在目标组织的有效权限全集(含祖先继承、CTE 计算),每条权限带来源链(角色/直接/继承),并单独列出被直接 deny 抵消的权限。用户或组织不存在/不在管理子树返回 404。需 assignments.read 权限。",
   middleware: assignmentsReadMiddleware,
   security: authedSecurity,
   request: { params: UserIdParamSchema, query: OrgIdQuerySchema },
   responses: {
-    200: jsonSuccessResponse(z.array(z.string()), "有效权限名列表"),
+    200: jsonSuccessResponse(UserPermissionsResultSchema, "有效权限全集(带来源链)"),
     ...authErrorResponses,
     404: jsonErrorResponse("用户或组织不存在或不在管理范围内", "COMMON_NOT_FOUND"),
   },
@@ -540,6 +559,7 @@ export type DeleteRoleRoute = typeof deleteRoleRoute;
 export type ListRolePermissionsRoute = typeof listRolePermissionsRoute;
 export type AssignRolePermissionsRoute = typeof assignRolePermissionsRoute;
 export type DeleteRolePermissionRoute = typeof deleteRolePermissionRoute;
+export type ListRoleUsersRoute = typeof listRoleUsersRoute;
 export type AssignUserRoleRoute = typeof assignUserRoleRoute;
 export type DeleteUserRoleRoute = typeof deleteUserRoleRoute;
 export type AssignUserPermissionRoute = typeof assignUserPermissionRoute;

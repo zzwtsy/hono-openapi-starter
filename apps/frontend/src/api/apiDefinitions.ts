@@ -39,6 +39,7 @@ export default {
   'IAM.listRolePermissions': ['GET', '/api/v1/roles/{roleId}/permissions'],
   'IAM.assignRolePermissions': ['POST', '/api/v1/roles/{roleId}/permissions'],
   'IAM.deleteRolePermission': ['DELETE', '/api/v1/roles/{roleId}/permissions/{permission}'],
+  'IAM.listRoleUsers': ['GET', '/api/v1/roles/{roleId}/users'],
   'IAM.assignUserRole': ['POST', '/api/v1/users/{userId}/roles/{roleId}'],
   'IAM.deleteUserRole': ['DELETE', '/api/v1/users/{userId}/roles/{roleId}'],
   'IAM.assignUserPermission': ['POST', '/api/v1/users/{userId}/permissions/{permission}'],

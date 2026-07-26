@@ -106,6 +106,7 @@ const mockSession = { id: "s-1", userId: "u-1", token: "t" };
 const mockPermission = {
   name: "projects.read",
   description: "查看项目",
+  resourceLabel: "项目",
   createdAt: new Date("2026-07-07T00:00:00.000Z"),
   updatedAt: new Date("2026-07-07T00:00:00.000Z"),
 };

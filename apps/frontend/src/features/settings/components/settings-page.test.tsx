@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { SettingsPage } from "./SettingsPage";
+import { SettingsPage } from "./settings-page";
 
 describe("SettingsPage", () => {
   it("渲染空态(无配置项)", () => {

@@ -1,5 +1,6 @@
 import type { GetMeRoute } from "./routes.js";
 
+import type { UserPermissionsResult } from "@/core/authorization/index.js";
 import type { AppRouteHandler } from "@/core/http/context.js";
 import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
@@ -15,9 +16,11 @@ export const getMeHandler: AppRouteHandler<GetMeRoute> = async (c) => {
   }
   // 未绑定组织时 permissions 为空(不抛 403,me 语义是"看自己")
   const orgId = user.orgId;
-  const effective = orgId != null ? await PermissionService.listEffectivePermissions(user.id, orgId) : [];
-  // 把 string[] 收窄到 AppPermission[]:满足 z.enum(allPermissionNames) 契约,脏数据防御性过滤。
-  const permissions = toAppPermissions(effective);
+  const result: UserPermissionsResult = orgId != null
+    ? await PermissionService.listEffectivePermissions(user.id, orgId)
+    : { effective: [], denied: [] };
+  // listEffectivePermissions 现返回带来源链结构;me 只需权限名做门控,提取 effective.permission。
+  const permissions = toAppPermissions(result.effective.map(p => p.permission));
 
   return successResponse(c, {
     user: { id: user.id, name: user.name, email: user.email, orgId: user.orgId ?? null },

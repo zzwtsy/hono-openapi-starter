@@ -1,12 +1,27 @@
-/** 受约束的 resource 前缀:必须是可被授予的业务实体,不能是模块名。 */
-export type ResourceName
-  = "permissions"
-    | "roles"
-    | "organizations"
-    | "assignments"
-    | "users"
-    | "projects"
-    | "settings";
+/**
+ * 受约束的 resource:必须是可被授予的业务实体,不能是模块名。
+ *
+ * 单一事实来源:`ResourceName` 从此派生,resource 中文 label 同处维护(供管理界面分组展示)。
+ * 加 resource 仅在此数组追加一处,类型与 label 自动同源,前端经 `listPermissions` API 取 `resourceLabel`,
+ * 无需前端维护第二份映射(避免漂移)。
+ */
+export const permissionResources = [
+  { name: "permissions", label: "权限目录" },
+  { name: "roles", label: "角色" },
+  { name: "organizations", label: "组织" },
+  { name: "assignments", label: "授权" },
+  { name: "users", label: "用户" },
+  { name: "projects", label: "项目" },
+  { name: "settings", label: "设置" },
+] as const satisfies readonly { name: string; label: string }[];
+
+export type ResourceName = (typeof permissionResources)[number]["name"];
+
+/** 取权限名的 resource 中文 label;未命中回退 resource 本身(防御脏数据)。 */
+export function getResourceLabel(permissionName: string): string {
+  const resource = permissionName.split(".")[0] ?? permissionName;
+  return permissionResources.find(r => r.name === resource)?.label ?? resource;
+}
 
 /** 受约束的 action 动词:细粒度 verb,不能是聚合词 manage。 */
 export type Action

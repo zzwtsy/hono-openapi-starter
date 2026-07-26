@@ -1,3 +1,5 @@
+import type { UserPermissionsResult } from "./permission-checker.js";
+
 import { getPermissionCache } from "./permission-cache.js";
 import { requireChecker } from "./permission-checker.js";
 
@@ -24,18 +26,18 @@ export const PermissionService = {
     return allowed;
   },
 
-  /** 列出用户在某组织的全部有效权限(全集,走请求级 memoize)。 */
-  async listEffectivePermissions(userId: string, orgId: string): Promise<string[]> {
+  /** 列出用户在某组织的有效权限全集(带来源链,走请求级 memoize;me 与 listUserPermissions 路由共享缓存)。 */
+  async listEffectivePermissions(userId: string, orgId: string): Promise<UserPermissionsResult> {
     const cache = getPermissionCache();
     const key = `list:${userId}:${orgId}`;
 
     const cached = cache?.get(key);
-    if (Array.isArray(cached)) {
+    if (cached != null && typeof cached === "object") {
       return cached;
     }
 
-    const permissions = await requireChecker().listEffectivePermissions(userId, orgId);
-    cache?.set(key, permissions);
-    return permissions;
+    const result = await requireChecker().listEffectivePermissions(userId, orgId);
+    cache?.set(key, result);
+    return result;
   },
 };
