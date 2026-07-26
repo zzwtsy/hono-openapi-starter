@@ -17,6 +17,7 @@ interface ConfirmDeleteDialogProps {
   title: string;
   description: ReactNode;
   onConfirm: () => void;
+  confirmLabel?: string;
   onClose: () => void;
 }
 
@@ -26,7 +27,7 @@ interface ConfirmDeleteDialogProps {
  * busy 时禁用关闭与确认(onOpenChange 守卫 + Cancel/Action disabled),
  * 避免删除进行中误关或重复触发。
  */
-export function ConfirmDeleteDialog({ open, busy, title, description, onConfirm, onClose }: ConfirmDeleteDialogProps) {
+export function ConfirmDeleteDialog({ open, busy, title, description, onConfirm, confirmLabel = "删除", onClose }: ConfirmDeleteDialogProps) {
   return (
     <AlertDialog
       open={open}
@@ -44,7 +45,7 @@ export function ConfirmDeleteDialog({ open, busy, title, description, onConfirm,
           <AlertDialogCancel disabled={busy}>取消</AlertDialogCancel>
           <AlertDialogAction variant="destructive" disabled={busy} onClick={() => { onConfirm(); }}>
             {busy && <Spinner data-icon="inline-start" />}
-            删除
+            {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

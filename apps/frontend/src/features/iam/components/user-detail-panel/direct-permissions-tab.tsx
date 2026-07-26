@@ -1,8 +1,8 @@
 import { actionDelegationMiddleware, useRequest } from "alova/client";
 import { Ban, Check, ShieldCheck } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import Apis from "@/api";
+import { AsyncListState } from "@/components/shared/async-list";
 import { DatePicker } from "@/components/shared/date-picker";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useCan } from "@/hooks/use-permissions";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { IAM_ACTIONS, refreshIam } from "../../iam-actions";
 import { PermissionCombobox } from "../permission-combobox";
 import { DirectPermissionRow } from "./direct-permission-row";
@@ -36,7 +37,7 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
   const [selectedPermission, setSelectedPermission] = useState("");
   const [effect, setEffect] = useState<"allow" | "deny">("allow");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const [assigning, setAssigning] = useState(false);
+  const { mutate: runWithToast, busy: assigning } = useToastMutation();
 
   const refresh = () => {
     refreshIam(IAM_ACTIONS.userDirectPerms, IAM_ACTIONS.userPermissions);
@@ -46,31 +47,28 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
     if (selectedPermission === "" || assigning) {
       return;
     }
-    setAssigning(true);
-    try {
-      await Apis.IAM.assignUserPermission({
+    const ok = await runWithToast(
+      () => Apis.IAM.assignUserPermission({
         pathParams: { userId, permission: selectedPermission },
         data: { orgId, effect, expiresAt: expiresAt ?? undefined },
-      });
-      toast.success(`${effect === "deny" ? "已拒绝" : "已允许"} ${selectedPermission}`);
+      }),
+      { successMessage: `${effect === "deny" ? "已拒绝" : "已允许"} ${selectedPermission}`, errorMessage: "授权失败" },
+    );
+    if (ok) {
       setSelectedPermission("");
       setEffect("allow");
       setExpiresAt(null);
       refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "授权失败");
-    } finally {
-      setAssigning(false);
     }
   };
 
   const revoke = async (permission: string) => {
-    try {
-      await Apis.IAM.deleteUserPermission({ pathParams: { userId, permission }, params: { orgId } });
-      toast.success("直接权限已撤销");
+    const ok = await runWithToast(
+      () => Apis.IAM.deleteUserPermission({ pathParams: { userId, permission }, params: { orgId } }),
+      { successMessage: "直接权限已撤销", errorMessage: "撤销失败" },
+    );
+    if (ok) {
       refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "撤销失败");
     }
   };
 
@@ -78,24 +76,24 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <h4 className="text-sm font-medium">已授直接权限</h4>
-        {loading
-          ? <Skeleton className="h-16 w-full" />
-          : error
-            ? (
-                <p className="text-sm text-muted-foreground">
-                  加载失败,
-                  <Button variant="link" size="sm" className="h-auto p-0" onClick={() => { void send(); }}>重试</Button>
-                </p>
-              )
-            : directPerms === undefined || directPerms.length === 0
-              ? <p className="text-sm text-muted-foreground">暂无直接授权。</p>
-              : (
-                  <div className="flex flex-col gap-2">
-                    {directPerms.map(p => (
-                      <DirectPermissionRow key={p.permission} perm={p} onRevoke={() => { void revoke(p.permission); }} />
-                    ))}
-                  </div>
-                )}
+        <AsyncListState
+          loading={loading}
+          error={error}
+          data={directPerms}
+          onRetry={() => { void send(); }}
+          loadingFallback={<Skeleton className="h-16 w-full" />}
+          errorDescription="无法获取直接授权。"
+        >
+          {directPerms === undefined || directPerms.length === 0
+            ? <p className="text-sm text-muted-foreground">暂无直接授权。</p>
+            : (
+                <div className="flex flex-col gap-2">
+                  {directPerms.map(p => (
+                    <DirectPermissionRow key={p.permission} perm={p} onRevoke={() => { void revoke(p.permission); }} />
+                  ))}
+                </div>
+              )}
+        </AsyncListState>
       </div>
 
       <Separator />

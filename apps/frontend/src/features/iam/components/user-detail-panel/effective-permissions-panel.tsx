@@ -19,27 +19,30 @@ function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange }: {
   onNavigateRole: (roleId: string) => void;
   onOrgIdChange: (orgId: string) => void;
 }) {
+  const roleId = source.roleId;
+  const roleBadge = source.type === "role" && roleId !== null
+    ? (
+        <Tooltip>
+          <TooltipTrigger render={
+            <Badge variant="secondary" className="text-xs hover:bg-accent" />
+          }
+          >
+            <button
+              type="button"
+              className="cursor-pointer"
+              onClick={() => { onNavigateRole(roleId); }}
+            >
+              {source.roleName}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>查看角色详情</TooltipContent>
+        </Tooltip>
+      )
+    : <Badge variant="secondary" className="text-xs">直接</Badge>;
+
   return (
     <span className="inline-flex items-center gap-0.5">
-      {source.type === "role"
-        ? (
-            <Tooltip>
-              <TooltipTrigger render={
-                <Badge variant="secondary" className="text-xs hover:bg-accent" />
-              }
-              >
-                <button
-                  type="button"
-                  className="cursor-pointer"
-                  onClick={() => { onNavigateRole(source.roleId!); }}
-                >
-                  {source.roleName}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>查看角色详情</TooltipContent>
-            </Tooltip>
-          )
-        : <Badge variant="secondary" className="text-xs">直接</Badge>}
+      {roleBadge}
       <Tooltip>
         <TooltipTrigger render={
           <Badge variant="outline" className="text-xs text-muted-foreground hover:bg-accent" />

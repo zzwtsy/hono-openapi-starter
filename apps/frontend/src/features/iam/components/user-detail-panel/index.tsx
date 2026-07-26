@@ -1,25 +1,15 @@
 import type { Role, UserSummary } from "@/api/globals";
 import { useState } from "react";
-import { toast } from "sonner";
 import Apis from "@/api";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCan } from "@/hooks/use-permissions";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { IAM_ACTIONS, refreshIam } from "../../iam-actions";
 import { ResetPasswordDialog } from "../reset-password-dialog";
 import { UserForm } from "../user-form";
@@ -55,7 +45,7 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [disabling, setDisabling] = useState(false);
-  const [disablingBusy, setDisablingBusy] = useState(false);
+  const { mutate: runWithToast, busy: disablingBusy } = useToastMutation();
 
   const handleEditSuccess = () => {
     setEditing(false);
@@ -67,26 +57,23 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
   };
 
   const confirmDisable = async () => {
-    setDisablingBusy(true);
-    try {
-      await Apis.IAM.disableUser({ pathParams: { userId: user.id } });
-      toast.success("用户已禁用");
+    const ok = await runWithToast(
+      () => Apis.IAM.disableUser({ pathParams: { userId: user.id } }),
+      { successMessage: "用户已禁用", errorMessage: "禁用失败" },
+    );
+    if (ok) {
       setDisabling(false);
       refreshIam(IAM_ACTIONS.usersList);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "禁用失败");
-    } finally {
-      setDisablingBusy(false);
     }
   };
 
   const enableUser = async () => {
-    try {
-      await Apis.IAM.enableUser({ pathParams: { userId: user.id } });
-      toast.success("用户已启用");
+    const ok = await runWithToast(
+      () => Apis.IAM.enableUser({ pathParams: { userId: user.id } }),
+      { successMessage: "用户已启用", errorMessage: "启用失败" },
+    );
+    if (ok) {
       refreshIam(IAM_ACTIONS.usersList);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "启用失败");
     }
   };
 
@@ -191,34 +178,15 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
+      <ConfirmDeleteDialog
         open={disabling}
-        onOpenChange={(o) => {
-          if (o || !disablingBusy) {
-            setDisabling(o);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>禁用用户</AlertDialogTitle>
-            <AlertDialogDescription>
-              {`确认禁用用户「${user.name}」?对方将立即下线且无法重新登录,直至重新启用。`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={disablingBusy}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={disablingBusy}
-              onClick={() => { void confirmDisable(); }}
-            >
-              {disablingBusy && <Spinner data-icon="inline-start" />}
-              禁用
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        busy={disablingBusy}
+        title="禁用用户"
+        description={`确认禁用用户「${user.name}」?对方将立即下线且无法重新登录,直至重新启用。`}
+        confirmLabel="禁用"
+        onConfirm={() => { void confirmDisable(); }}
+        onClose={() => setDisabling(false)}
+      />
     </Card>
   );
 }

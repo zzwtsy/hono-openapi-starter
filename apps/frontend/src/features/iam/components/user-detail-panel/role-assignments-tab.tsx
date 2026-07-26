@@ -2,8 +2,8 @@ import type { Role } from "@/api/globals";
 import { actionDelegationMiddleware, useRequest, useWatcher } from "alova/client";
 import { ChevronRight, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import Apis from "@/api";
+import { AsyncListState } from "@/components/shared/async-list";
 import { DatePicker } from "@/components/shared/date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { useCan } from "@/hooks/use-permissions";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { IAM_ACTIONS, refreshIam } from "../../iam-actions";
 import { RoleAssignmentRow } from "./role-assignment-row";
 
@@ -43,7 +44,7 @@ export function RoleAssignmentsTab({ userId, orgId, roles, onNavigateRole }: Rol
 
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const [assigning, setAssigning] = useState(false);
+  const { mutate: runWithToast, busy: assigning } = useToastMutation();
 
   // useWatcher 监听 selectedRoleId:选中角色自动用新 roleId 拉权限,
   // 修此前 sendPreview 闭包用旧 roleId(初始 "")-> 404 -> 显示 0 项权限的 bug。
@@ -61,10 +62,10 @@ export function RoleAssignmentsTab({ userId, orgId, roles, onNavigateRole }: Rol
     return previewPerms.filter(p => !have.has(p));
   }, [previewPerms, effectiveResult]);
 
-  const roleItems = [
+  const roleItems = useMemo(() => [
     { label: "请选择角色...", value: null },
     ...roles.map(r => ({ label: r.name, value: r.id })),
-  ];
+  ], [roles]);
 
   const refresh = () => {
     refreshIam(IAM_ACTIONS.userRoles, IAM_ACTIONS.userPermissions);
@@ -74,30 +75,27 @@ export function RoleAssignmentsTab({ userId, orgId, roles, onNavigateRole }: Rol
     if (selectedRoleId === "" || assigning) {
       return;
     }
-    setAssigning(true);
-    try {
-      await Apis.IAM.assignUserRole({
+    const ok = await runWithToast(
+      () => Apis.IAM.assignUserRole({
         pathParams: { userId, roleId: selectedRoleId },
         data: { orgId, expiresAt: expiresAt ?? undefined },
-      });
-      toast.success("角色已授予");
+      }),
+      { successMessage: "角色已授予", errorMessage: "授权失败" },
+    );
+    if (ok) {
       setSelectedRoleId("");
       setExpiresAt(null);
       refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "授权失败");
-    } finally {
-      setAssigning(false);
     }
   };
 
   const revoke = async (roleId: string) => {
-    try {
-      await Apis.IAM.deleteUserRole({ pathParams: { userId, roleId }, params: { orgId } });
-      toast.success("角色已撤销");
+    const ok = await runWithToast(
+      () => Apis.IAM.deleteUserRole({ pathParams: { userId, roleId }, params: { orgId } }),
+      { successMessage: "角色已撤销", errorMessage: "撤销失败" },
+    );
+    if (ok) {
       refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "撤销失败");
     }
   };
 
@@ -105,24 +103,24 @@ export function RoleAssignmentsTab({ userId, orgId, roles, onNavigateRole }: Rol
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <h4 className="text-sm font-medium">已授角色</h4>
-        {loading
-          ? <Skeleton className="h-16 w-full" />
-          : error
-            ? (
-                <p className="text-sm text-muted-foreground">
-                  加载失败,
-                  <Button variant="link" size="sm" className="h-auto p-0" onClick={() => { void send(); }}>重试</Button>
-                </p>
-              )
-            : assignments === undefined || assignments.length === 0
-              ? <p className="text-sm text-muted-foreground">暂无已授角色。</p>
-              : (
-                  <div className="flex flex-col gap-2">
-                    {assignments.map(a => (
-                      <RoleAssignmentRow key={a.roleId} assignment={a} onRevoke={() => { void revoke(a.roleId); }} onNavigateRole={onNavigateRole} />
-                    ))}
-                  </div>
-                )}
+        <AsyncListState
+          loading={loading}
+          error={error}
+          data={assignments}
+          onRetry={() => { void send(); }}
+          loadingFallback={<Skeleton className="h-16 w-full" />}
+          errorDescription="无法获取已授角色。"
+        >
+          {assignments === undefined || assignments.length === 0
+            ? <p className="text-sm text-muted-foreground">暂无已授角色。</p>
+            : (
+                <div className="flex flex-col gap-2">
+                  {assignments.map(a => (
+                    <RoleAssignmentRow key={a.roleId} assignment={a} onRevoke={() => { void revoke(a.roleId); }} onNavigateRole={onNavigateRole} />
+                  ))}
+                </div>
+              )}
+        </AsyncListState>
       </div>
 
       <Separator />
