@@ -1,7 +1,7 @@
 import type { Organization } from "@/shared/api/globals";
 import { useRequest } from "alova/client";
 import { Building2, Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/shared/api";
 import { useMediaQuery } from "@/shared/lib/use-media-query";
@@ -37,16 +37,8 @@ export function OrganizationExplorer({
     : index.byId.get(selectedOrganizationId) ?? index.byId.get(index.rootIds[0] ?? "");
 
   // data 加载后初始化选中并同步 URL(父控制 selectedOrganizationId)。
-  // useMemo 无法调回调(会丢 URL 同步),effect 是合理副作用(非 prop 同步反模式)。
-  useEffect(() => {
-    if (data === undefined) {
-      return;
-    }
-    const resolvedId = selectedOrganization?.id;
-    if (resolvedId !== selectedOrganizationId) {
-      onSelectedOrganizationChange(resolvedId);
-    }
-  }, [data, onSelectedOrganizationChange, selectedOrganization?.id, selectedOrganizationId]);
+  // 选中态 URL-driven:selectedOrganizationId 未指定或失效时,selectedOrganization
+  // 派生 fallback(rootIds[0]),不写 URL(用户点选才写)。无 effect 通知父。
 
   const refreshOrganizations = async () => {
     try {

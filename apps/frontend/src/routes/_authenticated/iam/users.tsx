@@ -1,9 +1,9 @@
 import type { UserSummary } from "@/shared/api/globals";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { IAM_ACTIONS, refreshIam } from "@/features/iam/model/iam-actions";
-import { buildOrganizationTree } from "@/features/iam/model/organization-tree";
+import { useUserPageState } from "@/features/iam/model/use-user-page-state";
 import { UserDetailPanel } from "@/features/iam/ui/user-detail-panel";
 import { UserForm } from "@/features/iam/ui/user-form";
 import { UserListPanel } from "@/features/iam/ui/user-list";
@@ -52,41 +52,15 @@ function UsersPage() {
   const currentUserId = auth.user?.id ?? "";
 
   const canReadRoles = useCan("roles.read");
-  const canReadOrgs = useCan("organizations.read");
   const { data: roles } = useRequest(() => Apis.IAM.listRoles(), { immediate: canReadRoles });
-  const { data: organizations } = useRequest(() => Apis.IAM.listOrganizations(), { immediate: canReadOrgs });
-
-  const orgOptions = useMemo(() => {
-    if (organizations == null) {
-      return [{ label: homeOrgId, value: homeOrgId }];
-    }
-    const tree = buildOrganizationTree(organizations);
-    return [
-      { label: tree.getDisplayPath(homeOrgId), value: homeOrgId },
-      ...[...tree.getDescendantIds(homeOrgId)].map(id => ({ label: tree.getDisplayPath(id), value: id })),
-    ];
-  }, [organizations, homeOrgId]);
-
-  const getOrgPath = useMemo(() => {
-    if (organizations == null) {
-      return (id: string) => id;
-    }
-    const tree = buildOrganizationTree(organizations);
-    return (id: string) => tree.getDisplayPath(id);
-  }, [organizations]);
+  const { orgOptions, getOrgPath } = useUserPageState(homeOrgId);
 
   const { data: users } = useRequest(
     () => Apis.IAM.listUsers(),
     { middleware: actionDelegationMiddleware(IAM_ACTIONS.usersList) },
   );
-  const selectedUser = users?.find(u => u.id === selectedUserId);
-
-  // 选中回退:未指定 user 时选首条(对齐组织管理 rootIds[0])
-  useEffect(() => {
-    if (selectedUserId === undefined && users != null && users.length > 0) {
-      void navigate({ search: { user: users[0].id }, replace: true });
-    }
-  }, [selectedUserId, users, navigate]);
+  // 选中态 URL-driven:未指定 user 时 fallback 首条(派生,不写 URL)。
+  const selectedUser = users?.find(u => u.id === selectedUserId) ?? users?.[0];
 
   const orgId = orgParam ?? selectedUser?.orgId ?? homeOrgId;
   const activeTab = tab !== undefined && (TAB_VALUES as readonly string[]).includes(tab) ? tab : "info";

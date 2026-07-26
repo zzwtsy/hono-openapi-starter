@@ -1,16 +1,15 @@
 import type { Role } from "@/shared/api/globals";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { IAM_ACTIONS, refreshIam } from "@/features/iam/model/iam-actions";
-import { buildOrganizationTree } from "@/features/iam/model/organization-tree";
+import { useUserPageState } from "@/features/iam/model/use-user-page-state";
 import { RoleDetailPanel } from "@/features/iam/ui/role-detail-panel";
 import { RoleForm } from "@/features/iam/ui/role-form";
 import { RoleListPanel } from "@/features/iam/ui/role-list";
 import Apis from "@/shared/api";
 import { requirePermission } from "@/shared/lib/require-permission";
 import { useMediaQuery } from "@/shared/lib/use-media-query";
-import { useCan } from "@/shared/lib/use-permissions";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Dialog, DialogContent } from "@/shared/ui/dialog";
 import { PageHeader } from "@/shared/ui/page-header";
@@ -46,27 +45,13 @@ function RolesPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const canReadOrgs = useCan("organizations.read");
   const { data: roles } = useRequest(
     () => Apis.IAM.listRoles(),
     { middleware: actionDelegationMiddleware(IAM_ACTIONS.rolesList) },
   );
-  const { data: organizations } = useRequest(() => Apis.IAM.listOrganizations(), { immediate: canReadOrgs });
-  const getOrgPath = useMemo(() => {
-    if (organizations == null) {
-      return (id: string) => id;
-    }
-    const tree = buildOrganizationTree(organizations);
-    return (id: string) => tree.getDisplayPath(id);
-  }, [organizations]);
-  const selectedRole = roles?.find(r => r.id === selectedRoleId);
-
-  // 选中回退:未指定 role 时选首条(对齐组织管理)
-  useEffect(() => {
-    if (selectedRoleId === undefined && roles != null && roles.length > 0) {
-      void navigate({ search: { role: roles[0].id }, replace: true });
-    }
-  }, [selectedRoleId, roles, navigate]);
+  const { getOrgPath } = useUserPageState("");
+  // 选中态 URL-driven:未指定 role 时 fallback 首条(派生,不写 URL)。
+  const selectedRole = roles?.find(r => r.id === selectedRoleId) ?? roles?.[0];
 
   const activeTab = tab !== undefined && (TAB_VALUES as readonly string[]).includes(tab) ? tab : "info";
 
