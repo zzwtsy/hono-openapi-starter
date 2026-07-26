@@ -40,7 +40,13 @@ features/iam/
     organization-form.tsx               # 创建、编辑与移动组织
     role-list.tsx                       # 左列表 + 搜索 + 选中回调 + 新建按钮
     user-list.tsx                       # 左列表 + 搜索 + 选中回调 + disabled badge + 新建按钮
-    role-detail-panel.tsx               # 角色详情:信息 / 权限分配(diff + 批量) / 已授用户
+    role-detail-panel/                  # 角色详情(目录):信息 / 权限分配(diff + 批量) / 已授用户
+      index.tsx                         # 容器:头部 + Tabs + 编辑/删除对话框
+      role-info-tab.tsx
+      role-permissions-tab/             # 权限分配(抽 useRolePermissions hook)
+        index.tsx
+        use-role-permissions.ts
+      role-users-tab.tsx
     user-detail-panel/                  # 用户详情(目录):组织选择器 + 信息 / 角色授权 / 直接授权 / 有效权限
       index.tsx                         # 容器:组织选择器 + Tabs + 编辑/重置/禁用对话框
       user-info-tab.tsx

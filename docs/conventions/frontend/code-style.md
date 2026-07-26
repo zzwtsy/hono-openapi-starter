@@ -39,8 +39,9 @@ route 文件是装配层,只做四件事:`createFileRoute` + `beforeLoad` 守卫
 
 遵循 React 官方 *You Might Not Need an Effect*:
 
-- **禁止 render 期镜像 props 到 state**(手动 `prevX` 同步)。用 `key` 重置或派生计算。
-  - 反例:[role-detail-panel.tsx:256-260](../../../apps/frontend/src/features/iam/components/role-detail-panel.tsx#L256-L260) `prevInitial`(父级已传 `key={role.id}`,同步完全多余)。
+- **禁止无意义地镜像 props 到 state**(纯 `prevX` 同步而无重置语义)。用 `key` 重置或派生计算。
+- **允许 React 官方 [adjusting state when information changes](https://react.dev/reference/react/useState#storing-information-from-previous-renders) 模式**:数据变化时在 render 期条件 setState 重置派生 state(优于 useEffect)。
+  - 正例:[use-role-permissions.ts](../../../apps/frontend/src/features/iam/components/role-detail-panel/role-permissions-tab/use-role-permissions.ts) `prevInitial`:granted 刷新(submit / refresh)后重置 working 编辑态(role 切换由容器 `key={role.id}` remount 处理)。
 - **禁止 `useEffect` 回调父组件 `setState` 同步受控 prop**。用渲染期 `useMemo` 计算 resolved 值,或把默认选中下放为内部 state + `key` 重置。
   - 反例:[OrganizationExplorer.tsx:75-83](../../../apps/frontend/src/features/iam/components/OrganizationExplorer.tsx#L75-L83)。
 - 函数体内大数组/配置对象必须 `useMemo` 或提到模块级,避免每次 render 重建。
