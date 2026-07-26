@@ -35,20 +35,7 @@ import { formatDate } from "@/lib/utils";
 import { IAM_ACTIONS, refreshIam } from "../iam-actions";
 import { formatPermission } from "../permission-format";
 import { RoleForm } from "./role-form";
-
-function groupByResource(perms: Permission[]): Map<string, Permission[]> {
-  const groups = new Map<string, Permission[]>();
-  for (const p of perms) {
-    const resource = p.name.split(".")[0] ?? "other";
-    const list = groups.get(resource);
-    if (list === undefined) {
-      groups.set(resource, [p]);
-    } else {
-      list.push(p);
-    }
-  }
-  return groups;
-}
+import { groupByResource } from "./shared/group-by-resource";
 
 interface RoleDetailPanelProps {
   role: Role;
@@ -278,7 +265,7 @@ function RolePermissionsTab({ role }: { role: Role }) {
     }
     return list;
   }, [allPerms, search, viewMode, working, initial]);
-  const groups = useMemo(() => groupByResource(filtered), [filtered]);
+  const groups = useMemo(() => groupByResource(filtered, p => p.name), [filtered]);
 
   const toggle = (name: string) => {
     setWorking((prev) => {

@@ -13,20 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { formatPermission } from "../permission-format";
-
-function groupByResource(perms: Permission[]): Map<string, Permission[]> {
-  const groups = new Map<string, Permission[]>();
-  for (const p of perms) {
-    const resource = p.name.split(".")[0] ?? "other";
-    const list = groups.get(resource);
-    if (list === undefined) {
-      groups.set(resource, [p]);
-    } else {
-      list.push(p);
-    }
-  }
-  return groups;
-}
+import { groupByResource } from "./shared/group-by-resource";
 
 interface PermissionComboboxProps {
   value: string | null;
@@ -49,7 +36,7 @@ export function PermissionCombobox({
 }: PermissionComboboxProps) {
   const [open, setOpen] = useState(false);
   const selected = permissions.find(p => p.name === value);
-  const groups = useMemo(() => groupByResource(permissions), [permissions]);
+  const groups = useMemo(() => groupByResource(permissions, p => p.name), [permissions]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

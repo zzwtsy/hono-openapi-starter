@@ -1,7 +1,7 @@
 import type { Role } from "@/api/globals";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Apis from "@/api";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,24 +18,9 @@ import { RoleForm } from "@/features/iam/components/role-form";
 import { RoleListPanel } from "@/features/iam/components/role-list";
 import { IAM_ACTIONS, refreshIam } from "@/features/iam/iam-actions";
 import { buildOrganizationTree } from "@/features/iam/organization-tree";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useCan } from "@/hooks/use-permissions";
 import { requirePermission } from "@/lib/require-permission";
-
-const NARROW_SCREEN_QUERY = "(max-width: 1023px)";
-
-function subscribeNarrowScreen(callback: () => void) {
-  const query = window.matchMedia(NARROW_SCREEN_QUERY);
-  query.addEventListener("change", callback);
-  return () => query.removeEventListener("change", callback);
-}
-
-function useIsNarrowScreen() {
-  return useSyncExternalStore(
-    subscribeNarrowScreen,
-    () => window.matchMedia(NARROW_SCREEN_QUERY).matches,
-    () => false,
-  );
-}
 
 const TAB_VALUES = ["info", "permissions", "users"] as const;
 
@@ -57,7 +42,7 @@ function RolesPage() {
   const { role: selectedRoleId, tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const routerNavigate = useNavigate();
-  const isNarrowScreen = useIsNarrowScreen();
+  const isNarrowScreen = useMediaQuery("(max-width: 1023px)");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 

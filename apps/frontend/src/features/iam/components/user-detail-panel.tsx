@@ -1,4 +1,4 @@
-import type { EffectivePermission, PermissionSource, Role, UserSummary } from "@/api/globals";
+import type { PermissionSource, Role, UserSummary } from "@/api/globals";
 import { actionDelegationMiddleware, useRequest, useWatcher } from "alova/client";
 import { format } from "date-fns";
 import { Ban, CalendarClock, Check, ChevronRight, CircleAlert, CircleCheck, KeyRound, Pencil, ShieldCheck, X } from "lucide-react";
@@ -37,6 +37,7 @@ import { formatDate } from "@/lib/utils";
 import { IAM_ACTIONS, refreshIam } from "../iam-actions";
 import { PermissionCombobox } from "./permission-combobox";
 import { ResetPasswordDialog } from "./reset-password-dialog";
+import { groupByResource } from "./shared/group-by-resource";
 import { UserForm } from "./user-form";
 
 interface OrgOption {
@@ -55,20 +56,6 @@ interface UserDetailPanelProps {
   tab: string;
   onTabChange: (tab: string) => void;
   onNavigateRole: (roleId: string) => void;
-}
-
-function groupByResource(perms: EffectivePermission[]): Map<string, EffectivePermission[]> {
-  const groups = new Map<string, EffectivePermission[]>();
-  for (const p of perms) {
-    const resource = p.permission.split(".")[0] ?? "other";
-    const list = groups.get(resource);
-    if (list === undefined) {
-      groups.set(resource, [p]);
-    } else {
-      list.push(p);
-    }
-  }
-  return groups;
 }
 
 export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrgPath, currentUserId, roles, tab, onTabChange, onNavigateRole }: UserDetailPanelProps) {
@@ -357,7 +344,7 @@ function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigateRole, 
 
   const effective = result?.effective ?? [];
   const denied = result?.denied ?? [];
-  const groups = groupByResource(effective);
+  const groups = groupByResource(effective, p => p.permission);
 
   return (
     <div className="flex flex-col gap-3">

@@ -1,7 +1,7 @@
 import type { Organization } from "@/api/globals";
 import { useRequest } from "alova/client";
 import { Building2, CircleAlert, Plus } from "lucide-react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
 import { Can } from "@/components/can";
@@ -30,26 +30,11 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { buildOrganizationTree } from "../organization-tree";
 import { OrganizationDetails } from "./organization-details";
 import { OrganizationForm } from "./organization-form";
 import { OrganizationTree } from "./organization-tree";
-
-const NARROW_SCREEN_QUERY = "(max-width: 1023px)";
-
-function subscribeToNarrowScreen(callback: () => void) {
-  const query = window.matchMedia(NARROW_SCREEN_QUERY);
-  query.addEventListener("change", callback);
-  return () => query.removeEventListener("change", callback);
-}
-
-function useIsNarrowScreen() {
-  return useSyncExternalStore(
-    subscribeToNarrowScreen,
-    () => window.matchMedia(NARROW_SCREEN_QUERY).matches,
-    () => false,
-  );
-}
 
 interface OrganizationExplorerProps {
   selectedOrganizationId?: string;
@@ -66,7 +51,7 @@ export function OrganizationExplorer({
   const [deleting, setDeleting] = useState<Organization>();
   const [deletingBusy, setDeletingBusy] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const isNarrowScreen = useIsNarrowScreen();
+  const isNarrowScreen = useMediaQuery("(max-width: 1023px)");
   const index = useMemo(() => buildOrganizationTree(data ?? []), [data]);
   const selectedOrganization = selectedOrganizationId === undefined
     ? index.byId.get(index.rootIds[0] ?? "")
