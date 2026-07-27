@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Apis from "@/api";
+import { PageHeader } from "@/components/shared/page-header";
+import { ProjectList } from "@/features/projects/ui/project-list";
 import { requirePermission } from "@/lib/require-permission";
-import { ProjectsPage } from "@/pages/projects";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
   beforeLoad: ({ context }) => {
@@ -11,5 +12,14 @@ export const Route = createFileRoute("/_authenticated/projects/")({
     // 关键路由预取:写 alova cache,组件 useRequest 命中(cacheFor 在 api/index.ts 集中配置)
     await Apis.Projects.listProjects();
   },
-  component: ProjectsPage,
+  component: Projects,
 });
+
+function Projects() {
+  return (
+    <div className="flex flex-col gap-4 p-6">
+      <PageHeader title="项目" description="当前组织下的项目。" />
+      <ProjectList />
+    </div>
+  );
+}

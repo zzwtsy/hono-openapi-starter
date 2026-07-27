@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Apis from "@/api";
+import { OrganizationsPage } from "@/features/iam/organizations-page";
 import { requirePermission } from "@/lib/require-permission";
-import { OrganizationsPage } from "@/pages/iam/organizations";
 
 export const Route = createFileRoute("/_authenticated/iam/organizations")({
   validateSearch: (search: Record<string, unknown>): { org?: string } => ({
