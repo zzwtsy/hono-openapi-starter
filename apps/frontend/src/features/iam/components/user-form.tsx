@@ -24,6 +24,19 @@ function buildSchema(isEdit: boolean) {
   });
 }
 
+// 字段错误显示(TanStack Form 官方 FieldInfo 模式;接 errors 而非 field,errors 元素为 unknown,
+// 用 in narrowing 取 message,全程类型安全无 any)。
+function FieldError({ errors }: { errors: readonly unknown[] }) {
+  const error = errors[0];
+  if (error === undefined) {
+    return null;
+  }
+  const message = typeof error === "object" && error !== null && "message" in error
+    ? String((error as Record<string, unknown>).message)
+    : String(error);
+  return <FieldDescription>{message}</FieldDescription>;
+}
+
 export interface UserOrgOption {
   label: string;
   value: string;
@@ -98,9 +111,7 @@ export function UserForm({ user, onSuccess, orgOptions, defaultOrgId }: UserForm
                   onBlur={field.handleBlur}
                   aria-invalid={field.state.meta.errors.length > 0}
                 />
-                {field.state.meta.errors.length > 0 && (
-                  <FieldDescription>{String(field.state.meta.errors[0]?.message ?? field.state.meta.errors[0])}</FieldDescription>
-                )}
+                <FieldError errors={field.state.meta.errors} />
               </Field>
             )}
           </form.Field>
@@ -117,9 +128,7 @@ export function UserForm({ user, onSuccess, orgOptions, defaultOrgId }: UserForm
                   onBlur={field.handleBlur}
                   aria-invalid={field.state.meta.errors.length > 0}
                 />
-                {field.state.meta.errors.length > 0 && (
-                  <FieldDescription>{String(field.state.meta.errors[0]?.message ?? field.state.meta.errors[0])}</FieldDescription>
-                )}
+                <FieldError errors={field.state.meta.errors} />
               </Field>
             )}
           </form.Field>
@@ -138,9 +147,7 @@ export function UserForm({ user, onSuccess, orgOptions, defaultOrgId }: UserForm
                       onBlur={field.handleBlur}
                       aria-invalid={field.state.meta.errors.length > 0}
                     />
-                    {field.state.meta.errors.length > 0 && (
-                      <FieldDescription>{String(field.state.meta.errors[0]?.message ?? field.state.meta.errors[0])}</FieldDescription>
-                    )}
+                    <FieldError errors={field.state.meta.errors} />
                   </Field>
                 )}
               </form.Field>
@@ -166,9 +173,7 @@ export function UserForm({ user, onSuccess, orgOptions, defaultOrgId }: UserForm
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    {field.state.meta.errors.length > 0 && (
-                      <FieldDescription>{String(field.state.meta.errors[0]?.message ?? field.state.meta.errors[0])}</FieldDescription>
-                    )}
+                    <FieldError errors={field.state.meta.errors} />
                   </Field>
                 )}
               </form.Field>

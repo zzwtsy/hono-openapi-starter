@@ -1,10 +1,8 @@
 import type { Role } from "@/api/globals";
-import { ChevronRight, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { AsyncListState } from "@/components/shared/async-list";
 import { DatePicker } from "@/components/shared/date-picker";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -12,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { useRoleAssignments } from "../../hooks/use-role-assignments";
 import { RoleAssignmentRow } from "./role-assignment-row";
+import { RolePreviewCollapsible } from "./role-preview-collapsible";
 
 interface RoleAssignmentsTabProps {
   userId: string;
@@ -96,37 +95,7 @@ export function RoleAssignmentsTab({
             </Select>
           </Field>
           {selectedRoleId !== "" && (
-            <Collapsible className="group/collapsible">
-              <CollapsibleTrigger render={<Button variant="ghost" size="sm" className="w-full justify-start" />}>
-                <ChevronRight className="size-4 transition-transform group-data-open/collapsible:rotate-90" />
-                <span>
-                  该角色含
-                  {" "}
-                  {previewPerms?.length ?? 0}
-                  {" "}
-                  项权限
-                  {newPerms !== undefined && newPerms.length > 0 && ` · 授予后新增 ${newPerms.length} 项`}
-                </span>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="flex flex-wrap gap-1 rounded-lg border p-2">
-                  {previewPerms === undefined || previewPerms.length === 0
-                    ? <span className="text-sm text-muted-foreground">该角色暂无权限</span>
-                    : previewPerms.map(p => (
-                        <Badge
-                          key={p}
-                          variant={(newPerms?.includes(p) ?? false) ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          {p}
-                        </Badge>
-                      ))}
-                </div>
-                {newPerms !== undefined && newPerms.length > 0 && (
-                  <p className="mt-1 text-xs text-muted-foreground">高亮为用户当前未持有的新增权限。</p>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
+            <RolePreviewCollapsible previewPerms={previewPerms} newPerms={newPerms} />
           )}
           <Field>
             <FieldLabel htmlFor="role-expires">过期时间(可选)</FieldLabel>
