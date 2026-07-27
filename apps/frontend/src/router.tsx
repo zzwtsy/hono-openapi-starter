@@ -1,9 +1,10 @@
 import { createRouter } from "@tanstack/react-router";
-import { routeTree } from "../routeTree.gen";
+import { routeTree } from "./routeTree.gen";
 
+// createRouter:routeTree 来自 vite 插件自动生成。session 通过 <RouterProvider context>
+// 在 React-land 注入(见 app.tsx),beforeLoad 读 context.auth.session。
 export const router = createRouter({
   routeTree,
-  // 真实 session 在 app.tsx 通过 <RouterProvider context> 注入(React-land)
   context: { auth: { session: null } },
 });
 

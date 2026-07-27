@@ -4,7 +4,6 @@ import type { AppPermission } from "@/shared/lib/types/permissions";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { Building2, ChevronRight, ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, Settings, ShieldCheck, Users } from "lucide-react";
 import { useMemo } from "react";
-import { useLogout } from "@/features/auth/model/hooks";
 import { hasPermission } from "@/shared/lib/permissions";
 import { useAuth } from "@/shared/lib/use-auth";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
@@ -35,7 +34,8 @@ import {
 import { ThemeToggle } from "@/shared/ui/theme-toggle";
 
 // 受保护区的侧边栏:导航按 permissions 显隐(前端 UX,后端 PermissionChecker 才是授权边界);
-// 用户区显示登录态,登出走 useLogout(signOut + effect 监听 session 跳 /login)。
+// 用户区显示登录态,登出由父层(_authenticated route wrapper)通过 onLogout 传入,
+// 避免 components/layout 反向依赖 features/auth(boundaries:components 不依赖 features)。
 // 放 _authenticated layout 渲染(其 context 一定有 permissions/user)。
 
 interface NavItemMeta {
@@ -78,12 +78,11 @@ const navGroups: readonly NavGroup[] = [
   },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ onLogout }: { onLogout: () => void }) {
   const auth = useAuth();
   const matchRoute = useMatchRoute();
   const { state: sidebarState } = useSidebar();
   const isCollapsed = sidebarState === "collapsed";
-  const { logout } = useLogout();
 
   const visibleGroups = useMemo(
     () => navGroups
@@ -224,7 +223,7 @@ export function AppSidebar() {
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>{name}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => { void logout(); }}>
+                  <DropdownMenuItem onClick={() => { onLogout(); }}>
                     <LogOut />
                     登出
                   </DropdownMenuItem>
