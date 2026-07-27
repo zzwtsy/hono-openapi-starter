@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { IAM_ACTIONS, refreshIam } from "../../model/iam-actions";
+import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
 import { RoleAssignmentRow } from "./role-assignment-row";
 
 interface RoleAssignmentsTabProps {

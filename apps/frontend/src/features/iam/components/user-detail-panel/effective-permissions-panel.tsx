@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { groupByResource } from "../../lib/group-by-resource";
-import { IAM_ACTIONS } from "../../model/iam-actions";
+import { IAM_ACTIONS } from "../../lib/iam-actions";
 
 function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange }: {
   source: PermissionSource;

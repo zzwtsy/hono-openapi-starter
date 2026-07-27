@@ -1,4 +1,4 @@
-import { OrganizationExplorer } from "@/features/iam/ui/organization-explorer";
+import { OrganizationExplorer } from "@/features/iam/components/organization-explorer";
 
 interface OrganizationsPageProps {
   selectedOrganizationId?: string;

@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { IAM_ACTIONS } from "../model/iam-actions";
+import { IAM_ACTIONS } from "../lib/iam-actions";
 
 interface RoleListPanelProps {
   selectedRoleId?: string;

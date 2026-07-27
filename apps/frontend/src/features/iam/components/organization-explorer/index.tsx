@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { buildOrganizationTree } from "../../model/organization-tree";
+import { buildOrganizationTree } from "../../lib/organization-tree";
 import { OrganizationDialogs } from "./organization-dialogs";
 import { ExplorerContent } from "./organization-explorer-content";
 import { OrganizationExplorerSkeleton } from "./organization-explorer-skeleton";

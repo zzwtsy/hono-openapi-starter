@@ -5,7 +5,7 @@ import Apis from "@/api";
 import { useCanAll } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { groupByResource } from "../../../lib/group-by-resource";
-import { IAM_ACTIONS, refreshIam } from "../../../model/iam-actions";
+import { IAM_ACTIONS, refreshIam } from "../../../lib/iam-actions";
 
 /**
  * 角色权限编辑态:权限目录 + 已授 + diff 编辑 + 保存。

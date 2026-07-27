@@ -1,4 +1,4 @@
-import type { OrganizationTreeIndex } from "../model/organization-tree";
+import type { OrganizationTreeIndex } from "../lib/organization-tree";
 import type { Organization } from "@/api/globals";
 import {
   hotkeysCoreFeature,
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import {
   ORGANIZATION_TREE_ROOT_ID,
 
-} from "../model/organization-tree";
+} from "../lib/organization-tree";
 
 interface OrganizationTreeItemData {
   name: string;

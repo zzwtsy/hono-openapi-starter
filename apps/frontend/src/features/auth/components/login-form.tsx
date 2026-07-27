@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { useLogin } from "../model/hooks";
+import { useLogin } from "../hooks/use-login";
 
 // 登录表单:Field 模式 + a11y(label/autocomplete/aria-invalid)+ zod safeParse(不引表单库)+
 // Spinner loading 防重复提交。表单级错误(signIn 失败)用 Alert,per-field 错误用 FieldDescription。

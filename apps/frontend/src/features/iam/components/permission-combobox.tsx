@@ -13,7 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { groupByResource } from "../lib/group-by-resource";
-import { formatPermission } from "../model/permission-format";
+import { formatPermission } from "../lib/permission-format";
 
 interface PermissionComboboxProps {
   value: string | null;

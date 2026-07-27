@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { IAM_ACTIONS, refreshIam } from "../../model/iam-actions";
+import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
 import { ResetPasswordDialog } from "../reset-password-dialog";
 import { UserForm } from "../user-form";
 import { DirectPermissionsTab } from "./direct-permissions-tab";

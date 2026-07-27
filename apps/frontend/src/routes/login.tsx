@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AuthLayout } from "@/components/layout/auth-layout";
-import { LoginForm } from "@/features/auth/ui/login-form";
+import { LoginForm } from "@/features/auth/components/login-form";
 
 // 公开登录页:已登录 -> /dashboard;redirect 搜索参数供登录后回跳(见 features/auth/hooks useLogin)。
 export const Route = createFileRoute("/login")({

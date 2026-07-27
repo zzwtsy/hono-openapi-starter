@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import Apis from "@/api";
 import { PageHeader } from "@/components/shared/page-header";
-import { ProjectList } from "@/features/projects/ui/project-list";
+import { ProjectList } from "@/features/projects/components/project-list";
 import { requirePermission } from "@/lib/require-permission";
 
 export const Route = createFileRoute("/_authenticated/projects/")({
