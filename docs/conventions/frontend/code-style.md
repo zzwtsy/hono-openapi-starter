@@ -17,8 +17,8 @@ lastReviewedAt: 2026-07-26
 
 ## 2. 导入与 barrel
 
-- **直接从具体文件导入**,禁止 `index.ts` barrel 聚合业务组件。barrel 损害 tree-shaking 与增量编译(TkDodo *Please Stop Using Barrel Files*)。shadcn 官方亦无 barrel,每组件 `import { Button } from "@/components/ui/button"`。
-- 例外(已存在,保留):`api/index.ts`(wormhole 可编辑入口)、`types/index.ts`(纯类型聚合)。这两个是基础设施边界,非业务 barrel。
+- **直接从具体文件导入**,禁止 `index.ts` barrel 聚合业务组件。barrel 损害 tree-shaking 与增量编译(TkDodo *Please Stop Using Barrel Files*)。shadcn 官方亦无 barrel,每组件 `import { Button } from "@/shared/ui/button"`。
+- 例外(显式声明,对齐 [FSD public-api](https://feature-sliced.design/docs/reference/public-api)):`shared/api/index.ts`(wormhole 可编辑入口)、feature/slice 目录 `index.tsx` 容器(导出单组件,目录 index 解析,非聚合 barrel)。禁 `export *`。
 
 ## 3. route 文件必须薄(≤ 60 行)
 
@@ -26,7 +26,7 @@ route 文件是装配层,只做四件事:`createFileRoute` + `beforeLoad` 守卫
 
 禁止在 route 文件内:业务派生计算、多个 `useState`、复杂 handler、媒体查询 hook。这些下放到 feature 组件或 `hooks/`。
 
-- 正例:[projects/index.tsx](../../../apps/frontend/src/routes/_authenticated/projects/index.tsx)(21 行)、[settings.tsx](../../../apps/frontend/src/routes/_authenticated/settings.tsx)(20 行)。
+- 正例:[projects page](../../../apps/frontend/src/pages/projects/index.tsx)、[settings page](../../../apps/frontend/src/pages/settings/index.tsx);route 文件 [projects route](../../../apps/frontend/src/routes/_authenticated/projects/index.tsx) 只引用 page。
 - 反例(待重构):[users.tsx](../../../apps/frontend/src/routes/_authenticated/iam/users.tsx)(194 行,内联 `useIsNarrowScreen` + 派生 `orgOptions`/`getOrgPath` + 3 个 handler)、[roles.tsx](../../../apps/frontend/src/routes/_authenticated/iam/roles.tsx)(162 行)。
 
 ## 4. 组件文件大小
@@ -41,8 +41,8 @@ route 文件是装配层,只做四件事:`createFileRoute` + `beforeLoad` 守卫
 
 - **禁止无意义地镜像 props 到 state**(纯 `prevX` 同步而无重置语义)。用 `key` 重置或派生计算。
 - **允许 React 官方 [adjusting state when information changes](https://react.dev/reference/react/useState#storing-information-from-previous-renders) 模式**:数据变化时在 render 期条件 setState 重置派生 state(优于 useEffect)。
-  - 正例:[use-role-permissions.ts](../../../apps/frontend/src/features/iam/components/role-detail-panel/role-permissions-tab/use-role-permissions.ts) `prevInitial`:granted 刷新(submit / refresh)后重置 working 编辑态(role 切换由容器 `key={role.id}` remount 处理)。
-- **禁止 `useEffect` 回调父组件 `setState` 同步受控 prop**。用渲染期 `useMemo` 计算 resolved 值,或把默认选中下放为内部 state + `key` 重置。
+  - 正例:[use-role-permissions.ts](../../../apps/frontend/src/features/iam/ui/role-detail-panel/role-permissions-tab/use-role-permissions.ts) `prevInitial`:granted 刷新(submit / refresh)后重置 working 编辑态(role 切换由容器 `key={role.id}` remount 处理)。
+- **选中态 URL-driven**:URL search param 是唯一 source,未指定时派生 fallback(如 `users?.[0]`),**不写 URL**(用户点选才写)。禁止 `useEffect` 回调父 `setState` 同步 URL(违反 [React single-source-of-truth](https://react.dev/learn/sharing-state-between-components))。
   - 反例:[OrganizationExplorer.tsx:75-83](../../../apps/frontend/src/features/iam/components/OrganizationExplorer.tsx#L75-L83)。
 - 函数体内大数组/配置对象必须 `useMemo` 或提到模块级,避免每次 render 重建。
   - 反例:[user-detail-panel.tsx:536](../../../apps/frontend/src/features/iam/components/user-detail-panel.tsx#L536) `roleItems`、[ProjectList.tsx:133](../../../apps/frontend/src/features/projects/components/ProjectList.tsx#L133) 内联 `items`。

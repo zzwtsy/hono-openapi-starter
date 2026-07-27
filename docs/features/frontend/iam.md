@@ -32,8 +32,12 @@ IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 
 
 ```txt
 features/iam/
-  organization-tree.ts                  # 树索引、祖先/后代、路径与父节点候选
-  components/
+  model/                                # 数据模型/业务逻辑
+    organization-tree.ts                # 树索引、祖先/后代、路径与父节点候选
+    iam-actions.ts                      # action delegation(cache 刷新)
+    permission-format.ts                # 权限名格式化
+    use-user-page-state.ts              # orgOptions/getOrgPath 派生(从 route 下放)
+  ui/                                   # 组件
     organization-explorer/              # 请求、页面布局、URL 选择和 CRUD orchestration(目录)
       index.tsx                         # 容器:data + 选中 + effect + 装配
       organization-explorer-content.tsx # 双栏 + Sheet(抽 OrganizationDetails 重复)
@@ -61,6 +65,8 @@ features/iam/
       direct-permission-row.tsx
     user-form.tsx                       # 创建/编辑用户(TanStack Form + zod)
     reset-password-dialog.tsx           # 重置密码弹窗
+  lib/                                  # feature 内复用
+    group-by-resource.ts                # 权限按 resource 分组
 ```
 
 `@headless-tree/core` / `@headless-tree/react` 只负责树状态、ARIA 和键盘行为；节点视觉继续使用项目的 shadcn/Base UI、Tailwind 语义 token 和 Lucide。
@@ -130,7 +136,7 @@ features/iam/
 | `users.read` | 用户路由与侧栏「用户」 |
 | `users.create` / `update` / `reset-password` / `disable` / `enable` | 对应用户管理入口 |
 
-门控 API:声明式门控用 `<Can>`(`@/components/Can`),`permission`/`anyOf`/`allOf` 三选一互斥(单/或/与),支持 render-prop `{({ allowed }) => ...}`(disable 模式)+ `fallback`;命令式或混合 AND+OR 组合用 hook(`@/hooks/use-permissions`):`useCan`、`useCanAny`(OR)、`useCanAll`(AND)。行操作菜单用 `<ResourceActions items=[{allowed,label,icon,onClick}]>`(`@/components/resource-actions`,数据驱动消除 `{canX && <DropdownMenuItem>}` 堆叠,`allowed` 由 `useCan` 算好传入)。
+门控 API:声明式门控用 `<Can>`(`@/shared/ui/can`),`permission`/`anyOf`/`allOf` 三选一互斥(单/或/与),支持 render-prop `{({ allowed }) => ...}`(disable 模式)+ `fallback`;命令式或混合 AND+OR 组合用 hook(`@/shared/lib/use-permissions`):`useCan`、`useCanAny`(OR)、`useCanAll`(AND)。行操作菜单用 `<ResourceActions items=[{allowed,label,icon,onClick}]>`(`@/shared/ui/resource-actions`,数据驱动消除 `{canX && <DropdownMenuItem>}` 堆叠,`allowed` 由 `useCan` 算好传入)。
 
 前端权限只控制 UX；后端 `PermissionChecker` 才是授权边界。
 
