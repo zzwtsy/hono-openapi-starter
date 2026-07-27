@@ -18,8 +18,8 @@ export default antfu({
     "apps/frontend/src/routeTree.gen.ts",
     "apps/backend/src/db/migrations",
     "apps/backend/src/db/schema/auth-schema.ts",
-    "apps/frontend/src/shared/api/*",
-    "!apps/frontend/src/shared/api/index.ts",
+    "apps/frontend/src/api/*",
+    "!apps/frontend/src/api/index.ts",
   ],
   overrides: {
     javascript: {
@@ -75,9 +75,9 @@ export default antfu({
     }],
   },
 }).append({
-  files: ["apps/frontend/src/shared/ui/**/*.{ts,tsx}"],
+  files: ["apps/frontend/src/components/ui/**/*.{ts,tsx}"],
   rules: {
-    // shadcn 组件导出 cva 变体(如 buttonVariants),ui 是生成的设计系统层,豁免
+    // shadcn 生成物(vendored 不手改):豁免
     "react-refresh/only-export-components": "off",
     "ts/strict-boolean-expressions": "off",
     "react/no-context-provider": "off",
@@ -109,24 +109,29 @@ export default antfu({
       typescript: { project: "apps/frontend/tsconfig.json" },
     },
     "boundaries/elements": [
-      { type: "app", pattern: "apps/frontend/src/app/**", partialMatch: false },
       { type: "routes", pattern: "apps/frontend/src/routes/**", partialMatch: false },
-      { type: "pages", pattern: "apps/frontend/src/pages/**", partialMatch: false },
       { type: "features", pattern: "apps/frontend/src/features/*" },
-      { type: "shared", pattern: "apps/frontend/src/shared/**", partialMatch: false },
+      { type: "components", pattern: "apps/frontend/src/components/**", partialMatch: false },
+      { type: "hooks", pattern: "apps/frontend/src/hooks/**", partialMatch: false },
+      { type: "lib", pattern: "apps/frontend/src/lib/**", partialMatch: false },
+      { type: "types", pattern: "apps/frontend/src/types/**", partialMatch: false },
+      { type: "api", pattern: "apps/frontend/src/api/**", partialMatch: false },
     ],
   },
   rules: {
-    // FSD 4 层:app(入口)-> all;routes(路由定义)-> pages/features/shared;
-    // pages(页面组装)-> features/shared;features(业务)-> shared;shared(基础设施)-> shared(内部自由)。
+    // 扁平 feature-based:routes(路由)-> features/components/hooks/lib/types/api;
+    // features(业务)-> components/hooks/lib/types/api(**features 间禁**);
+    // components/hooks/lib/types/api(通用)-> 同层自由(**不依赖 features/routes**)。
     "boundaries/dependencies": ["error", {
       default: "disallow",
       policies: [
-        { from: { element: { type: "app" } }, allow: { to: { element: { type: ["app", "routes", "pages", "features", "shared"] } } } },
-        { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["app", "pages", "features", "shared"] } } } },
-        { from: { element: { type: "pages" } }, allow: { to: { element: { type: ["features", "shared"] } } } },
-        { from: { element: { type: "features" } }, allow: { to: { element: { type: ["shared"] } } } },
-        { from: { element: { type: "shared" } }, allow: { to: { element: { type: ["shared"] } } } },
+        { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["features", "components", "hooks", "lib", "types", "api"] } } } },
+        { from: { element: { type: "features" } }, allow: { to: { element: { type: ["components", "hooks", "lib", "types", "api"] } } } },
+        { from: { element: { type: "components" } }, allow: { to: { element: { type: ["components", "hooks", "lib", "types", "api"] } } } },
+        { from: { element: { type: "hooks" } }, allow: { to: { element: { type: ["hooks", "lib", "types", "api", "components"] } } } },
+        { from: { element: { type: "lib" } }, allow: { to: { element: { type: ["lib", "types", "api"] } } } },
+        { from: { element: { type: "types" } }, allow: { to: { element: { type: ["types", "api", "lib"] } } } },
+        { from: { element: { type: "api" } }, allow: { to: { element: { type: ["api", "lib", "types"] } } } },
       ],
     }],
   },
@@ -143,7 +148,7 @@ export default antfu({
   },
 }).append({
   // shadcn 生成物:豁免品味规则(cva 变体、单文件多导出、嵌套结构、文件名由 CLI 决定)
-  files: ["apps/frontend/src/shared/ui/**/*.{ts,tsx}"],
+  files: ["apps/frontend/src/components/ui/**/*.{ts,tsx}"],
   rules: {
     "complexity": "off",
     "max-lines-per-function": "off",

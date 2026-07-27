@@ -1,25 +1,25 @@
-import type { Role } from "@/shared/api/globals";
+import type { Role } from "@/api/globals";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
 import { useState } from "react";
-import { IAM_ACTIONS, refreshIam } from "@/features/iam/model/iam-actions";
-import { useUserPageState } from "@/features/iam/model/use-user-page-state";
-import { RoleDetailPanel } from "@/features/iam/ui/role-detail-panel";
-import { RoleForm } from "@/features/iam/ui/role-form";
-import { RoleListPanel } from "@/features/iam/ui/role-list";
-import Apis from "@/shared/api";
-import { requirePermission } from "@/shared/lib/require-permission";
-import { useMediaQuery } from "@/shared/lib/use-media-query";
-import { Card, CardContent } from "@/shared/ui/card";
-import { Dialog, DialogContent } from "@/shared/ui/dialog";
-import { PageHeader } from "@/shared/ui/page-header";
+import Apis from "@/api";
+import { PageHeader } from "@/components/shared/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/shared/ui/sheet";
+} from "@/components/ui/sheet";
+import { IAM_ACTIONS, refreshIam } from "@/features/iam/model/iam-actions";
+import { useUserPageState } from "@/features/iam/model/use-user-page-state";
+import { RoleDetailPanel } from "@/features/iam/ui/role-detail-panel";
+import { RoleForm } from "@/features/iam/ui/role-form";
+import { RoleListPanel } from "@/features/iam/ui/role-list";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { requirePermission } from "@/lib/require-permission";
 
 const TAB_VALUES = ["info", "permissions", "users"] as const;
 

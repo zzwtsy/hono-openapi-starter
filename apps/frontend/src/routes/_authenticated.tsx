@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import Apis from "@/api";
 import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { useLogout } from "@/features/auth/model/hooks";
-import Apis from "@/shared/api";
 
 // 登录守卫 layout:无 session -> /login;有 -> getMe 取 permissions,下钻 context。
 // 守卫不是授权边界,后端 PermissionChecker 才是(见 TanStack Router 认证文档)。

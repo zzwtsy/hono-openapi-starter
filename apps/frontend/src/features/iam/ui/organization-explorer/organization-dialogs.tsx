@@ -1,6 +1,6 @@
-import type { Organization } from "@/shared/api/globals";
-import { ConfirmDeleteDialog } from "@/shared/ui/confirm-delete-dialog";
-import { Dialog, DialogContent } from "@/shared/ui/dialog";
+import type { Organization } from "@/api/globals";
+import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { OrganizationForm } from "../organization-form";
 
 interface OrganizationDialogsProps {

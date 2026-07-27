@@ -1,13 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import type { FileRouteTypes } from "@/routeTree.gen";
-import type { AppPermission } from "@/shared/lib/types/permissions";
+import type { AppPermission } from "@/types/permissions";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { Building2, ChevronRight, ChevronsUpDown, Flame, FolderKanban, LayoutDashboard, LogOut, Settings, ShieldCheck, Users } from "lucide-react";
 import { useMemo } from "react";
-import { hasPermission } from "@/shared/lib/permissions";
-import { useAuth } from "@/shared/lib/use-auth";
-import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +15,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -30,8 +29,9 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   useSidebar,
-} from "@/shared/ui/sidebar";
-import { ThemeToggle } from "@/shared/ui/theme-toggle";
+} from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/use-auth";
+import { hasPermission } from "@/lib/permissions";
 
 // 受保护区的侧边栏:导航按 permissions 显隐(前端 UX,后端 PermissionChecker 才是授权边界);
 // 用户区显示登录态,登出由父层(_authenticated route wrapper)通过 onLogout 传入,

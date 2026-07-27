@@ -1,8 +1,8 @@
 import { ThemeProvider } from "next-themes";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ErrorBoundary } from "@/shared/ui/error-boundary";
-import { Toaster } from "@/shared/ui/sonner";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
+import { Toaster } from "@/components/ui/sonner";
 import { App } from "./app";
 import "./index.css";
 

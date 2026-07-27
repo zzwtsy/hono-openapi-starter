@@ -1,5 +1,5 @@
 import type { OrganizationTreeIndex } from "../model/organization-tree";
-import type { Organization } from "@/shared/api/globals";
+import type { Organization } from "@/api/globals";
 import {
   hotkeysCoreFeature,
   searchFeature,
@@ -9,9 +9,9 @@ import {
 import { useTree } from "@headless-tree/react";
 import { Building2, ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { cn } from "@/shared/lib/utils";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   ORGANIZATION_TREE_ROOT_ID,
 

@@ -1,14 +1,14 @@
-import type { UserSummary } from "@/shared/api/globals";
+import type { UserSummary } from "@/api/globals";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import Apis from "@/shared/api";
-import { Button } from "@/shared/ui/button";
-import { DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/shared/ui/field";
-import { Input } from "@/shared/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Spinner } from "@/shared/ui/spinner";
+import Apis from "@/api";
+import { Button } from "@/components/ui/button";
+import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 
 // 用户 create/edit 表单(TanStack Form + zod)。user 传入 = edit(name/email);不传 = create(+password+orgId)。
 // create 选归属组织(操作者管理子树内,由父组件算 orgOptions 传入);edit 不改 orgId(调岗见后端 iam.md)。

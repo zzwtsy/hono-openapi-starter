@@ -1,13 +1,13 @@
-import type { Project } from "@/shared/api/globals";
+import type { Project } from "@/api/globals";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import Apis from "@/shared/api";
-import { Button } from "@/shared/ui/button";
-import { DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/shared/ui/field";
-import { Input } from "@/shared/ui/input";
-import { Spinner } from "@/shared/ui/spinner";
+import Apis from "@/api";
+import { Button } from "@/components/ui/button";
+import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 // 项目 create/edit 表单(TanStack Form + zod 直接校验,zod v4 是 standard schema 无需 adapter)。
 // project 传入 = edit 预填,不传 = create。成功调 onSuccess(父组件关 Dialog + 刷新列表)。

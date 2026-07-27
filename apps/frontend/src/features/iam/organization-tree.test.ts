@@ -1,4 +1,4 @@
-import type { Organization } from "@/shared/api/globals";
+import type { Organization } from "@/api/globals";
 import { describe, expect, it } from "vitest";
 import { buildOrganizationTree } from "./model/organization-tree";
 

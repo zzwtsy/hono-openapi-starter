@@ -1,7 +1,7 @@
 import { useRequest } from "alova/client";
 import { useMemo } from "react";
-import Apis from "@/shared/api";
-import { useCan } from "@/shared/lib/use-permissions";
+import Apis from "@/api";
+import { useCan } from "@/hooks/use-permissions";
 import { buildOrganizationTree } from "./organization-tree";
 
 interface OrgOption {

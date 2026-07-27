@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
  * 系统设置页:当前无内置配置项(signUp 注册开关已随「移除自助注册」退役,见 ADR-0007)。
