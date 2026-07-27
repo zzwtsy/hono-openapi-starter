@@ -25,8 +25,20 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
     ...index.rootIds,
     ...(selectedId === undefined ? [] : index.getAncestors(selectedId).map(item => item.id)),
   ]);
+  const [prevRootIds, setPrevRootIds] = useState(index.rootIds);
+  // 新增根默认展开:rootIds 变化(新增根组织)时把新根补进 expandedItems。
+  // render 期间调整 state(React 官方模式,无 effect/set-state-in-effect 警告);
+  // index.rootIds 引用稳定(index 不变则不变),引用比较不循环。diff 守护避免无谓渲染。
+  if (index.rootIds !== prevRootIds) {
+    setPrevRootIds(index.rootIds);
+    setExpandedItems((prev) => {
+      const existing = new Set(prev);
+      const additions = index.rootIds.filter(id => !existing.has(id));
+      return additions.length === 0 ? prev : [...prev, ...additions];
+    });
+  }
   const selectedItems = selectedId === undefined ? [] : [selectedId];
-  // Headless Tree compares expandedItems by reference while updating config during render.
+  // 选中项始终可见:把选中项的祖先强制并入展开集。副作用是选中项的祖先不可折叠(设计意图)。
   const visibleExpandedItems = useMemo(() => selectedId === undefined
     ? expandedItems
     : [...new Set([...expandedItems, ...index.getAncestors(selectedId).map(item => item.id)])], [expandedItems, index, selectedId]);
@@ -63,8 +75,11 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
     features: [syncDataLoaderFeature, selectionFeature, hotkeysCoreFeature, searchFeature],
   });
 
+  // index 变化(组织列表刷新)后重建树:dataLoader 闭包捕获本次 render 的 index,
+  // 此时新 index 已就绪,用同步 rebuildTree(官方 syncDataLoader 推荐;scheduleRebuildTree 已弃用,
+  // 仅用于数据在 useState、下次 render 才可见的场景,本组件不适用)。
   useEffect(() => {
-    tree.scheduleRebuildTree();
+    tree.rebuildTree();
   }, [index, tree]);
 
   const matchingItems = tree.getSearchMatchingItems();
@@ -74,7 +89,13 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
     }
     const currentId = tree.getFocusedItem()?.getId();
     const currentIndex = matchingItems.findIndex(item => item.getId() === currentId);
-    const nextIndex = (currentIndex + offset + matchingItems.length) % matchingItems.length;
+    // 焦点不在匹配项时(findIndex 返回 -1):上一个跳末项、下一个跳首项。
+    let nextIndex: number;
+    if (currentIndex === -1) {
+      nextIndex = offset > 0 ? 0 : matchingItems.length - 1;
+    } else {
+      nextIndex = (currentIndex + offset + matchingItems.length) % matchingItems.length;
+    }
     matchingItems[nextIndex]?.setFocused();
     void matchingItems[nextIndex]?.scrollTo({ block: "nearest" });
   };
@@ -130,7 +151,7 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
 
       <div
         {...tree.getContainerProps("组织结构")}
-        className="min-h-72 flex-1 overflow-y-auto rounded-lg border bg-background p-1 outline-none focus-within:ring-3 focus-within:ring-ring/50"
+        className="min-h-72 space-y-0.5 flex-1 overflow-y-auto rounded-lg border bg-background p-1 outline-none focus-within:ring-3 focus-within:ring-ring/50"
       >
         {tree.getItems().map(item => (
           <OrganizationTreeItem key={item.getKey()} item={item} onSelect={onSelect} />
