@@ -17,7 +17,7 @@ lastReviewedAt: 2026-07-26
 
 ## 2. 导入与 barrel
 
-- **直接从具体文件导入**,禁止 `index.ts` barrel 聚合业务组件。barrel 损害 tree-shaking 与增量编译(TkDodo *Please Stop Using Barrel Files*)。shadcn 官方亦无 barrel,每组件 `import { Button } from "@/shared/ui/button"`。
+- **直接从具体文件导入**,禁止 `index.ts` barrel 聚合业务组件。barrel 损害 tree-shaking 与增量编译(TkDodo *Please Stop Using Barrel Files*)。shadcn 官方亦无 barrel,每组件 `import { Button } from "@/components/ui/button"`。
 - 例外(显式声明,对齐 [FSD public-api](https://feature-sliced.design/docs/reference/public-api)):`shared/api/index.ts`(wormhole 可编辑入口)、feature/slice 目录 `index.tsx` 容器(导出单组件,目录 index 解析,非聚合 barrel)。禁 `export *`。
 
 ## 3. route 文件必须薄(≤ 60 行)
