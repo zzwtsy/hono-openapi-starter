@@ -1,21 +1,18 @@
 import type { Role, UserSummary } from "@/api/globals";
 import { useState } from "react";
 import Apis from "@/api";
-import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
-import { ResetPasswordDialog } from "../reset-password-dialog";
-import { UserForm } from "../user-form";
 import { DirectPermissionsTab } from "./direct-permissions-tab";
 import { EffectivePermissionsPanel } from "./effective-permissions-panel";
 import { RoleAssignmentsTab } from "./role-assignments-tab";
+import { UserDialogs } from "./user-dialogs";
 import { UserInfoTab } from "./user-info-tab";
 
 interface OrgOption {
@@ -45,27 +42,7 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [disabling, setDisabling] = useState(false);
-  const { mutate: runWithToast, busy: disablingBusy } = useToastMutation();
-
-  const handleEditSuccess = () => {
-    setEditing(false);
-    refreshIam(IAM_ACTIONS.usersList);
-  };
-
-  const handleResetSuccess = () => {
-    setResetting(false);
-  };
-
-  const confirmDisable = async () => {
-    const ok = await runWithToast(
-      () => Apis.IAM.disableUser({ pathParams: { userId: user.id } }),
-      { successMessage: "用户已禁用", errorMessage: "禁用失败" },
-    );
-    if (ok) {
-      setDisabling(false);
-      refreshIam(IAM_ACTIONS.usersList);
-    }
-  };
+  const { mutate: runWithToast } = useToastMutation();
 
   const enableUser = async () => {
     const ok = await runWithToast(
@@ -166,26 +143,14 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
         </Tabs>
       </CardContent>
 
-      <Dialog open={editing} onOpenChange={setEditing}>
-        <DialogContent>
-          {editing && <UserForm key={user.id} user={user} onSuccess={handleEditSuccess} />}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={resetting} onOpenChange={setResetting}>
-        <DialogContent>
-          {resetting && <ResetPasswordDialog key={user.id} user={user} onSuccess={handleResetSuccess} />}
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDeleteDialog
-        open={disabling}
-        busy={disablingBusy}
-        title="禁用用户"
-        description={`确认禁用用户「${user.name}」?对方将立即下线且无法重新登录,直至重新启用。`}
-        confirmLabel="禁用"
-        onConfirm={() => { void confirmDisable(); }}
-        onClose={() => setDisabling(false)}
+      <UserDialogs
+        user={user}
+        editing={editing}
+        resetting={resetting}
+        disabling={disabling}
+        onEditingChange={setEditing}
+        onResettingChange={setResetting}
+        onDisablingChange={setDisabling}
       />
     </Card>
   );
