@@ -1,5 +1,5 @@
 import type { OrganizationTreeIndex } from "../lib/organization-tree";
-import type { Organization } from "@/api/globals";
+import type { OrganizationTreeItemData } from "./organization-tree-item";
 import {
   hotkeysCoreFeature,
   searchFeature,
@@ -7,20 +7,12 @@ import {
   syncDataLoaderFeature,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
-import { Building2, ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import {
-  ORGANIZATION_TREE_ROOT_ID,
-
-} from "../lib/organization-tree";
-
-interface OrganizationTreeItemData {
-  name: string;
-  organization?: Organization;
-}
+import { ORGANIZATION_TREE_ROOT_ID } from "../lib/organization-tree";
+import { OrganizationTreeItem } from "./organization-tree-item";
 
 interface OrganizationTreeProps {
   index: OrganizationTreeIndex;
@@ -33,8 +25,20 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
     ...index.rootIds,
     ...(selectedId === undefined ? [] : index.getAncestors(selectedId).map(item => item.id)),
   ]);
+  const [prevRootIds, setPrevRootIds] = useState(index.rootIds);
+  // 新增根默认展开:rootIds 变化(新增根组织)时把新根补进 expandedItems。
+  // render 期间调整 state(React 官方模式,无 effect/set-state-in-effect 警告);
+  // index.rootIds 引用稳定(index 不变则不变),引用比较不循环。diff 守护避免无谓渲染。
+  if (index.rootIds !== prevRootIds) {
+    setPrevRootIds(index.rootIds);
+    setExpandedItems((prev) => {
+      const existing = new Set(prev);
+      const additions = index.rootIds.filter(id => !existing.has(id));
+      return additions.length === 0 ? prev : [...prev, ...additions];
+    });
+  }
   const selectedItems = selectedId === undefined ? [] : [selectedId];
-  // Headless Tree compares expandedItems by reference while updating config during render.
+  // 选中项始终可见:把选中项的祖先强制并入展开集。副作用是选中项的祖先不可折叠(设计意图)。
   const visibleExpandedItems = useMemo(() => selectedId === undefined
     ? expandedItems
     : [...new Set([...expandedItems, ...index.getAncestors(selectedId).map(item => item.id)])], [expandedItems, index, selectedId]);
@@ -71,8 +75,11 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
     features: [syncDataLoaderFeature, selectionFeature, hotkeysCoreFeature, searchFeature],
   });
 
+  // index 变化(组织列表刷新)后重建树:dataLoader 闭包捕获本次 render 的 index,
+  // 此时新 index 已就绪,用同步 rebuildTree(官方 syncDataLoader 推荐;scheduleRebuildTree 已弃用,
+  // 仅用于数据在 useState、下次 render 才可见的场景,本组件不适用)。
   useEffect(() => {
-    tree.scheduleRebuildTree();
+    tree.rebuildTree();
   }, [index, tree]);
 
   const matchingItems = tree.getSearchMatchingItems();
@@ -82,7 +89,13 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
     }
     const currentId = tree.getFocusedItem()?.getId();
     const currentIndex = matchingItems.findIndex(item => item.getId() === currentId);
-    const nextIndex = (currentIndex + offset + matchingItems.length) % matchingItems.length;
+    // 焦点不在匹配项时(findIndex 返回 -1):上一个跳末项、下一个跳首项。
+    let nextIndex: number;
+    if (currentIndex === -1) {
+      nextIndex = offset > 0 ? 0 : matchingItems.length - 1;
+    } else {
+      nextIndex = (currentIndex + offset + matchingItems.length) % matchingItems.length;
+    }
     matchingItems[nextIndex]?.setFocused();
     void matchingItems[nextIndex]?.scrollTo({ block: "nearest" });
   };
@@ -138,61 +151,11 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
 
       <div
         {...tree.getContainerProps("组织结构")}
-        className="min-h-72 flex-1 overflow-y-auto rounded-lg border bg-background p-1 outline-none focus-within:ring-3 focus-within:ring-ring/50"
+        className="min-h-72 space-y-0.5 flex-1 overflow-y-auto rounded-lg border bg-background p-1 outline-none focus-within:ring-3 focus-within:ring-ring/50"
       >
-        {tree.getItems().map((item) => {
-          const organization = item.getItemData().organization;
-          if (organization === undefined) {
-            return null;
-          }
-          const isFolder = item.isFolder();
-          const isExpanded = item.isExpanded();
-          const isSelected = item.isSelected();
-          const isMatching = item.isMatchingSearch();
-          const itemProps = item.getProps();
-          return (
-            <div
-              key={item.getKey()}
-              {...itemProps}
-              className={cn(
-                "group/tree-item flex min-h-9 min-w-0 items-center gap-1 rounded-md pr-2 text-sm outline-none select-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/60",
-                isSelected && "bg-accent text-accent-foreground",
-              )}
-              style={{ paddingLeft: `${item.getItemMeta().level * 16 + 4}px` }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onSelect(organization.id);
-                }
-              }}
-            >
-              {isFolder
-                ? (
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      className="flex size-7 shrink-0 items-center justify-center rounded-sm hover:bg-background/70"
-                      aria-label={`${isExpanded ? "收起" : "展开"}${organization.name}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (isExpanded) {
-                          item.collapse();
-                        } else {
-                          item.expand();
-                        }
-                      }}
-                    >
-                      <ChevronRight className={cn("transition-transform duration-150", isExpanded && "rotate-90")} />
-                    </button>
-                  )
-                : <span className="size-7 shrink-0" aria-hidden="true" />}
-              <Building2 className="shrink-0" aria-hidden="true" />
-              <span className={cn("min-w-0 flex-1 truncate", isMatching && "font-medium text-primary")}>
-                {organization.name}
-              </span>
-            </div>
-          );
-        })}
+        {tree.getItems().map(item => (
+          <OrganizationTreeItem key={item.getKey()} item={item} onSelect={onSelect} />
+        ))}
       </div>
       <p className="text-xs text-muted-foreground">
         使用方向键浏览层级，输入文字可快速定位组织。

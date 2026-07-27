@@ -30,12 +30,16 @@ type CanProps = {
  */
 export function Can({ permission, anyOf, allOf, children, fallback = null }: CanProps) {
   const owned = usePermissions();
-  const allowed = permission
-    ? hasPermission(owned, permission)
-    : allOf
-      ? hasAllPermissions(owned, allOf)
-      : hasAnyPermission(owned, anyOf ?? []);
-  return typeof children === "function"
-    ? children({ allowed })
-    : allowed ? children : fallback;
+  let allowed: boolean;
+  if (permission !== undefined) {
+    allowed = hasPermission(owned, permission);
+  } else if (allOf !== undefined) {
+    allowed = hasAllPermissions(owned, allOf);
+  } else {
+    allowed = hasAnyPermission(owned, anyOf ?? []);
+  }
+  if (typeof children === "function") {
+    return children({ allowed });
+  }
+  return allowed ? children : fallback;
 }

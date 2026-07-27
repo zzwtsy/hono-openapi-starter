@@ -16,12 +16,11 @@ import {
 import { RoleDetailPanel } from "@/features/iam/components/role-detail-panel";
 import { RoleForm } from "@/features/iam/components/role-form";
 import { RoleListPanel } from "@/features/iam/components/role-list";
+import { useRoleSelection } from "@/features/iam/hooks/use-role-selection";
 import { useUserPageState } from "@/features/iam/hooks/use-user-page-state";
 import { IAM_ACTIONS, refreshIam } from "@/features/iam/lib/iam-actions";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { requirePermission } from "@/lib/require-permission";
-
-const TAB_VALUES = ["info", "permissions", "users"] as const;
 
 export const Route = createFileRoute("/_authenticated/iam/roles")({
   validateSearch: (search: Record<string, unknown>): { role?: string; tab?: string } => ({
@@ -50,10 +49,7 @@ function RolesPage() {
     { middleware: actionDelegationMiddleware(IAM_ACTIONS.rolesList) },
   );
   const { getOrgPath } = useUserPageState("");
-  // 选中态 URL-driven:未指定 role 时 fallback 首条(派生,不写 URL)。
-  const selectedRole = roles?.find(r => r.id === selectedRoleId) ?? roles?.[0];
-
-  const activeTab = tab !== undefined && (TAB_VALUES as readonly string[]).includes(tab) ? tab : "info";
+  const { selectedRole, activeTab } = useRoleSelection({ selectedRoleId, roles, tab });
 
   const handleSelect = (role: Role) => {
     void navigate({ search: { role: role.id } });

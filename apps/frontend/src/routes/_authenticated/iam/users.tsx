@@ -17,12 +17,11 @@ import { UserDetailPanel } from "@/features/iam/components/user-detail-panel";
 import { UserForm } from "@/features/iam/components/user-form";
 import { UserListPanel } from "@/features/iam/components/user-list";
 import { useUserPageState } from "@/features/iam/hooks/use-user-page-state";
+import { useUserSelection } from "@/features/iam/hooks/use-user-selection";
 import { IAM_ACTIONS, refreshIam } from "@/features/iam/lib/iam-actions";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useCan } from "@/hooks/use-permissions";
 import { requirePermission } from "@/lib/require-permission";
-
-const TAB_VALUES = ["info", "roles", "direct", "effective"] as const;
 
 export const Route = createFileRoute("/_authenticated/iam/users")({
   validateSearch: (search: Record<string, unknown>): { user?: string; org?: string; tab?: string } => ({
@@ -59,11 +58,13 @@ function UsersPage() {
     () => Apis.IAM.listUsers(),
     { middleware: actionDelegationMiddleware(IAM_ACTIONS.usersList) },
   );
-  // 选中态 URL-driven:未指定 user 时 fallback 首条(派生,不写 URL)。
-  const selectedUser = users?.find(u => u.id === selectedUserId) ?? users?.[0];
-
-  const orgId = orgParam ?? selectedUser?.orgId ?? homeOrgId;
-  const activeTab = tab !== undefined && (TAB_VALUES as readonly string[]).includes(tab) ? tab : "info";
+  const { selectedUser, orgId, activeTab } = useUserSelection({
+    selectedUserId,
+    users,
+    orgParam,
+    tab,
+    homeOrgId,
+  });
 
   const handleSelect = (user: UserSummary) => {
     void navigate({ search: { user: user.id } });

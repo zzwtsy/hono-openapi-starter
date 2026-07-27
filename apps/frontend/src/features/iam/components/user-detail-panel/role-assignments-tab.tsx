@@ -1,22 +1,16 @@
 import type { Role } from "@/api/globals";
-import { actionDelegationMiddleware, useRequest, useWatcher } from "alova/client";
-import { ChevronRight, ShieldCheck } from "lucide-react";
-import { useMemo, useState } from "react";
-import Apis from "@/api";
+import { ShieldCheck } from "lucide-react";
 import { AsyncListState } from "@/components/shared/async-list";
 import { DatePicker } from "@/components/shared/date-picker";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { useCan } from "@/hooks/use-permissions";
-import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
+import { useRoleAssignments } from "../../hooks/use-role-assignments";
 import { RoleAssignmentRow } from "./role-assignment-row";
+import { RolePreviewCollapsible } from "./role-preview-collapsible";
 
 interface RoleAssignmentsTabProps {
   userId: string;
@@ -25,79 +19,29 @@ interface RoleAssignmentsTabProps {
   onNavigateRole: (roleId: string) => void;
 }
 
-export function RoleAssignmentsTab({ userId, orgId, roles, onNavigateRole }: RoleAssignmentsTabProps) {
-  const canGrant = useCan("assignments.grant");
+export function RoleAssignmentsTab({
+  userId,
+  orgId,
+  roles,
+  onNavigateRole,
+}: RoleAssignmentsTabProps) {
   const {
-    data: assignments,
+    canGrant,
+    assignments,
     loading,
     error,
     send,
-  } = useRequest(
-    () => Apis.IAM.listUserRoles({ pathParams: { userId }, params: { orgId } }),
-    { middleware: actionDelegationMiddleware(IAM_ACTIONS.userRoles) },
-  );
-  // 当前有效权限(与 EffectivePermissionsPanel 同 key,alova 自动共享缓存),用于授予预览
-  const { data: effectiveResult } = useRequest(
-    () => Apis.IAM.listUserPermissions({ pathParams: { userId }, params: { orgId } }),
-    { middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
-  );
-
-  const [selectedRoleId, setSelectedRoleId] = useState("");
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const { mutate: runWithToast, busy: assigning } = useToastMutation();
-
-  // useWatcher 监听 selectedRoleId:选中角色自动用新 roleId 拉权限,
-  // 修此前 sendPreview 闭包用旧 roleId(初始 "")-> 404 -> 显示 0 项权限的 bug。
-  const { data: previewPerms } = useWatcher(
-    () => Apis.IAM.listRolePermissions({ pathParams: { roleId: selectedRoleId } }),
-    [selectedRoleId],
-    { immediate: false },
-  );
-  // 授予后将新增哪些权限(用户当前未持有)
-  const newPerms = useMemo(() => {
-    if (previewPerms === undefined || effectiveResult === undefined) {
-      return undefined;
-    }
-    const have = new Set(effectiveResult.effective.map(p => p.permission));
-    return previewPerms.filter(p => !have.has(p));
-  }, [previewPerms, effectiveResult]);
-
-  const roleItems = useMemo(() => [
-    { label: "请选择角色...", value: null },
-    ...roles.map(r => ({ label: r.name, value: r.id })),
-  ], [roles]);
-
-  const refresh = () => {
-    refreshIam(IAM_ACTIONS.userRoles, IAM_ACTIONS.userPermissions);
-  };
-
-  const assignRole = async () => {
-    if (selectedRoleId === "" || assigning) {
-      return;
-    }
-    const ok = await runWithToast(
-      () => Apis.IAM.assignUserRole({
-        pathParams: { userId, roleId: selectedRoleId },
-        data: { orgId, expiresAt: expiresAt ?? undefined },
-      }),
-      { successMessage: "角色已授予", errorMessage: "授权失败" },
-    );
-    if (ok) {
-      setSelectedRoleId("");
-      setExpiresAt(null);
-      refresh();
-    }
-  };
-
-  const revoke = async (roleId: string) => {
-    const ok = await runWithToast(
-      () => Apis.IAM.deleteUserRole({ pathParams: { userId, roleId }, params: { orgId } }),
-      { successMessage: "角色已撤销", errorMessage: "撤销失败" },
-    );
-    if (ok) {
-      refresh();
-    }
-  };
+    selectedRoleId,
+    setSelectedRoleId,
+    expiresAt,
+    setExpiresAt,
+    assigning,
+    previewPerms,
+    newPerms,
+    roleItems,
+    assignRole,
+    revoke,
+  } = useRoleAssignments({ userId, orgId, roles });
 
   return (
     <div className="flex flex-col gap-4">
@@ -151,37 +95,7 @@ export function RoleAssignmentsTab({ userId, orgId, roles, onNavigateRole }: Rol
             </Select>
           </Field>
           {selectedRoleId !== "" && (
-            <Collapsible className="group/collapsible">
-              <CollapsibleTrigger render={<Button variant="ghost" size="sm" className="w-full justify-start" />}>
-                <ChevronRight className="size-4 transition-transform group-data-open/collapsible:rotate-90" />
-                <span>
-                  该角色含
-                  {" "}
-                  {previewPerms?.length ?? 0}
-                  {" "}
-                  项权限
-                  {newPerms !== undefined && newPerms.length > 0 && ` · 授予后新增 ${newPerms.length} 项`}
-                </span>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="flex flex-wrap gap-1 rounded-lg border p-2">
-                  {previewPerms === undefined || previewPerms.length === 0
-                    ? <span className="text-sm text-muted-foreground">该角色暂无权限</span>
-                    : previewPerms.map(p => (
-                        <Badge
-                          key={p}
-                          variant={(newPerms?.includes(p) ?? false) ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          {p}
-                        </Badge>
-                      ))}
-                </div>
-                {newPerms !== undefined && newPerms.length > 0 && (
-                  <p className="mt-1 text-xs text-muted-foreground">高亮为用户当前未持有的新增权限。</p>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
+            <RolePreviewCollapsible previewPerms={previewPerms} newPerms={newPerms} />
           )}
           <Field>
             <FieldLabel htmlFor="role-expires">过期时间(可选)</FieldLabel>
