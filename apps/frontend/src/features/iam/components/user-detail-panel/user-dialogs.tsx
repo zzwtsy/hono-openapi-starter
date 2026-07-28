@@ -28,9 +28,10 @@ interface UserDialogsProps {
   onResettingChange: (open: boolean) => void;
   onDisablingChange: (open: boolean) => void;
   onTransferringChange: (open: boolean) => void;
+  onTransferred?: (newOrgId: string) => void;
 }
 
-export function UserDialogs({ user, editing, resetting, disabling, transferring, orgOptions, getOrgPath, onEditingChange, onResettingChange, onDisablingChange, onTransferringChange }: UserDialogsProps) {
+export function UserDialogs({ user, editing, resetting, disabling, transferring, orgOptions, getOrgPath, onEditingChange, onResettingChange, onDisablingChange, onTransferringChange, onTransferred }: UserDialogsProps) {
   const { mutate: runWithToast, busy: disablingBusy } = useToastMutation();
   const [targetOrgId, setTargetOrgId] = useState<string>("");
   const { mutate: runTransferWithToast, busy: transferringBusy } = useToastMutation();
@@ -70,6 +71,7 @@ export function UserDialogs({ user, editing, resetting, disabling, transferring,
       onTransferringChange(false);
       setTargetOrgId("");
       refreshIam(IAM_ACTIONS.usersList);
+      onTransferred?.(targetOrgId);
     }
   };
 

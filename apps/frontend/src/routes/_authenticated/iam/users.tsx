@@ -85,6 +85,10 @@ function UsersPage() {
     void routerNavigate({ to: "/iam/roles", search: { role: roleId } });
   };
 
+  const handleTransferred = (newOrgId: string) => {
+    void navigate({ search: { user: selectedUserId, org: newOrgId, tab } });
+  };
+
   const detailPanel = selectedUser !== undefined
     ? (
         <UserDetailPanel
@@ -99,6 +103,7 @@ function UsersPage() {
           tab={activeTab}
           onTabChange={handleTabChange}
           onNavigateRole={handleNavigateRole}
+          onTransferred={handleTransferred}
         />
       )
     : (

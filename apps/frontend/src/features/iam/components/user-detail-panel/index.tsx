@@ -31,9 +31,10 @@ interface UserDetailPanelProps {
   tab: string;
   onTabChange: (tab: string) => void;
   onNavigateRole: (roleId: string) => void;
+  onTransferred?: (newOrgId: string) => void;
 }
 
-export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrgPath, currentUserId, roles, tab, onTabChange, onNavigateRole }: UserDetailPanelProps) {
+export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrgPath, currentUserId, roles, tab, onTabChange, onNavigateRole, onTransferred }: UserDetailPanelProps) {
   const canUpdate = useCan("users.update");
   const canReset = useCan("users.reset-password");
   const canDisable = useCan("users.disable");
@@ -157,6 +158,7 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
         onResettingChange={setResetting}
         onDisablingChange={setDisabling}
         onTransferringChange={setTransferring}
+        onTransferred={onTransferred}
       />
     </Card>
   );
