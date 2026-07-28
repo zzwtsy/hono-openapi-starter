@@ -66,6 +66,10 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="truncate text-lg font-medium">{user.name}</span>
             <span className="truncate text-sm text-muted-foreground">{user.email}</span>
+            <span className="truncate text-xs text-muted-foreground">
+              归属组织：
+              <span className="font-medium text-foreground">{(user.orgId != null) ? getOrgPath(user.orgId) : "未分配"}</span>
+            </span>
           </div>
           <div className="flex items-center gap-2">
             {disabled
