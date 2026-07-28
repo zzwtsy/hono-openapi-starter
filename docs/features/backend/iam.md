@@ -37,6 +37,8 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | Method | Path | OperationId | Auth | Description |
 | --- | --- | --- | --- | --- |
 | GET | `/api/v1/me` | `getMe` | 认证 | 当前用户 + 有效权限全集 |
+| PATCH | `/api/v1/me` | `updateMe` | 认证 | 自助修改显示名(不改 email/orgId/disabled) |
+| POST | `/api/v1/me/password` | `changeMyPassword` | 认证 | 自助改密码(验当前密码 → 删全部 session,强制重登) |
 | GET | `/api/v1/permissions` | `listPermissions` | permissions.read | 权限目录（只读） |
 | GET | `/api/v1/roles` | `listRoles` | roles.read | 角色列表（含 source） |
 | POST | `/api/v1/roles` | `createRole` | roles.create | 建实例角色 |
@@ -136,6 +138,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | `ORG_SAME_AS_CURRENT` | 409 | 调岗目标组织与当前相同 |
 | `USER_CANNOT_TRANSFER_SELF` | 403 | 禁止调岗自己 |
 | `USER_TRANSFER_CONFLICT` | 409 | 调岗乐观锁冲突(用户组织已被并发修改) |
+| `USER_INVALID_PASSWORD` | 401 | 自助改密码时当前密码错误 |
 
 ## 9. Request Flow
 
