@@ -1,5 +1,5 @@
 import type { PermissionSource } from "@/api/globals";
-import { actionDelegationMiddleware, useRequest } from "alova/client";
+import { actionDelegationMiddleware, useWatcher } from "alova/client";
 import { format } from "date-fns";
 import { CalendarClock, CircleAlert, KeyRound } from "lucide-react";
 import Apis from "@/api";
@@ -87,9 +87,10 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
     loading,
     error,
     send,
-  } = useRequest(
+  } = useWatcher(
     () => Apis.IAM.listUserPermissions({ pathParams: { userId }, params: { orgId } }),
-    { middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
+    [orgId],
+    { immediate: true, middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
   );
 
   if (error !== null && result === undefined) {

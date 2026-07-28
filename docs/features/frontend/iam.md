@@ -74,7 +74,7 @@ features/iam/
 
 ## 用户授权
 
-`UserDetailPanel` 顶部「授权视角组织」选择器（操作者管理子树内 org，带路径）+ 四 Tab 管理某用户在选中组织的授权。`org`/`tab` 进 URL，支持深链接。
+`UserDetailPanel` 顶部「授权视角组织」选择器（操作者管理子树内 org，带路径）+ 四 Tab 管理某用户在选中组织的授权。`org`/`tab` 进 URL，支持深链接。切换视角组织或调岗后，三个授权 Tab（角色/直接/有效权限）用 `useWatcher` 监听 `orgId` 自动重拉数据。调岗成功后 URL `org` 参数同步设为新 org，防止视角卡在旧 org。
 
 - **有效权限**：后端 `IAM.listUserPermissions` 直接返回带来源链的结构（`effective` + `denied`），无需前端 N+1 拼。每条权限展示来源 badge（角色名可点击跳转角色详情，组织可点击切到该 org 视角），祖先继承的权限来源 orgId 即祖先组织。被 deny 抵消的权限单独成区，标注本会来自的来源（`suppressedSources`）与哪些 org deny（`deniedBy`）。
 - **角色授权**：列出已授角色（`listUserRoles`，含过期，角色名可点击跳转） + 逐条撤销（`deleteUserRole`） + 授角色表单（角色 Select + 过期 DatePicker + `assignUserRole`）。选中角色后内联预览其权限，并对比当前有效权限高亮「授予后将新增」的权限，消除盲选。

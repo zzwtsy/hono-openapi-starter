@@ -1,5 +1,5 @@
 import type { Role } from "@/api/globals";
-import { actionDelegationMiddleware, useRequest, useWatcher } from "alova/client";
+import { actionDelegationMiddleware, useWatcher } from "alova/client";
 import { useMemo, useState } from "react";
 import Apis from "@/api";
 import { useCan } from "@/hooks/use-permissions";
@@ -19,14 +19,16 @@ export function useRoleAssignments({ userId, orgId, roles }: UseRoleAssignmentsA
     loading,
     error,
     send,
-  } = useRequest(
+  } = useWatcher(
     () => Apis.IAM.listUserRoles({ pathParams: { userId }, params: { orgId } }),
-    { middleware: actionDelegationMiddleware(IAM_ACTIONS.userRoles) },
+    [orgId],
+    { immediate: true, middleware: actionDelegationMiddleware(IAM_ACTIONS.userRoles) },
   );
   // 当前有效权限(与 EffectivePermissionsPanel 同 key,alova 自动共享缓存),用于授予预览
-  const { data: effectiveResult } = useRequest(
+  const { data: effectiveResult } = useWatcher(
     () => Apis.IAM.listUserPermissions({ pathParams: { userId }, params: { orgId } }),
-    { middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
+    [orgId],
+    { immediate: true, middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
   );
 
   const [selectedRoleId, setSelectedRoleId] = useState("");

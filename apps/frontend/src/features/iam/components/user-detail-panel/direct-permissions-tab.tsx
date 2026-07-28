@@ -1,4 +1,4 @@
-import { actionDelegationMiddleware, useRequest } from "alova/client";
+import { actionDelegationMiddleware, useRequest, useWatcher } from "alova/client";
 import { Ban, Check, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import Apis from "@/api";
@@ -29,9 +29,10 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
     loading,
     error,
     send,
-  } = useRequest(
+  } = useWatcher(
     () => Apis.IAM.listUserDirectPermissions({ pathParams: { userId }, params: { orgId } }),
-    { middleware: actionDelegationMiddleware(IAM_ACTIONS.userDirectPerms) },
+    [orgId],
+    { immediate: true, middleware: actionDelegationMiddleware(IAM_ACTIONS.userDirectPerms) },
   );
 
   const [selectedPermission, setSelectedPermission] = useState("");
