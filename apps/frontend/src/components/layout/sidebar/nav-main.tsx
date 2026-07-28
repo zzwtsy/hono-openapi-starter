@@ -1,6 +1,7 @@
 import type { NavGroup } from "./nav-config";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
+import { useState } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -23,6 +24,42 @@ import {
 interface NavMainProps {
   groups: readonly NavGroup[];
   isCollapsed: boolean;
+}
+
+// 展开模式的导航组:受控 Collapsible,路由激活时自动展开,同时保留用户手动展开/收起。
+// 用独立组件管理每个组的 open state,避免 defaultOpen 动态变化触发 Base UI 警告。
+function NavGroupCollapsible({ group, groupHasActive, matchRoute }: { group: NavGroup; groupHasActive: boolean; matchRoute: ReturnType<typeof useMatchRoute> }) {
+  const [open, setOpen] = useState(groupHasActive);
+
+  const GroupIcon = group.icon;
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="group/collapsible"
+      render={<SidebarMenuItem />}
+    >
+      <CollapsibleTrigger render={<SidebarMenuButton tooltip={group.label} />}>
+        {GroupIcon && <GroupIcon />}
+        <span>{group.label}</span>
+        <ChevronRight className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90" />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <SidebarMenuSub>
+          {group.items.map(item => (
+            <SidebarMenuSubItem key={item.to}>
+              <SidebarMenuSubButton
+                isActive={matchRoute({ to: item.to, fuzzy: true }) !== false}
+                render={<Link to={item.to} />}
+              >
+                <span>{item.title}</span>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          ))}
+        </SidebarMenuSub>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 export function NavMain({ groups, isCollapsed }: NavMainProps) {
@@ -48,9 +85,6 @@ export function NavMain({ groups, isCollapsed }: NavMainProps) {
           );
         }
 
-        const groupHasActive = group.items.some(
-          item => matchRoute({ to: item.to, fuzzy: true }) !== false,
-        );
         const GroupIcon = group.icon;
 
         // icon 折叠模式:SidebarMenuSub 被 sidebar.tsx 自动 hidden,用 DropdownMenu hover 展开让子项可达
@@ -77,35 +111,11 @@ export function NavMain({ groups, isCollapsed }: NavMainProps) {
           );
         }
 
-        // 展开模式:Collapsible(官方 sidebar-07 nav-main 写法)
-        return (
-          <Collapsible
-            key={group.label}
-            defaultOpen={groupHasActive}
-            className="group/collapsible"
-            render={<SidebarMenuItem />}
-          >
-            <CollapsibleTrigger render={<SidebarMenuButton tooltip={group.label} />}>
-              {GroupIcon && <GroupIcon />}
-              <span>{group.label}</span>
-              <ChevronRight className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90" />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <SidebarMenuSub>
-                {group.items.map(item => (
-                  <SidebarMenuSubItem key={item.to}>
-                    <SidebarMenuSubButton
-                      isActive={matchRoute({ to: item.to, fuzzy: true }) !== false}
-                      render={<Link to={item.to} />}
-                    >
-                      <span>{item.title}</span>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                ))}
-              </SidebarMenuSub>
-            </CollapsibleContent>
-          </Collapsible>
+        // 展开模式:受控 Collapsible;key 含 groupHasActive,路由变化时重置展开状态
+        const groupHasActive = group.items.some(
+          item => matchRoute({ to: item.to, fuzzy: true }) !== false,
         );
+        return <NavGroupCollapsible key={`${group.label}-${groupHasActive}`} group={group} groupHasActive={groupHasActive} matchRoute={matchRoute} />;
       })}
     </>
   );
