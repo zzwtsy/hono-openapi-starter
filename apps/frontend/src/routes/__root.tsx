@@ -1,5 +1,6 @@
 import type { AuthState } from "@/types/auth";
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
+import { RouterProgress } from "@/components/shared/router-progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -38,6 +39,11 @@ export const Route = createRootRouteWithContext<{ auth: AuthState }>()({
 });
 
 function RootComponent() {
-  // 根布局:仅 Outlet。受保护区 Sidebar 布局在 _authenticated;公开路由(/login、/403)裸渲染。
-  return <Outlet />;
+  // 根布局:RouterProgress 订阅路由加载生命周期 + Outlet。受保护区 Sidebar 布局在 _authenticated;公开路由(/login、/403)裸渲染。
+  return (
+    <>
+      <RouterProgress />
+      <Outlet />
+    </>
+  );
 }

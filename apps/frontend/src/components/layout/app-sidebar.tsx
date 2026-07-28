@@ -43,7 +43,7 @@ export function AppSidebar({ onLogout }: { onLogout: () => void }) {
   const email = auth?.user?.email ?? "";
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar variant="floating" collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
