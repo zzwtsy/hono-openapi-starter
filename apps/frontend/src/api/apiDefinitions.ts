@@ -32,6 +32,7 @@ export default {
   'IAM.resetUserPassword': ['POST', '/api/v1/users/{userId}/reset-password'],
   'IAM.disableUser': ['POST', '/api/v1/users/{userId}/disable'],
   'IAM.enableUser': ['POST', '/api/v1/users/{userId}/enable'],
+  'IAM.transferUserOrganization': ['PATCH', '/api/v1/users/{userId}/organization'],
   'IAM.listRoles': ['GET', '/api/v1/roles'],
   'IAM.createRole': ['POST', '/api/v1/roles'],
   'IAM.updateRole': ['PATCH', '/api/v1/roles/{roleId}'],

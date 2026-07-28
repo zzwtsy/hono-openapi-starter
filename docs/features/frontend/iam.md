@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-15
+lastReviewedAt: 2026-07-28
 ---
 
 # 前端 IAM
@@ -95,6 +95,7 @@ features/iam/
 | 进页 / 列表 | `users.read` | 路由守卫 + 侧栏 |
 | 新建 | `users.create` | 顶部「新建用户」→ Dialog + `user-form`（name/email/password） |
 | 编辑 | `users.update` | UserDetailPanel 信息 Tab「编辑」→ `user-form`（name/email，无密码） |
+| 调岗 | `users.update` | 信息 Tab「调岗」-> Dialog 选目标组织 + `transferUserOrganization`（非自己;旧独有 grant 自动清理,共同祖先保留） |
 | 重置密码 | `users.reset-password` | 信息 Tab「重置密码」→ `reset-password-dialog`（newPassword min 8） |
 | 禁用 | `users.disable` | 信息 Tab AlertDialog 确认；**禁止对自己**（按钮隐藏；后端亦 403） |
 | 启用 | `users.enable` | 信息 Tab（已禁用用户显示「启用」） |

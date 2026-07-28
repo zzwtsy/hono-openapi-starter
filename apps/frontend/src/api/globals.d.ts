@@ -346,6 +346,16 @@ export interface ResetPassword {
    */
   newPassword: string;
 }
+export interface TransferUserOrganization {
+  /**
+   * 目标归属组织 ID(须在操作者管理子树内)
+   */
+  orgId: string;
+  /**
+   * 是否清空全部 grant(默认 false:仅清旧 home 独有路径上的 grant,保留共同祖先)
+   */
+  clearAllGrants?: boolean;
+}
 export interface UpdateRole {
   name?: string;
   description?: string | null;
@@ -1177,6 +1187,68 @@ declare global {
       >(
         config: Config
       ): Alova2Method<UserSummary, 'IAM.enableUser', Config>;
+      /**
+       * ---
+       *
+       * [PATCH] 调岗(改归属组织)
+       *
+       * **path:** /api/v1/users/{userId}/organization
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 用户 ID
+       *   userId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   // 目标归属组织 ID(须在操作者管理子树内)
+       *   orgId: string
+       *   // 是否清空全部 grant(默认 false:仅清旧 home 独有路径上的 grant,保留共同祖先)
+       *   clearAllGrants?: boolean
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 用户 ID
+       *   id: string
+       *   // 用户名
+       *   name: string
+       *   // 邮箱
+       *   email: string
+       *   // 归属组织 ID
+       *   orgId: string | null
+       *   // 是否禁用(null/false=启用)
+       *   disabled: boolean | null
+       *   // 创建时间(ISO 8601)
+       *   createdAt: string
+       * }
+       * ```
+       */
+      transferUserOrganization<
+        Config extends Alova2MethodConfig<UserSummary> & {
+          pathParams: {
+            /**
+             * 用户 ID
+             */
+            userId: string;
+          };
+          data: TransferUserOrganization;
+        }
+      >(
+        config: Config
+      ): Alova2Method<UserSummary, 'IAM.transferUserOrganization', Config>;
       /**
        * ---
        *

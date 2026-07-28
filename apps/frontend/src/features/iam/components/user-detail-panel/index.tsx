@@ -42,6 +42,7 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [disabling, setDisabling] = useState(false);
+  const [transferring, setTransferring] = useState(false);
   const { mutate: runWithToast } = useToastMutation();
 
   const enableUser = async () => {
@@ -118,6 +119,7 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
               onReset={() => { setResetting(true); }}
               onDisable={() => { setDisabling(true); }}
               onEnable={() => { void enableUser(); }}
+              onTransfer={() => { setTransferring(true); }}
             />
           </TabsContent>
           <TabsContent value="roles" className="min-h-0 flex-1 overflow-y-auto">
@@ -148,9 +150,13 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
         editing={editing}
         resetting={resetting}
         disabling={disabling}
+        transferring={transferring}
+        orgOptions={orgOptions}
+        getOrgPath={getOrgPath}
         onEditingChange={setEditing}
         onResettingChange={setResetting}
         onDisablingChange={setDisabling}
+        onTransferringChange={setTransferring}
       />
     </Card>
   );
