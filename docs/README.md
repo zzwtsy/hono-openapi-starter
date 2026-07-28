@@ -40,6 +40,7 @@ lastReviewedAt: 2026-07-16
 | `docs/adr/` | 已接受的长期架构决策和取舍历史 |
 | `docs/diagrams/` | 与架构或 feature 文档配套的 Mermaid 图 |
 | `docs/checklists/` | 安全、可观测性等验收清单 |
+| `docs/plans/` | 执行计划草稿和归档（见 execution-plan 技能） |
 
 ## 按任务阅读
 
@@ -60,6 +61,7 @@ lastReviewedAt: 2026-07-16
 | 排查日志或可观测性 | `conventions/shared/ci-cd-security-observability.md`、`checklists/observability-checklist.md` |
 | 安全验收 | `checklists/security-checklist.md` |
 | 修改文档治理 | `AGENTS.md`、`conventions/shared/documentation-system.md`、本文件 |
+| 起草执行计划 | `conventions/shared/documentation-system.md`、execution-plan 技能 |
 
 ## 当前事实、历史决策和验收清单
 
@@ -88,6 +90,8 @@ docs/
     frontend/{_template, iam, projects, settings}.md
 
   packages/_template.md
+
+  plans/
 
   adr/
     README.md

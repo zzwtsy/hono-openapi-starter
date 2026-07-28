@@ -70,6 +70,8 @@ docs/
 
   packages/_template.md
 
+  plans/
+
   adr/
     README.md
     0001-feature-slices.md
@@ -83,7 +85,7 @@ docs/
   checklists/
 ```
 
-执行计划不进 `docs/`，放在 Claude Code 的 `.claude/plans/` 目录（见 [execution-plan](../../../.claude/skills/execution-plan/SKILL.md) 技能）。每份计划带 frontmatter `status: draft`，完成后转 `Active` 或归档。
+执行计划放在 `docs/plans/` 目录（见 [execution-plan](../../../.agents/skills/execution-plan/SKILL.md) 技能）。每份计划带 frontmatter `status: draft`，完成后转 `Active` 或归档。
 
 ## 推荐扩展目录
 

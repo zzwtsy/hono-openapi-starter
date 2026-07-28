@@ -41,12 +41,13 @@
 | `docs/adr/` | 已接受的长期架构决策;只记录决策历史,非当前实现唯一事实 |
 | `docs/diagrams/` | Mermaid 图,须与对应 architecture 或 feature 文档一致 |
 | `docs/checklists/` | 安全、可观测性等验收清单 |
+| `docs/plans/` | 执行计划草稿和归档(不进版本库,见 execution-plan 技能) |
 
 按任务读哪些文档见 [docs/README.md](docs/README.md) 的"按任务阅读"表;通用顺序:README -> docs/README -> 本文件 -> architecture/overview -> 相关 adr -> 相关 conventions。读完文档后必须回到当前事实:用 `rg`/`find` 核对实际实现,确认文档没脱离真实状态。
 
 ## 技能
 
-技能按 description 自动触发、按需加载,不占首屏。复用优先:遇到重复工作流先看已有技能(如 `execution-plan`、`feature-pr`)是否覆盖。目录维护规范(内容源、符号链接、vendored vs 自定义、新增命令)见 [.agents/skills/README.md](.agents/skills/README.md)。
+技能按 description 自动触发、按需加载,不占首屏。复用优先:遇到重复工作流先看已有技能(如 `execution-plan`、`feature-pr`、`git-commit`)是否覆盖。目录维护规范(内容源、符号链接、vendored vs 自定义、新增命令)见 [.agents/skills/README.md](.agents/skills/README.md)。
 
 ## 禁止行为
 
