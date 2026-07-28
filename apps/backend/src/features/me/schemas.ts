@@ -10,6 +10,17 @@ export const UserSchema = z.object({
   orgId: z.string().nullable().openapi({ description: "归属组织 ID,未绑定则为 null", example: "org-root" }),
 }).openapi("User");
 
+/** 改自己的显示名入参(至少提供 name)。不改 email/orgId/disabled。 */
+export const UpdateMeSchema = z.object({
+  name: z.string().min(1).openapi({ description: "显示名", example: "张三" }),
+}).openapi("UpdateMe");
+
+/** 自助改密码入参(验当前密码 + 新密码)。 */
+export const ChangeMyPasswordSchema = z.object({
+  currentPassword: z.string().min(1).openapi({ description: "当前密码" }),
+  newPassword: z.string().min(8).openapi({ description: "新密码(至少 8 位)", example: "new-password-123" }),
+}).openapi("ChangeMyPassword");
+
 /**
  * `/api/v1/me` 响应:user + 有效权限全集。
  *

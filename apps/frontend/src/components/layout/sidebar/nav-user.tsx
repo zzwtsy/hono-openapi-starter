@@ -1,4 +1,5 @@
-import { ChevronsUpDown, LogOut } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ChevronsUpDown, LogOut, UserCog } from "lucide-react";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -49,6 +50,10 @@ export function NavUser({ name, email, onLogout }: NavUserProps) {
               <DropdownMenuGroup>
                 <DropdownMenuLabel>{name}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem render={<Link to="/account" />}>
+                  <UserCog />
+                  账户设置
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { onLogout(); }}>
                   <LogOut />
                   登出

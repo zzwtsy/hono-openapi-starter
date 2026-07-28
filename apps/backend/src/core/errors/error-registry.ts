@@ -64,6 +64,7 @@ export const errorRegistry = {
   USER_CANNOT_REVOKE_OWN_AUTH: { status: 403, defaultMessage: "Cannot revoke your own authorization", expose: true },
   USER_CANNOT_TRANSFER_SELF: { status: 403, defaultMessage: "Cannot transfer yourself to another organization", expose: true },
   USER_TRANSFER_CONFLICT: { status: 409, defaultMessage: "User organization was changed concurrently", expose: true },
+  USER_INVALID_PASSWORD: { status: 401, defaultMessage: "Current password is incorrect", expose: true },
   // ROLE
   ROLE_NOT_FOUND: { status: 404, defaultMessage: "Role not found", expose: true },
   ROLE_NAME_CONFLICT: { status: 409, defaultMessage: "Role name already exists", expose: true },

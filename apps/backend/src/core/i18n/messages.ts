@@ -32,6 +32,7 @@ const zh: Record<ErrorCode, string> = {
   USER_CANNOT_REVOKE_OWN_AUTH: "不能撤销自己的授权",
   USER_CANNOT_TRANSFER_SELF: "不能调岗自己",
   USER_TRANSFER_CONFLICT: "用户组织已被并发修改",
+  USER_INVALID_PASSWORD: "当前密码错误",
   ROLE_NOT_FOUND: "角色不存在",
   ROLE_NAME_CONFLICT: "角色名已存在",
   PERMISSION_NOT_FOUND: "权限不存在: {permission}",

@@ -88,6 +88,22 @@ type Alova2Method<
       >
     : never;
 
+export interface UpdateMe {
+  /**
+   * 显示名
+   */
+  name: string;
+}
+export interface ChangeMyPassword {
+  /**
+   * 当前密码
+   */
+  currentPassword: string;
+  /**
+   * 新密码(至少 8 位)
+   */
+  newPassword: string;
+}
 export interface CreateUser {
   /**
    * 邮箱(唯一)
@@ -618,6 +634,79 @@ declare global {
        * ```
        */
       getMe<Config extends Alova2MethodConfig<Me>>(config?: Config): Alova2Method<Me, 'Me.getMe', Config>;
+      /**
+       * ---
+       *
+       * [PATCH] 自助修改显示名
+       *
+       * **path:** /api/v1/me
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   // 显示名
+       *   name: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 用户 ID
+       *   id: string
+       *   // 用户名
+       *   name: string
+       *   // 邮箱
+       *   email: string
+       *   // 归属组织 ID,未绑定则为 null
+       *   orgId: string | null
+       * }
+       * ```
+       */
+      updateMe<
+        Config extends Alova2MethodConfig<User> & {
+          data: UpdateMe;
+        }
+      >(
+        config: Config
+      ): Alova2Method<User, 'Me.updateMe', Config>;
+      /**
+       * ---
+       *
+       * [POST] 自助修改密码
+       *
+       * **path:** /api/v1/me/password
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   // 当前密码
+       *   currentPassword: string
+       *   // 新密码(至少 8 位)
+       *   newPassword: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = null
+       * ```
+       */
+      changeMyPassword<
+        Config extends Alova2MethodConfig<null> & {
+          data: ChangeMyPassword;
+        }
+      >(
+        config: Config
+      ): Alova2Method<null, 'Me.changeMyPassword', Config>;
     };
     Projects: {
       /**
