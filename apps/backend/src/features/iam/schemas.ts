@@ -128,6 +128,12 @@ export const UpdateUserSchema = z.object({
   message: "至少提供 name 或 email 之一",
 }).openapi("UpdateUser");
 
+/** 调岗入参(改 user.orgId + grant 清理)。 */
+export const TransferUserOrgSchema = z.object({
+  orgId: z.string().min(1).openapi({ description: "目标归属组织 ID(须在操作者管理子树内)", example: "org-root" }),
+  clearAllGrants: z.boolean().optional().openapi({ description: "是否清空全部 grant(默认 false:仅清旧 home 独有路径上的 grant,保留共同祖先)", example: false }),
+}).openapi("TransferUserOrganization");
+
 /** 重置密码入参。 */
 export const ResetPasswordSchema = z.object({
   newPassword: z.string().min(8).openapi({ description: "新密码(至少 8 位)", example: "new-password-123" }),

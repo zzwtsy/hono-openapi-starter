@@ -49,7 +49,7 @@ async function requireInstanceRole(id: string) {
  * 断言操作者未对自己执行敏感写操作(禁用自己 / 撤销自己的授权),否则抛 `code`。
  * 复用 disableUser / deleteUserRole / deleteUserPermission 三处的自检,统一 null-handling。
  */
-function assertNotSelf(actorUserId: string, targetUserId: string, code: "USER_CANNOT_DISABLE_SELF" | "USER_CANNOT_REVOKE_OWN_AUTH") {
+function assertNotSelf(actorUserId: string, targetUserId: string, code: "USER_CANNOT_DISABLE_SELF" | "USER_CANNOT_REVOKE_OWN_AUTH" | "USER_CANNOT_TRANSFER_SELF") {
   if (targetUserId === actorUserId) {
     throw new AppError(code);
   }
@@ -419,6 +419,97 @@ export const IamService = {
     await requireUserInSubtree(actorOrgId, userId);
     await db.update(user).set({ disabled: false }).where(eq(user.id, userId));
     return requireUserInSubtree(actorOrgId, userId);
+  },
+
+  /**
+   * 调岗:改 user.orgId + 清理调岗后失效的 grant。
+   *
+   * grant 清理(方案 A,默认):删 staleOrgIds = 旧 home 祖先集 − 新 home 祖先集 上的
+   * user_roles/user_permissions。共同祖先上的 grant 保留(继承语义:总部授的权限调岗后仍生效)。
+   * clearAllGrants=true(方案 B):清全部 grant,用于安全敏感的跨大区调动。
+   *
+   * 权限正确性不依赖清理:PDP 沿新 home 向上查祖先集,旧独有路径上的 grant 自动失效。
+   * 清理是数据卫生(防管理端噪声、调回旧 org 时 grant 复活、表膨胀)。
+   *
+   * 乐观锁:UPDATE WHERE orgId = oldOrgId,并发调岗后写者 affected=0 -> 409。
+   * user.orgId 无 FK(已知 TOCTOU),乐观锁收窄窗口。
+   */
+  async transferUserOrganization(
+    actorOrgId: string,
+    actorUserId: string,
+    userId: string,
+    newOrgId: string,
+    clearAllGrants = false,
+  ) {
+    assertNotSelf(actorUserId, userId, "USER_CANNOT_TRANSFER_SELF");
+    // 事务外快速失败:用户在子树 + 取 oldOrgId
+    const target = await requireUserInSubtree(actorOrgId, userId);
+    const oldOrgId = target.orgId!;
+    // 目标 org 须在操作者管理子树(不能把人调到自己管不了的地方)
+    await assertOrgInSubtree(actorOrgId, newOrgId);
+    if (newOrgId === oldOrgId) {
+      throw new AppError("ORG_SAME_AS_CURRENT");
+    }
+
+    return db.transaction(async (tx) => {
+      // 乐观锁:update 时校验 orgId 未被并发改;并发调岗后写者 affected=0 -> 409
+      const [updated] = await tx
+        .update(user)
+        .set({ orgId: newOrgId })
+        .where(and(eq(user.id, userId), eq(user.orgId, oldOrgId)))
+        .returning({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          orgId: user.orgId,
+          disabled: user.disabled,
+          createdAt: user.createdAt,
+        });
+      if (updated == null) {
+        throw new AppError("USER_TRANSFER_CONFLICT");
+      }
+
+      // grant 清理
+      if (clearAllGrants) {
+        await tx.delete(userRoles).where(eq(userRoles.userId, userId));
+        await tx.delete(userPermissions).where(eq(userPermissions.userId, userId));
+      } else {
+        // staleOrgIds = 旧 home 祖先集 − 新 home 祖先集(两条递归 CTE + 差集)。
+        // 这些 org 不在新 home 的祖先集里,挂在上面的 grant 已失效(算法层面自动失效,此处物理删做卫生)。
+        // 共同祖先在两集交集里,不会被清。
+        const staleRows = await tx.execute(sql`
+          WITH RECURSIVE
+            old_ancestors AS (
+              SELECT ${organizations.id} AS id FROM ${organizations} WHERE ${organizations.id} = ${oldOrgId}
+              UNION ALL
+              SELECT ${organizations.parentId} AS id FROM ${organizations}
+              JOIN old_ancestors oa ON ${organizations.id} = oa.id
+            ) CYCLE id SET is_cycle USING path,
+            new_ancestors AS (
+              SELECT ${organizations.id} AS id FROM ${organizations} WHERE ${organizations.id} = ${newOrgId}
+              UNION ALL
+              SELECT ${organizations.parentId} AS id FROM ${organizations}
+              JOIN new_ancestors na ON ${organizations.id} = na.id
+            ) CYCLE id SET is_cycle USING path
+          SELECT o.id FROM old_ancestors o
+          WHERE o.id IS NOT NULL
+            AND NOT EXISTS (SELECT 1 FROM new_ancestors n WHERE n.id = o.id)
+        `);
+        const staleOrgIds = staleRows
+          .map(r => r.id)
+          .filter((id): id is string => typeof id === "string");
+        if (staleOrgIds.length > 0) {
+          await tx
+            .delete(userRoles)
+            .where(and(eq(userRoles.userId, userId), inArray(userRoles.orgId, staleOrgIds)));
+          await tx
+            .delete(userPermissions)
+            .where(and(eq(userPermissions.userId, userId), inArray(userPermissions.orgId, staleOrgIds)));
+        }
+      }
+
+      return updated;
+    });
   },
 
   // --- 用户授权 ---

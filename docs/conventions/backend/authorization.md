@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-16
+lastReviewedAt: 2026-07-28
 ---
 
 # 权限层规范
@@ -70,7 +70,7 @@ core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `ap
 
 **管理子树(向下)与 Grant 继承(向上)方向相反,不可混用**:管理子树决定「我能管谁」--写操作范围向子孙展开;Grant 继承决定「授在父组织、子组织生效」--检查范围向祖先回溯。例:张三 Home = 华南,管理子树 = {华南, 福建, 深圳}(可在此范围建用户/授 grant);张三在总部授 admin,因福建祖先含总部,张三在福建检查 admin 通过(Grant 继承)。
 
-> 当前实现:Grant org 继承已落地;**管理子树已实现**(createUser 选目标 org + listUsers/update/reset/disable/enable 子树校验);授权写路径(assign/revoke)子树校验已实现(与读端点对称)。
+> 当前实现:Grant org 继承已落地;**管理子树已实现**(createUser 选目标 org + listUsers/update/reset/disable/enable 子树校验 + 调岗 transferUserOrganization);授权写路径(assign/revoke)子树校验已实现(与读端点对称)。调岗改 user.orgId 到管理子树内新 org,同事务清理失效 grant(旧 home 独有路径上的 user_roles/user_permissions,共同祖先保留),禁止自调岗,乐观锁防并发。
 
 ## 组织树继承（向下）
 

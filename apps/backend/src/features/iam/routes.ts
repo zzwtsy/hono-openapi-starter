@@ -17,6 +17,7 @@ import {
   RoleIdParamSchema,
   RoleSchema,
   RoleUserAssignmentSchema,
+  TransferUserOrgSchema,
   UpdateOrganizationSchema,
   UpdateRoleSchema,
   UpdateUserSchema,
@@ -328,6 +329,28 @@ export const enableUserRoute = createRoute({
   },
 });
 
+export const transferUserOrganizationRoute = createRoute({
+  method: "patch",
+  path: "/users/{userId}/organization",
+  tags: ["IAM"],
+  operationId: "transferUserOrganization",
+  summary: "调岗",
+  description: "改 user.orgId 到操作者管理子树内的新 org,并清理调岗后失效的授权。clearAllGrants=true 清空全部授权(默认仅清旧组织失效的授权)。禁止调岗自己。需 users.update。",
+  middleware: usersUpdateMiddleware,
+  security: authedSecurity,
+  request: {
+    params: UserIdParamSchema,
+    body: { content: { "application/json": { schema: TransferUserOrgSchema } } },
+  },
+  responses: {
+    200: jsonSuccessResponse(UserSummarySchema, "调岗成功"),
+    401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
+    403: jsonErrorResponses("无权限或禁止调岗自己", ["COMMON_FORBIDDEN", "USER_CANNOT_TRANSFER_SELF"]),
+    404: jsonErrorResponses("用户或目标组织不存在/不在管理范围内", ["USER_NOT_FOUND", "ORG_NOT_FOUND"]),
+    409: jsonErrorResponses("目标相同或并发冲突", ["ORG_SAME_AS_CURRENT", "USER_TRANSFER_CONFLICT"]),
+  },
+});
+
 // --- 用户授权 ---
 export const assignUserRoleRoute = createRoute({
   method: "post",
@@ -552,6 +575,7 @@ export type UpdateUserRoute = typeof updateUserRoute;
 export type ResetUserPasswordRoute = typeof resetUserPasswordRoute;
 export type DisableUserRoute = typeof disableUserRoute;
 export type EnableUserRoute = typeof enableUserRoute;
+export type TransferUserOrganizationRoute = typeof transferUserOrganizationRoute;
 export type ListRolesRoute = typeof listRolesRoute;
 export type CreateRoleRoute = typeof createRoleRoute;
 export type UpdateRoleRoute = typeof updateRoleRoute;

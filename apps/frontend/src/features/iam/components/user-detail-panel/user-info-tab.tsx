@@ -1,5 +1,5 @@
 import type { UserSummary } from "@/api/globals";
-import { Ban, CircleCheck, KeyRound, Pencil } from "lucide-react";
+import { Ban, CircleCheck, KeyRound, Pencil, Shuffle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -17,9 +17,10 @@ interface UserInfoTabProps {
   onReset: () => void;
   onDisable: () => void;
   onEnable: () => void;
+  onTransfer: () => void;
 }
 
-export function UserInfoTab({ user, canUpdate, canReset, canDisable, canEnable, disabled, isSelf, onEdit, onReset, onDisable, onEnable }: UserInfoTabProps) {
+export function UserInfoTab({ user, canUpdate, canReset, canDisable, canEnable, disabled, isSelf, onEdit, onReset, onDisable, onEnable, onTransfer }: UserInfoTabProps) {
   return (
     <div className="flex flex-col gap-4">
       <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
@@ -52,6 +53,12 @@ export function UserInfoTab({ user, canUpdate, canReset, canDisable, canEnable, 
           <Button variant="outline" size="sm" onClick={onEdit}>
             <Pencil data-icon="inline-start" />
             编辑
+          </Button>
+        )}
+        {canUpdate && !isSelf && (
+          <Button variant="outline" size="sm" onClick={onTransfer}>
+            <Shuffle data-icon="inline-start" />
+            调岗
           </Button>
         )}
         {canReset && (
