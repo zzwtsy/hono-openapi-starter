@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { auth } from "@/core/auth/index.js";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
+import { setPermissionChecker } from "@/core/authorization/permission-checker.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
-import { account, organizations, session, user } from "@/db/schema/index.js";
+import { account, organizations, session, user, userPermissions, userRoles } from "@/db/schema/index.js";
+import { IamPermissionChecker } from "@/features/iam/permission-checker.js";
 import { IamService } from "@/features/iam/service.js";
 import { allPermissions } from "@/permissions-catalog.js";
 import { resetDb } from "../../helpers/db.js";
@@ -257,5 +259,178 @@ describe("iam user management", () => {
     await expect(
       IamService.disableUser("org-root", "actor-1", "actor-1"),
     ).rejects.toMatchObject({ code: "USER_CANNOT_DISABLE_SELF" });
+  });
+});
+
+describe("iam user transfer (调岗 + grant 清理)", () => {
+  // 组织树:org-root(总部) -> org-south(华南) -> org-fujian(福建)
+  //                           -> org-north(华北)
+  // 福建->华北 调岗:共同祖先=org-root,福建独有={福建,华南},华北祖先={华北,org-root}
+  // staleOrgIds = {福建,华南} - {华北,org-root} = {福建,华南}
+  const checker = new IamPermissionChecker();
+  beforeEach(async () => {
+    // 装配 PermissionChecker:listUserEffectivePermissions 正常路径经 requireChecker(),未装配会抛"未装配"。
+    setPermissionChecker(checker);
+    await db.insert(organizations).values([
+      { id: "org-south", name: "华南", parentId: "org-root" },
+      { id: "org-fujian", name: "福建", parentId: "org-south" },
+      { id: "org-north", name: "华北", parentId: "org-root" },
+    ]);
+  });
+
+  /** 取 userId 的全部 user_roles.orgId 集合。 */
+  async function getUserRoleOrgIds(userId: string): Promise<string[]> {
+    const rows = await db.select({ orgId: userRoles.orgId }).from(userRoles).where(eq(userRoles.userId, userId));
+    return rows.map(r => r.orgId).sort();
+  }
+
+  it("调岗成功:home 改为新 org;旧独有路径 grant 被清;共同祖先 grant 保留", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "transfer@example.com",
+      password: "password-123",
+      name: "Transfer",
+      orgId: "org-fujian",
+    });
+    // 在三个节点授 admin 角色:福建(独有)、华南(独有)、org-root(共同祖先)
+    await db.insert(userRoles).values([
+      { userId: created.id, roleId: "role-admin", orgId: "org-fujian" },
+      { userId: created.id, roleId: "role-admin", orgId: "org-south" },
+      { userId: created.id, roleId: "role-admin", orgId: "org-root" },
+    ]);
+
+    const updated = await IamService.transferUserOrganization("org-root", "actor-1", created.id, "org-north");
+    expect(updated.orgId).toBe("org-north");
+
+    // 福建和华南被清(独有路径),org-root 保留(共同祖先)
+    const remaining = await getUserRoleOrgIds(created.id);
+    expect(remaining).toEqual(["org-root"]);
+  });
+
+  it("调岗后 listUserEffectivePermissions 基于新 home(旧独有 grant 不出现,共同祖先 grant 仍生效)", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "perm@example.com",
+      password: "password-123",
+      name: "Perm",
+      orgId: "org-fujian",
+    });
+    // org-root 授 admin(含 users.read),调岗后 org-root 仍是新 home(org-north)的共同祖先
+    await db.insert(userRoles).values({ userId: created.id, roleId: "role-admin", orgId: "org-root" });
+
+    await IamService.transferUserOrganization("org-root", "actor-1", created.id, "org-north");
+
+    // 新 home = org-north,祖先集={org-north, org-root},org-root 上的 admin 仍生效
+    const result = await IamService.listUserEffectivePermissions("org-root", created.id, "org-north");
+    const permNames = result.effective.map(p => p.permission);
+    expect(permNames).toContain("users.read");
+  });
+
+  it("目标 org 不在管理子树 -> 404", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "outside@example.com",
+      password: "password-123",
+      name: "Outside",
+      orgId: "org-fujian",
+    });
+    // org-other 不在 org-root 子树(独立根)
+    await expect(
+      IamService.transferUserOrganization("org-root", "actor-1", created.id, "org-other"),
+    ).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
+  });
+
+  it("用户不在操作者管理子树 -> 404", async () => {
+    // 把 actor-1 换成 org-other 子树的用户做操作者:先建一个 org-other 的用户
+    await db.insert(user).values({
+      id: "actor-other",
+      name: "ActorOther",
+      email: "actorother@example.com",
+      orgId: "org-other",
+    });
+    const created = await IamService.createUser("org-root", {
+      email: "victim@example.com",
+      password: "password-123",
+      name: "Victim",
+      orgId: "org-fujian",
+    });
+    await expect(
+      IamService.transferUserOrganization("org-other", "actor-other", created.id, "org-other"),
+    ).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
+  });
+
+  it("newOrgId === oldOrgId -> 409", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "same@example.com",
+      password: "password-123",
+      name: "Same",
+      orgId: "org-fujian",
+    });
+    await expect(
+      IamService.transferUserOrganization("org-root", "actor-1", created.id, "org-fujian"),
+    ).rejects.toMatchObject({ code: "ORG_SAME_AS_CURRENT" });
+  });
+
+  it("禁止调岗自己 -> 403", async () => {
+    await expect(
+      IamService.transferUserOrganization("org-root", "actor-1", "actor-1", "org-north"),
+    ).rejects.toMatchObject({ code: "USER_CANNOT_TRANSFER_SELF" });
+  });
+
+  it("clearAllGrants=true -> 全部 grant 清空(含共同祖先)", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "clearall@example.com",
+      password: "password-123",
+      name: "ClearAll",
+      orgId: "org-fujian",
+    });
+    await db.insert(userRoles).values([
+      { userId: created.id, roleId: "role-admin", orgId: "org-fujian" },
+      { userId: created.id, roleId: "role-admin", orgId: "org-root" },
+    ]);
+    await db.insert(userPermissions).values({
+      userId: created.id,
+      permission: "users.read",
+      orgId: "org-south",
+      effect: "allow",
+    });
+
+    await IamService.transferUserOrganization("org-root", "actor-1", created.id, "org-north", true);
+
+    const roles = await db.select().from(userRoles).where(eq(userRoles.userId, created.id));
+    const perms = await db.select().from(userPermissions).where(eq(userPermissions.userId, created.id));
+    expect(roles).toHaveLength(0);
+    expect(perms).toHaveLength(0);
+  });
+
+  it("staleOrgIds 为空(调到子孙)不删任何 grant", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "descend@example.com",
+      password: "password-123",
+      name: "Descend",
+      orgId: "org-south",
+    });
+    // org-south 上授 admin,调到 org-fujian(org-south 的子组织)
+    // 旧祖先集={org-south, org-root},新祖先集={org-fujian, org-south, org-root}
+    // staleOrgIds = {} (空),不删任何 grant
+    await db.insert(userRoles).values({ userId: created.id, roleId: "role-admin", orgId: "org-south" });
+
+    await IamService.transferUserOrganization("org-root", "actor-1", created.id, "org-fujian");
+
+    const remaining = await getUserRoleOrgIds(created.id);
+    expect(remaining).toEqual(["org-south"]);
+  });
+
+  it("调岗后用户 orgId 改变,仍在操作者子树内可见", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "move@example.com",
+      password: "password-123",
+      name: "Move",
+      orgId: "org-fujian",
+    });
+    // org-fujian 和 org-north 都在 org-root 子树内,调岗后仍在子树内可见
+    await IamService.transferUserOrganization("org-root", "actor-1", created.id, "org-north");
+
+    const after = await IamService.listUsers("org-root");
+    const moved = after.find(u => u.id === created.id);
+    expect(moved).toBeDefined();
+    expect(moved?.orgId).toBe("org-north");
   });
 });

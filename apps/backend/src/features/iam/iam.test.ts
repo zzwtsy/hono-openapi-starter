@@ -19,6 +19,7 @@ const {
   mockResetPassword,
   mockDisableUser,
   mockEnableUser,
+  mockTransferUserOrganization,
   mockCreateRole,
   mockUpdateRole,
   mockDeleteRole,
@@ -48,6 +49,7 @@ const {
   mockResetPassword: vi.fn(),
   mockDisableUser: vi.fn(),
   mockEnableUser: vi.fn(),
+  mockTransferUserOrganization: vi.fn(),
   mockCreateRole: vi.fn(),
   mockUpdateRole: vi.fn(),
   mockDeleteRole: vi.fn(),
@@ -80,6 +82,7 @@ vi.mock("./service.js", () => ({
     resetPassword: mockResetPassword,
     disableUser: mockDisableUser,
     enableUser: mockEnableUser,
+    transferUserOrganization: mockTransferUserOrganization,
     createRole: mockCreateRole,
     updateRole: mockUpdateRole,
     deleteRole: mockDeleteRole,
@@ -135,6 +138,7 @@ function buildApp() {
   app.openapi(routes.resetUserPasswordRoute, handlers.resetUserPasswordHandler);
   app.openapi(routes.disableUserRoute, handlers.disableUserHandler);
   app.openapi(routes.enableUserRoute, handlers.enableUserHandler);
+  app.openapi(routes.transferUserOrganizationRoute, handlers.transferUserOrganizationHandler);
   app.openapi(routes.listRolesRoute, handlers.listRolesHandler);
   app.openapi(routes.createRoleRoute, handlers.createRoleHandler);
   app.openapi(routes.updateRoleRoute, handlers.updateRoleHandler);
@@ -525,6 +529,81 @@ describe("iam routes", () => {
     const res = await buildApp().request("/users/u-2/enable", { method: "POST" });
     expect(res.status).toBe(200);
     expect(mockEnableUser).toHaveBeenCalledWith("org-1", "u-2");
+  });
+
+  // --- 调岗 ---
+  it("transferUserOrganization 无 users.update 返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/users/u-2/organization", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgId: "org-2" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("transferUserOrganization 有权限时传 actorUserId+body 调 service", async () => {
+    authed();
+    mockTransferUserOrganization.mockResolvedValue({ ...mockUserSummary, orgId: "org-2" });
+
+    const res = await buildApp().request("/users/u-2/organization", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgId: "org-2" }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockTransferUserOrganization).toHaveBeenCalledWith("org-1", "u-1", "u-2", "org-2", undefined);
+  });
+
+  it("transferUserOrganization 传 clearAllGrants=true", async () => {
+    authed();
+    mockTransferUserOrganization.mockResolvedValue({ ...mockUserSummary, orgId: "org-2" });
+
+    const res = await buildApp().request("/users/u-2/organization", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgId: "org-2", clearAllGrants: true }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockTransferUserOrganization).toHaveBeenCalledWith("org-1", "u-1", "u-2", "org-2", true);
+  });
+
+  it("transferUserOrganization service 抛 FORBIDDEN(自调岗)返回 403", async () => {
+    authed();
+    mockTransferUserOrganization.mockRejectedValue(new AppError("USER_CANNOT_TRANSFER_SELF"));
+
+    const res = await buildApp().request("/users/u-1/organization", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgId: "org-2" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("transferUserOrganization service 抛 ORG_SAME_AS_CURRENT 返回 409", async () => {
+    authed();
+    mockTransferUserOrganization.mockRejectedValue(new AppError("ORG_SAME_AS_CURRENT"));
+
+    const res = await buildApp().request("/users/u-2/organization", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it("transferUserOrganization service 抛 USER_TRANSFER_CONFLICT(并发)返回 409", async () => {
+    authed();
+    mockTransferUserOrganization.mockRejectedValue(new AppError("USER_TRANSFER_CONFLICT"));
+
+    const res = await buildApp().request("/users/u-2/organization", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgId: "org-2" }),
+    });
+    expect(res.status).toBe(409);
   });
 
   // --- 授用户角色 ---
@@ -971,6 +1050,7 @@ describe("iam routes", () => {
     ["post", "/users/u-1/reset-password", "{}"],
     ["post", "/users/u-1/disable", ""],
     ["post", "/users/u-1/enable", ""],
+    ["patch", "/users/u-1/organization", "{\"orgId\":\"org-root\"}"],
     ["post", "/users/u-1/roles/r-1", "{\"orgId\":\"org-root\"}"],
     ["delete", "/users/u-1/roles/r-1?orgId=org-root", ""],
     ["post", "/users/u-1/permissions/projects.read", "{\"orgId\":\"org-root\",\"effect\":\"allow\"}"],

@@ -23,6 +23,7 @@ import type {
   ListUserRolesRoute,
   ListUsersRoute,
   ResetUserPasswordRoute,
+  TransferUserOrganizationRoute,
   UpdateOrganizationRoute,
   UpdateRoleRoute,
   UpdateUserRoute,
@@ -133,6 +134,14 @@ export const enableUserHandler: AppRouteHandler<EnableUserRoute> = async (c) => 
   const { orgId } = requireOrgUser(c);
   const { userId } = c.req.valid("param");
   const updated = await IamService.enableUser(orgId, userId);
+  return successResponse(c, updated);
+};
+
+export const transferUserOrganizationHandler: AppRouteHandler<TransferUserOrganizationRoute> = async (c) => {
+  const { id, orgId } = requireOrgUser(c);
+  const { userId } = c.req.valid("param");
+  const body = c.req.valid("json");
+  const updated = await IamService.transferUserOrganization(orgId, id, userId, body.orgId, body.clearAllGrants);
   return successResponse(c, updated);
 };
 

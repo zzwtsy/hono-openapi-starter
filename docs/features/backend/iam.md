@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-19
+lastReviewedAt: 2026-07-28
 ---
 
 # Feature: iam（权限管理 + 用户身份）
@@ -48,7 +48,8 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | GET | `/api/v1/roles/{roleId}/users` | `listRoleUsers` | assignments.read | 角色已授用户（管理子树内，含 orgId/expiresAt） |
 | GET | `/api/v1/users` | `listUsers` | users.read | 列出管理子树(自身+子孙)下的用户 |
 | POST | `/api/v1/users` | `createUser` | users.create | 管理员代创建用户（email+password+name+orgId，目标 org 须在管理子树内） |
-| PATCH | `/api/v1/users/{userId}` | `updateUser` | users.update | 改用户资料（name/email，不改 orgId） |
+| PATCH | `/api/v1/users/{userId}` | `updateUser` | users.update | 改用户资料(name/email,不改 orgId) |
+| PATCH | `/api/v1/users/{userId}/organization` | `transferUserOrganization` | users.update | 调岗(改 orgId + grant 清理) |
 | POST | `/api/v1/users/{userId}/reset-password` | `resetUserPassword` | users.reset-password | 重置密码（hashPassword+update account+删 session） |
 | POST | `/api/v1/users/{userId}/disable` | `disableUser` | users.disable | 禁用用户（set disabled=true+删所有 session；禁止自禁用） |
 | POST | `/api/v1/users/{userId}/enable` | `enableUser` | users.enable | 启用用户（清 disabled） |
@@ -108,7 +109,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - **管理子树**:管理员可写操作的范围 = 自身 + 子孙。`createUser`/`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable`/`assignUserRole`/`assignUserPermission` 的目标组织与目标用户均须落在操作者管理子树内。
 - **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
 
-> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission`/`listUserPermissions`/`listUserRoles`/`listUserDirectPermissions`/`listRoleUsers` 均已按操作者管理子树(自身+子孙)校验(user 与 grant.orgId 双校验,读端点与写端点对称);重复授角色/权限时,提供 `expiresAt` 则更新(续期),省略则保留原过期时间(不清空),`effect` 总以新值为准。调岗(PATCH orgId)本期不做。`deleteOrganization` 有用户即拒删(防孤儿),当前无迁移/删除用户 API,有用户的组织需先经数据库迁移用户;且检查与删除非原子(`user.orgId` 无 FK),并发 `createUser` 存在低概率产生孤儿用户的 TOCTOU 窗口,待加 FK 或迁移 API 后根除。`deleteUserRole`/`deleteUserPermission` 禁止对自己操作(防自我降级锁死,对齐 `disableUser`);`assignUserRole`/`assignUserPermission` 不限(授予不锁死)。所有写路径(`createUser`/`updateUser`/`resetPassword`/`disableUser`/`createRole`/`updateRole`/`assignRolePermissions`/`updateOrganization`)均用 `db.transaction` 包多步写 + 冲突显式抛 `AppError`(照 `createUser` 范本,B2),不依赖 PG 错误冒泡兜底。
+> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission`/`listUserPermissions`/`listUserRoles`/`listUserDirectPermissions`/`listRoleUsers` 均已按操作者管理子树(自身+子孙)校验(user 与 grant.orgId 双校验,读端点与写端点对称);重复授角色/权限时,提供 `expiresAt` 则更新(续期),省略则保留原过期时间(不清空),`effect` 总以新值为准。调岗(`transferUserOrganization`)改 `user.orgId` 到管理子树内的新 org,并在同事务内清理失效 grant(方案 A:删 staleOrgIds = 旧 home 祖先集 − 新 home 祖先集 上的 `user_roles`/`user_permissions`,共同祖先 grant 保留;`clearAllGrants=true` 清全部 grant);调岗后权限检查沿新 home 向上查祖先集,旧独有路径 grant 算法层面自动失效,清理是数据卫生;禁止调岗自己(防把自己调出管理子树锁死);乐观锁 `UPDATE WHERE orgId = oldOrgId`,并发后写者 409。`deleteOrganization` 有用户即拒删(防孤儿),当前无迁移/删除用户 API,有用户的组织需先经数据库迁移用户;且检查与删除非原子(`user.orgId` 无 FK),并发 `createUser` 存在低概率产生孤儿用户的 TOCTOU 窗口,待加 FK 或迁移 API 后根除。`deleteUserRole`/`deleteUserPermission` 禁止对自己操作(防自我降级锁死,对齐 `disableUser`);`assignUserRole`/`assignUserPermission` 不限(授予不锁死)。所有写路径(`createUser`/`updateUser`/`resetPassword`/`disableUser`/`transferUserOrganization`/`createRole`/`updateRole`/`assignRolePermissions`/`updateOrganization`)均用 `db.transaction` 包多步写 + 冲突显式抛 `AppError`(照 `createUser` 范本,B2),不依赖 PG 错误冒泡兜底。
 >
 > **组织操作的全局 admin 边界**：`listOrganizations`/`createOrganization`/`updateOrganization`/`deleteOrganization` 当前不按管理子树过滤/校验。第一版全局 admin 模型下，`organizations.*` 与 `organizations.read` 仅根 admin 持有，根 admin 子树=全树，故无越权。分级管理员（§3 Non-goal）落地时，需为组织写操作补子树校验、为 `listOrganizations` 补子树过滤；在此之前组织 list/写操作仅全局 admin 可用（checklist §6/§7）。
 
@@ -127,11 +128,14 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 | Code | HTTP Status | Description |
 | --- | --- | --- |
-| `COMMON_NOT_FOUND` | 404 | 角色/组织/权限/授权不存在，或对 code 角色改删 |
-| `COMMON_CONFLICT` | 409 | 角色名重复；组织形成环；删有子组织或有用户的组织；用户邮箱重复 |
-| `COMMON_FORBIDDEN` | 403 | 无对应权限；禁止禁用自己 |
-| `AUTH_ACCOUNT_DISABLED` | 403 | 用户已禁用（`databaseHooks.session.create.before` 检查 disabled，阻止 session 创建） |
+| `COMMON_NOT_FOUND` | 404 | 角色/组织/权限/授权不存在,或对 code 角色改删 |
+| `COMMON_CONFLICT` | 409 | 角色名重复;组织形成环;删有子组织或有用户的组织;用户邮箱重复 |
+| `COMMON_FORBIDDEN` | 403 | 无对应权限;禁止禁用自己 |
+| `AUTH_ACCOUNT_DISABLED` | 403 | 用户已禁用(`databaseHooks.session.create.before` 检查 disabled,阻止 session 创建) |
 | `COMMON_UNAUTHORIZED` | 401 | 未认证 |
+| `ORG_SAME_AS_CURRENT` | 409 | 调岗目标组织与当前相同 |
+| `USER_CANNOT_TRANSFER_SELF` | 403 | 禁止调岗自己 |
+| `USER_TRANSFER_CONFLICT` | 409 | 调岗乐观锁冲突(用户组织已被并发修改) |
 
 ## 9. Request Flow
 
