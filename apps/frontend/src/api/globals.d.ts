@@ -554,7 +554,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 获取当前用户信息与有效权限
+       * [GET] 获取当前用户信息与权限
        *
        * **path:** /api/v1/me
        *
@@ -613,7 +613,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出当前用户组织下的项目
+       * [GET] 列出项目
        *
        * **path:** /api/v1/projects
        *
@@ -855,7 +855,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出所有权限
+       * [GET] 列出权限
        *
        * **path:** /api/v1/permissions
        *
@@ -883,7 +883,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出管理子树下的用户
+       * [GET] 列出用户
        *
        * **path:** /api/v1/users
        *
@@ -913,7 +913,7 @@ declare global {
       /**
        * ---
        *
-       * [POST] 管理员代创建用户
+       * [POST] 创建用户
        *
        * **path:** /api/v1/users
        *
@@ -1025,7 +1025,7 @@ declare global {
       /**
        * ---
        *
-       * [POST] 重置用户密码
+       * [POST] 重置密码
        *
        * **path:** /api/v1/users/{userId}/reset-password
        *
@@ -1180,7 +1180,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出所有角色
+       * [GET] 列出角色
        *
        * **path:** /api/v1/roles
        *
@@ -1371,7 +1371,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出角色含的权限
+       * [GET] 列出角色权限
        *
        * **path:** /api/v1/roles/{roleId}/permissions
        *
@@ -1407,7 +1407,7 @@ declare global {
       /**
        * ---
        *
-       * [POST] 给角色批量配权限
+       * [POST] 给角色配权限
        *
        * **path:** /api/v1/roles/{roleId}/permissions
        *
@@ -1461,7 +1461,7 @@ declare global {
       /**
        * ---
        *
-       * [DELETE] 撤角色的单个权限
+       * [DELETE] 撤角色权限
        *
        * **path:** /api/v1/roles/{roleId}/permissions/{permission}
        *
@@ -1505,7 +1505,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出授了某角色的用户
+       * [GET] 列出角色已授用户
        *
        * **path:** /api/v1/roles/{roleId}/users
        *
@@ -1690,7 +1690,7 @@ declare global {
       /**
        * ---
        *
-       * [POST] 直接授用户权限
+       * [POST] 授用户权限
        *
        * **path:** /api/v1/users/{userId}/permissions/{permission}
        *
@@ -1771,7 +1771,7 @@ declare global {
       /**
        * ---
        *
-       * [DELETE] 撤用户直接权限
+       * [DELETE] 撤用户权限
        *
        * **path:** /api/v1/users/{userId}/permissions/{permission}
        *
@@ -1837,7 +1837,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出用户在某组织的有效权限全集(带来源链)
+       * [GET] 列出有效权限全集
        *
        * **path:** /api/v1/users/{userId}/permissions
        *
@@ -1943,7 +1943,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出用户在某组织已授的角色记录
+       * [GET] 列出已授角色记录
        *
        * **path:** /api/v1/users/{userId}/roles
        *
@@ -2004,7 +2004,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出用户在某组织的直接授权记录
+       * [GET] 列出直接授权记录
        *
        * **path:** /api/v1/users/{userId}/direct-permissions
        *
@@ -2065,7 +2065,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出所有组织
+       * [GET] 列出组织
        *
        * **path:** /api/v1/organizations
        *
@@ -2291,7 +2291,7 @@ declare global {
       /**
        * ---
        *
-       * [GET] 列出全部系统配置
+       * [GET] 列出系统配置
        *
        * **path:** /api/v1/settings
        *

@@ -16,8 +16,8 @@ export const listSettingsRoute = createRoute({
   path: "/settings",
   tags: ["Settings"],
   operationId: "listSettings",
-  summary: "列出全部系统配置",
-  description: "返回全部系统配置。需 settings.read 权限。",
+  summary: "列出系统配置",
+  description: "返回全部系统配置。需 settings.read。",
   middleware: [requireAuth(), requirePermission("settings.read")],
   security: authedSecurity,
   responses: {
@@ -32,7 +32,7 @@ export const updateSettingRoute = createRoute({
   tags: ["Settings"],
   operationId: "updateSetting",
   summary: "修改或创建系统配置",
-  description: "upsert 一条配置。需 settings.update 权限。",
+  description: "修改或创建一条配置。需 settings.update。",
   middleware: [requireAuth(), requirePermission("settings.update")] as const,
   security: authedSecurity,
   request: {
