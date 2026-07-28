@@ -9,8 +9,9 @@ export function AuthenticatedLayout({ onLogout }: { onLogout: () => void }) {
   return (
     <SidebarProvider>
       <AppSidebar onLogout={onLogout} />
-      <SidebarInset>
-        <header className="flex h-14 items-center gap-2 border-b px-4">
+      {/* h-svh overflow-hidden 锁死一屏;height 固定后内部 flex-1 min-h-0 高度链才闭合 */}
+      <SidebarInset className="h-svh overflow-hidden">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger />
         </header>
         <Outlet />

@@ -65,7 +65,7 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-40 flex-1">
           <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -113,7 +113,7 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
             )
           : (
               <>
-                <div className="flex flex-col gap-4 overflow-y-auto">
+                <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto">
                   {[...groups.entries()].map(([resource, perms]) => {
                     const allSelected = perms.every(p => working.has(p.name));
                     const anySelected = perms.some(p => working.has(p.name));
@@ -156,7 +156,7 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
                   })}
                 </div>
                 {hasChanges && (
-                  <div className="flex items-center justify-between gap-2 border-t pt-3">
+                  <div className="flex shrink-0 items-center justify-between gap-2 border-t pt-3">
                     <p className="text-sm text-muted-foreground">
                       新增
                       {" "}

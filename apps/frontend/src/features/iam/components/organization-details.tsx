@@ -110,7 +110,7 @@ export function OrganizationDetails({
           </CardAction>
         </Can>
       </CardHeader>
-      <CardContent className="flex flex-col gap-6">
+      <CardContent className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto">
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <dt className="text-xs text-muted-foreground">上级组织</dt>

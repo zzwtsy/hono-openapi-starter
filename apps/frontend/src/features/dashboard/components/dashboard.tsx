@@ -9,7 +9,7 @@ export function Dashboard() {
   const permissions = usePermissions() ?? [];
   if (permissions.length === 0) {
     return (
-      <div className="flex flex-col gap-4 p-6">
+      <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-6">
         <PageHeader title="Dashboard" />
         <Empty>
           <EmptyMedia variant="icon"><ShieldOff /></EmptyMedia>
@@ -22,7 +22,7 @@ export function Dashboard() {
     );
   }
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-6">
       <PageHeader title="Dashboard" description="概览页待实现。" />
     </div>
   );

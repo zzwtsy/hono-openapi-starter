@@ -42,8 +42,8 @@ export function ExplorerContent({
 }: ExplorerContentProps) {
   return (
     <>
-      <div className="grid min-h-128 flex-1 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <Card className="min-h-128">
+      <div className="grid min-h-0 flex-1 grid-rows-1 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <Card className="flex h-full flex-col">
           <CardHeader>
             <CardTitle>组织结构</CardTitle>
             <CardDescription className="tabular-nums">
@@ -62,7 +62,7 @@ export function ExplorerContent({
             />
           </CardContent>
         </Card>
-        <div className="hidden min-w-0 lg:block">
+        <div className="hidden min-h-0 min-w-0 lg:block">
           <OrganizationDetails
             index={index}
             organization={organization}

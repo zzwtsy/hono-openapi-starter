@@ -110,15 +110,15 @@ function UsersPage() {
       );
 
   return (
-    <div className="flex flex-col gap-4 p-4 sm:p-6">
+    <div className="flex flex-1 min-h-0 flex-col gap-4 p-4 sm:p-6">
       <PageHeader title="用户管理" description="管理组织内的用户及其权限。" />
-      <div className="grid min-h-128 flex-1 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-rows-1 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <UserListPanel
           selectedUserId={selectedUserId}
           onSelect={handleSelect}
           onCreateUser={() => { setCreateOpen(true); }}
         />
-        <div className="hidden min-w-0 lg:block">
+        <div className="hidden min-h-0 min-w-0 lg:block">
           {detailPanel}
         </div>
       </div>

@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 function Settings() {
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-6">
       <PageHeader title="系统设置" description="运行时可编辑的配置项。" />
       <SettingsPage />
     </div>
