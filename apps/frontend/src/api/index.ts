@@ -58,8 +58,8 @@ export const alovaInstance = createAlova({
 // createApis 把 configMap[key] merge 进每次调用)。loader/hooks 调 Apis.xxx() 不再传 cacheFor,单一来源。
 // GET 标 cacheFor + hitSource,mutation 标 name;mutation 成功自动失效相关 GET 缓存。
 export const $$userConfigMap = withConfigType({
-  // Me.getMe:权限变更(授/撤角色、授/撤直接权限、角色权限变更)后失效缓存,下次 beforeLoad
-  // (刷新/重进 _authenticated)拿新权限。无差别 hitSource:给别人授权也失效自己 Me(多一次
+  // Me.getMe:权限变更(授/撤角色、授/撤直接权限、角色权限变更)或自助改名后失效缓存,下次 beforeLoad
+  // (刷新/重进 _authenticated)拿新数据。无差别 hitSource:给别人授权也失效自己 Me(多一次
   // 重拉,无害)。限制:SPA 内不刷新则 context.auth.permissions 不即时更新(需 router.invalidate
   // 重跑 beforeLoad,留待后续)。
   "Me.getMe": {
@@ -71,6 +71,7 @@ export const $$userConfigMap = withConfigType({
       "IAM.deleteUserPermission",
       "IAM.assignRolePermissions",
       "IAM.deleteRolePermission",
+      "Me.updateMe",
     ],
   },
   "IAM.listRoles": {
@@ -88,7 +89,7 @@ export const $$userConfigMap = withConfigType({
   // 用户列表:创建/改资料/禁用·启用后失效(reset 不改列表字段,不进 hitSource)
   "IAM.listUsers": {
     cacheFor: 60_000,
-    hitSource: ["IAM.createUser", "IAM.updateUser", "IAM.disableUser", "IAM.enableUser"],
+    hitSource: ["IAM.createUser", "IAM.updateUser", "IAM.disableUser", "IAM.enableUser", "Me.updateMe"],
   },
   // 用户授权:撤销/授予后有效权限全集需自动失效(此前靠手动 send)。
   // 角色权限变更(assignRolePermissions/deleteRolePermission)也影响用户有效权限

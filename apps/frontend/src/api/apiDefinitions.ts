@@ -20,6 +20,8 @@ export default {
   'Health.getReadyz': ['GET', '/readyz'],
   'Health.getHealth': ['GET', '/api/v1/health'],
   'Me.getMe': ['GET', '/api/v1/me'],
+  'Me.updateMe': ['PATCH', '/api/v1/me'],
+  'Me.changeMyPassword': ['POST', '/api/v1/me/password'],
   'Projects.listProjects': ['GET', '/api/v1/projects'],
   'Projects.createProject': ['POST', '/api/v1/projects'],
   'Projects.getProjectById': ['GET', '/api/v1/projects/{projectId}'],

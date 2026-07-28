@@ -52,6 +52,7 @@ lastReviewedAt: 2026-07-16
 | 前端调用 API | `conventions/frontend/api-alova.md`、`conventions/frontend/routing.md` |
 | 修改前端 IAM | `features/frontend/iam.md`、`conventions/frontend/routing.md`、`conventions/frontend/state-cache.md` |
 | 改用户管理 UI | `features/frontend/iam.md`（用户管理节）、`features/backend/iam.md`（users.*） |
+| 改账户自助(个人信息) | `features/frontend/account.md`、`features/backend/iam.md`（me 自助修改节） |
 | 改系统设置 | `features/backend/system-settings.md`、`features/frontend/settings.md`、`adr/0007-runtime-config-control.md` |
 | 修改认证或权限 | `conventions/backend/auth-better-auth.md`、`conventions/backend/authorization.md`、`conventions/frontend/auth.md`、`adr/0003-keep-better-auth-native.md`、`adr/0004-authorization-layer.md`、`adr/0007-runtime-config-control.md`、`checklists/iam-completeness-checklist.md` |
 | 修改错误处理或 i18n | `conventions/backend/error-code-system.md`、`conventions/backend/api-openapi.md`、`adr/0008-error-i18n.md` |
@@ -87,7 +88,7 @@ docs/
 
   features/
     backend/{_template, iam, projects, system-settings}.md
-    frontend/{_template, iam, projects, settings}.md
+    frontend/{_template, iam, projects, settings, account}.md
 
   packages/_template.md
 
