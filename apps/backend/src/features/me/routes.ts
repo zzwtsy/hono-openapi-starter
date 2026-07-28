@@ -10,7 +10,7 @@ export const getMeRoute = createRoute({
   path: "/me",
   tags: ["Me"],
   operationId: "getMe",
-  summary: "获取当前用户信息与有效权限",
+  summary: "获取当前用户信息与权限",
   description: "返回当前登录用户信息及在其所属组织下的有效权限全集。未绑定组织时 permissions 为空。",
   middleware: [requireAuth()],
   security: authedSecurity,

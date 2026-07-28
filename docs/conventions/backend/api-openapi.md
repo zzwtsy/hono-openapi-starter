@@ -83,6 +83,64 @@ createRoute({
 });
 ```
 
+### summary / description 写法
+
+`summary` 和 `description` 是 OpenAPI 契约的一部分，会暴露给前端（gen:api 生成的类型注释）和 Scalar 文档读者。写法遵循 OpenAPI 最佳实践：[summary 是标签，description 是文章正文](https://docs.bump.sh/openapi/v3.2/documentation/descriptions-and-summaries/)。
+
+#### summary
+
+- 动词式短语，简短（目标 ≤15 中文字符）
+- 纯标签，**不加括号补充、不加句号**
+- 不重复 path/method 已表达的信息
+
+```ts
+// ✅
+summary: '创建角色'
+summary: '调岗'
+summary: '列出权限'
+
+// ❌ 描述性补充属于 description
+summary: '调岗(改归属组织)'
+summary: '列出用户在某组织的有效权限全集(带来源链)'
+```
+
+#### description
+
+解释**做什么 + 关键约束/前置条件 + 入参语义**，面向 API 消费者。
+
+**必须**：
+- 用中文，单行
+- 写清楚权限要求（如「需 users.create 权限」）
+- 写清楚业务约束（如「不改 orgId」「角色名唯一」）
+- 写清楚入参语义（如 `clearAllGrants=true` 清空全部授权）
+
+**禁止**：
+- **不重复** `responses` 已结构化声明的错误码（如「重名返回 409」「不存在返回 404」）--`responses` 字段是错误码的单一事实来源，description 里重复会漂移
+- **不泄露**后端实现细节（如 `hashPassword`、`CTE 计算`、`databaseHooks`、`db.transaction`、`onConflictDoNothing`、`cascade`）--消费者不关心内部怎么实现
+- **不泄露**内部设计术语或文档引用（如「方案 A」「ADR-0004」）
+
+```ts
+// ✅
+description: '改用户资料(name/email),不改 orgId。需 users.update。'
+description: '改 user.orgId 到操作者管理子树内的新 org,并清理调岗后失效的授权。clearAllGrants=true 清空全部授权(默认仅清旧组织失效的授权)。禁止调岗自己。需 users.update。'
+
+// ❌ 重复 responses 错误码 + 泄露实现细节
+description: '改 instance 角色的 name/description。code 角色(source=code)或不存在返回 404;改名重名返回 409。需 roles.update 权限。'
+description: 'hashPassword + update account;删该用户全部 session。需 users.reset-password。'
+description: '返回用户在目标组织的有效权限全集(含祖先继承、CTE 计算),每条权限带来源链。'
+```
+
+#### 判断「实现细节」vs「消费者需要」的边界
+
+| 保留（消费者需要） | 删除（内部实现） |
+| --- | --- |
+| `source=instance` 角色可改删 | `onConflictDoNothing`、`cascade 删 role_permissions` |
+| `clearAllGrants=true` 清空全部授权 | `hashPassword + update account` |
+| 重复授可续期 | `CTE 计算`、`递归祖先` |
+| 需 users.create 权限 | `ADR-0004`、`databaseHooks` |
+| 不改 orgId | `set disabled=true + 删 session` |
+| 扁平返回前端建树 | `db.transaction 包` |
+
 ## schema 规范
 
 强制规范：
