@@ -1,9 +1,13 @@
 import { createRoute, z } from "@hono/zod-openapi";
 
+import { eq } from "drizzle-orm";
+import { audit } from "@/core/audit/index.js";
 import { requireAuth } from "@/core/auth/require-auth.js";
 import { requirePermission } from "@/core/auth/require-permission.js";
 import { jsonErrorResponse, jsonErrorResponses, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
+import { db } from "@/db/client.js";
+import { user, userPermissions, userRoles } from "@/db/schema/index.js";
 import {
   AssignRolePermissionsSchema,
   CreateOrganizationSchema,
@@ -31,6 +35,7 @@ import {
   UserRoleParamSchema,
   UserSummarySchema,
 } from "./schemas.js";
+import { IamService } from "./service.js";
 
 /** iam feature 共享:认证 + 权限 + 401/403 响应。 */
 const permissionsReadMiddleware = [requireAuth(), requirePermission("permissions.read")];
@@ -57,6 +62,12 @@ const authErrorResponses = {
   401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
   403: jsonErrorResponse("无权限", "COMMON_FORBIDDEN"),
 };
+
+/** 查用户旧值(audit before 复用,不校验归属--校验由 handler 做)。 */
+async function getUserById(id: string) {
+  const [u] = await db.select().from(user).where(eq(user.id, id));
+  return u;
+}
 
 // --- 权限目录 ---
 export const listPermissionsRoute = createRoute({
@@ -97,7 +108,15 @@ export const createRoleRoute = createRoute({
   operationId: "createRole",
   summary: "创建角色",
   description: "创建实例角色(source=instance,可改删)。角色名唯一。需 roles.create。",
-  middleware: rolesCreateMiddleware,
+  middleware: [...rolesCreateMiddleware, audit({
+    action: "iam.role.create",
+    label: "创建角色",
+    resourceType: "role",
+    resourceId: async (c) => {
+      const body = await c.res.clone().json() as { id?: string };
+      return body.id ?? "";
+    },
+  })],
   security: authedSecurity,
   request: { body: { content: { "application/json": { schema: CreateRoleSchema } } } },
   responses: {
@@ -114,7 +133,13 @@ export const updateRoleRoute = createRoute({
   operationId: "updateRole",
   summary: "修改角色",
   description: "修改实例角色的 name/description。code 角色不可改删。需 roles.update。",
-  middleware: rolesUpdateMiddleware,
+  middleware: [...rolesUpdateMiddleware, audit({
+    action: "iam.role.update",
+    label: "修改角色",
+    resourceType: "role",
+    resourceId: c => c.req.param("roleId") ?? "",
+    before: async c => IamService.getRoleById(c.req.param("roleId") ?? ""),
+  })],
   security: authedSecurity,
   request: {
     params: RoleIdParamSchema,
@@ -135,7 +160,13 @@ export const deleteRoleRoute = createRoute({
   operationId: "deleteRole",
   summary: "删除角色",
   description: "删除实例角色及其关联授权。code 角色不可删。需 roles.delete。",
-  middleware: rolesDeleteMiddleware,
+  middleware: [...rolesDeleteMiddleware, audit({
+    action: "iam.role.delete",
+    label: "删除角色",
+    resourceType: "role",
+    resourceId: c => c.req.param("roleId") ?? "",
+    before: async c => IamService.getRoleById(c.req.param("roleId") ?? ""),
+  })],
   security: authedSecurity,
   request: { params: RoleIdParamSchema },
   responses: {
@@ -169,7 +200,13 @@ export const assignRolePermissionsRoute = createRoute({
   operationId: "assignRolePermissions",
   summary: "给角色配权限",
   description: "批量授予实例角色权限,已授权的幂等跳过。需 roles.assign-permissions。",
-  middleware: rolesAssignPermissionsMiddleware,
+  middleware: [...rolesAssignPermissionsMiddleware, audit({
+    action: "iam.role.assign_permissions",
+    label: "给角色配权限",
+    resourceType: "role",
+    resourceId: c => c.req.param("roleId") ?? "",
+    before: async c => IamService.listRolePermissions(c.req.param("roleId") ?? ""),
+  })],
   security: authedSecurity,
   request: {
     params: RoleIdParamSchema,
@@ -189,7 +226,13 @@ export const deleteRolePermissionRoute = createRoute({
   operationId: "deleteRolePermission",
   summary: "撤角色权限",
   description: "撤销实例角色的单个权限。需 roles.revoke-permissions。",
-  middleware: rolesRevokePermissionsMiddleware,
+  middleware: [...rolesRevokePermissionsMiddleware, audit({
+    action: "iam.role.revoke_permission",
+    label: "撤角色权限",
+    resourceType: "role",
+    resourceId: c => c.req.param("roleId") ?? "",
+    before: async c => IamService.listRolePermissions(c.req.param("roleId") ?? ""),
+  })],
   security: authedSecurity,
   request: { params: z.object({ roleId: z.string(), permission: z.string() }) },
   responses: {
@@ -240,7 +283,16 @@ export const createUserRoute = createRoute({
   operationId: "createUser",
   summary: "创建用户",
   description: "管理员代创建用户,目标 org 须在操作者管理子树内。需 users.create。",
-  middleware: usersCreateMiddleware,
+  middleware: [...usersCreateMiddleware, audit({
+    action: "iam.user.create",
+    label: "创建用户",
+    resourceType: "user",
+    resourceId: async (c) => {
+      const body = await c.res.clone().json() as { id?: string };
+      return body.id ?? "";
+    },
+    relations: ["orgId"],
+  })],
   security: authedSecurity,
   request: {
     body: { content: { "application/json": { schema: CreateUserSchema } } },
@@ -260,7 +312,13 @@ export const updateUserRoute = createRoute({
   operationId: "updateUser",
   summary: "修改用户资料",
   description: "改用户资料(name/email),不改 orgId。需 users.update。",
-  middleware: usersUpdateMiddleware,
+  middleware: [...usersUpdateMiddleware, audit({
+    action: "iam.user.update",
+    label: "修改用户资料",
+    resourceType: "user",
+    resourceId: c => c.req.param("userId") ?? "",
+    before: async c => getUserById(c.req.param("userId") ?? ""),
+  })],
   security: authedSecurity,
   request: {
     params: UserIdParamSchema,
@@ -281,7 +339,12 @@ export const resetUserPasswordRoute = createRoute({
   operationId: "resetUserPassword",
   summary: "重置密码",
   description: "重置用户密码并清除其所有 session。需 users.reset-password。",
-  middleware: usersResetPasswordMiddleware,
+  middleware: [...usersResetPasswordMiddleware, audit({
+    action: "iam.user.reset_password",
+    label: "重置密码",
+    resourceType: "user",
+    resourceId: c => c.req.param("userId") ?? "",
+  })],
   security: authedSecurity,
   request: {
     params: UserIdParamSchema,
@@ -301,7 +364,13 @@ export const disableUserRoute = createRoute({
   operationId: "disableUser",
   summary: "禁用用户",
   description: "禁用用户并清除其所有 session。禁止禁用自己。需 users.disable。",
-  middleware: usersDisableMiddleware,
+  middleware: [...usersDisableMiddleware, audit({
+    action: "iam.user.disable",
+    label: "禁用用户",
+    resourceType: "user",
+    resourceId: c => c.req.param("userId") ?? "",
+    before: async c => getUserById(c.req.param("userId") ?? ""),
+  })],
   security: authedSecurity,
   request: { params: UserIdParamSchema },
   responses: {
@@ -319,7 +388,13 @@ export const enableUserRoute = createRoute({
   operationId: "enableUser",
   summary: "启用用户",
   description: "启用已禁用的用户。需 users.enable。",
-  middleware: usersEnableMiddleware,
+  middleware: [...usersEnableMiddleware, audit({
+    action: "iam.user.enable",
+    label: "启用用户",
+    resourceType: "user",
+    resourceId: c => c.req.param("userId") ?? "",
+    before: async c => getUserById(c.req.param("userId") ?? ""),
+  })],
   security: authedSecurity,
   request: { params: UserIdParamSchema },
   responses: {
@@ -336,7 +411,14 @@ export const transferUserOrganizationRoute = createRoute({
   operationId: "transferUserOrganization",
   summary: "调岗",
   description: "改 user.orgId 到操作者管理子树内的新 org,并清理调岗后失效的授权。clearAllGrants=true 清空全部授权(默认仅清旧组织失效的授权)。禁止调岗自己。需 users.update。",
-  middleware: usersUpdateMiddleware,
+  middleware: [...usersUpdateMiddleware, audit({
+    action: "iam.user.transfer_org",
+    label: "用户调岗",
+    resourceType: "user",
+    resourceId: c => c.req.param("userId") ?? "",
+    relations: ["orgId"],
+    before: async c => getUserById(c.req.param("userId") ?? ""),
+  })],
   security: authedSecurity,
   request: {
     params: UserIdParamSchema,
@@ -359,7 +441,16 @@ export const assignUserRoleRoute = createRoute({
   operationId: "assignUserRole",
   summary: "授用户角色",
   description: "给用户在指定组织授予角色,可指定过期。重复授可续期。需 assignments.grant。",
-  middleware: assignmentsGrantMiddleware,
+  middleware: [...assignmentsGrantMiddleware, audit({
+    action: "iam.assignment.grant_role",
+    label: "授用户角色",
+    resourceRefs: c => [
+      { type: "user", id: c.req.param("userId") ?? "" },
+      { type: "role", id: c.req.param("roleId") ?? "" },
+    ],
+    resourceId: c => c.req.param("userId") ?? "",
+    relations: ["orgId"],
+  })],
   security: authedSecurity,
   request: {
     params: UserRoleParamSchema,
@@ -379,7 +470,19 @@ export const deleteUserRoleRoute = createRoute({
   operationId: "deleteUserRole",
   summary: "撤用户角色",
   description: "撤销用户在指定组织的角色授权(需 roleId + orgId 定位)。禁止撤销自己的授权。需 assignments.revoke。",
-  middleware: assignmentsRevokeMiddleware,
+  middleware: [...assignmentsRevokeMiddleware, audit({
+    action: "iam.assignment.revoke_role",
+    label: "撤用户角色",
+    resourceRefs: c => [
+      { type: "user", id: c.req.param("userId") ?? "" },
+      { type: "role", id: c.req.param("roleId") ?? "" },
+    ],
+    resourceId: c => c.req.param("userId") ?? "",
+    before: async (c) => {
+      const [row] = await db.select().from(userRoles).where(eq(userRoles.userId, c.req.param("userId") ?? ""));
+      return row;
+    },
+  })],
   security: authedSecurity,
   request: { params: UserRoleParamSchema, query: OrgIdQuerySchema },
   responses: {
@@ -397,7 +500,12 @@ export const assignUserPermissionRoute = createRoute({
   operationId: "assignUserPermission",
   summary: "授用户权限",
   description: "给用户在指定组织直接授予权限(allow 或 deny),可指定过期。重复授时 effect 以新值为准。需 assignments.grant。",
-  middleware: assignmentsGrantMiddleware,
+  middleware: [...assignmentsGrantMiddleware, audit({
+    action: "iam.assignment.grant_permission",
+    label: "授用户权限",
+    resourceType: "user",
+    resourceId: c => c.req.param("userId") ?? "",
+  })],
   security: authedSecurity,
   request: {
     params: UserPermissionParamSchema,
@@ -417,7 +525,16 @@ export const deleteUserPermissionRoute = createRoute({
   operationId: "deleteUserPermission",
   summary: "撤用户权限",
   description: "撤销用户在指定组织的直接权限授权(需 permission + orgId 定位)。禁止撤销自己的授权。需 assignments.revoke。",
-  middleware: assignmentsRevokeMiddleware,
+  middleware: [...assignmentsRevokeMiddleware, audit({
+    action: "iam.assignment.revoke_permission",
+    label: "撤用户权限",
+    resourceType: "user",
+    resourceId: c => c.req.param("userId") ?? "",
+    before: async (c) => {
+      const [row] = await db.select().from(userPermissions).where(eq(userPermissions.userId, c.req.param("userId") ?? ""));
+      return row;
+    },
+  })],
   security: authedSecurity,
   request: { params: UserPermissionParamSchema, query: OrgIdQuerySchema },
   responses: {
@@ -502,7 +619,15 @@ export const createOrganizationRoute = createRoute({
   operationId: "createOrganization",
   summary: "创建组织",
   description: "创建组织,可指定 parentId 挂到父组织下。需 organizations.create。",
-  middleware: organizationsCreateMiddleware,
+  middleware: [...organizationsCreateMiddleware, audit({
+    action: "iam.org.create",
+    label: "创建组织",
+    resourceType: "org",
+    resourceId: async (c) => {
+      const body = await c.res.clone().json() as { id?: string };
+      return body.id ?? "";
+    },
+  })],
   security: authedSecurity,
   request: { body: { content: { "application/json": { schema: CreateOrganizationSchema } } } },
   responses: {
@@ -536,7 +661,13 @@ export const updateOrganizationRoute = createRoute({
   operationId: "updateOrganization",
   summary: "修改组织",
   description: "修改组织 name 或 parentId。改 parentId 时防环。需 organizations.update。",
-  middleware: organizationsUpdateMiddleware,
+  middleware: [...organizationsUpdateMiddleware, audit({
+    action: "iam.org.update",
+    label: "修改组织",
+    resourceType: "org",
+    resourceId: c => c.req.param("orgId") ?? "",
+    before: async c => IamService.getOrganizationById(c.req.param("orgId") ?? ""),
+  })],
   security: authedSecurity,
   request: {
     params: OrganizationIdParamSchema,
@@ -557,7 +688,13 @@ export const deleteOrganizationRoute = createRoute({
   operationId: "deleteOrganization",
   summary: "删除组织",
   description: "删除组织。有子组织或有用户时拒绝删除。需 organizations.delete。",
-  middleware: organizationsDeleteMiddleware,
+  middleware: [...organizationsDeleteMiddleware, audit({
+    action: "iam.org.delete",
+    label: "删除组织",
+    resourceType: "org",
+    resourceId: c => c.req.param("orgId") ?? "",
+    before: async c => IamService.getOrganizationById(c.req.param("orgId") ?? ""),
+  })],
   security: authedSecurity,
   request: { params: OrganizationIdParamSchema },
   responses: {

@@ -1,11 +1,12 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { bearer } from "better-auth/plugins/bearer";
 
 import { db } from "../../db/client.js";
 import * as authSchema from "../../db/schema/auth-schema.js";
 import env from "../../env.js";
+import { writeAudit } from "../audit/index.js";
 
 /**
  * Better Auth 实例。
@@ -44,20 +45,54 @@ export const auth = betterAuth({
     },
   },
   hooks: {
-    // 模板不提供自助注册:hooks.before 对所有 /api/auth/* 触发(BA 用户级 hook 无路径 matcher),
-    // 命中 /sign-up/email 一律拒绝(不依赖 DB 开关)。ctx 不暴露 path(运行时由 dispatch 注入),
-    // 用 request.url 的 pathname 判断端点(见 ADR-0007 superseded 注记:原运行时 signUp 开关已取消)。
-    before: async (ctx) => {
-      // pathname 判断(去 query/fragment),防带参 URL 绕过 endsWith 整个 url
-      // (如 /sign-up/email?foo=bar 的 url.endsWith("/sign-up/email") 为 false 会放行)。
+    // 模板不提供自助注册 + sign-out 审计:hooks.before 对所有 /api/auth/* 触发。
+    // 用 createAuthMiddleware 包装获取完整 ctx 类型(GenericEndpointContext)。
+    before: createAuthMiddleware(async (ctx) => {
       const url = ctx.request?.url;
-      if (url != null && new URL(url).pathname.endsWith("/sign-up/email")) {
+      const pathname = url != null ? new URL(url).pathname : "";
+
+      // 禁注册
+      if (pathname.endsWith("/sign-up/email")) {
         throw APIError.from("FORBIDDEN", {
           message: "不支持自助注册",
           code: "AUTH_SIGNUP_DISABLED",
         });
       }
-    },
+
+      // sign-out 审计:session 删除前记(getSessionFromCtx 拿当前 session)
+      if (pathname.endsWith("/sign-out")) {
+        const session = await getSessionFromCtx(ctx, { disableRefresh: true });
+        if (session != null) {
+          void writeAudit({
+            action: "auth.sign-out",
+            resourceRefs: [{ type: "user", id: session.user.id }],
+            status: "success",
+            actorUserId: session.user.id,
+            actorOrgId: (session.user as { orgId?: string | null }).orgId ?? null,
+          });
+        }
+      }
+    }),
+    after: createAuthMiddleware(async (ctx) => {
+      const url = ctx.request?.url;
+      const pathname = url != null ? new URL(url).pathname : "";
+
+      // sign-in 审计:成功和失败都执行(after hook 在 APIError 时也跑)
+      if (pathname.endsWith("/sign-in/email")) {
+        const returned = ctx.context.returned;
+        const failed = isAPIError(returned);
+        const user = failed ? null : ctx.context.newSession?.user;
+
+        void writeAudit({
+          action: "auth.sign-in",
+          resourceRefs: user != null ? [{ type: "user", id: user.id }] : [],
+          status: failed ? "failure" : "success",
+          errorCode: failed ? (returned as { body?: { code?: string } }).body?.code : undefined,
+          actorUserId: user?.id ?? null,
+          actorOrgId: (user as { orgId?: string | null } | undefined)?.orgId ?? null,
+        });
+      }
+    }),
   },
   databaseHooks: {
     session: {

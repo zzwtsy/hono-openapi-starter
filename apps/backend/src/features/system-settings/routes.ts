@@ -1,10 +1,12 @@
 import { createRoute, z } from "@hono/zod-openapi";
 
+import { audit } from "@/core/audit/index.js";
 import { requireAuth } from "@/core/auth/require-auth.js";
 import { requirePermission } from "@/core/auth/require-permission.js";
 import { jsonErrorResponse, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
 import { SettingKeyParamSchema, SystemSettingSchema, UpdateSettingSchema } from "./schemas.js";
+import { SystemSettingService } from "./service.js";
 
 const authErrorResponses = {
   401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
@@ -33,7 +35,15 @@ export const updateSettingRoute = createRoute({
   operationId: "updateSetting",
   summary: "修改或创建系统配置",
   description: "修改或创建一条配置。需 settings.update。",
-  middleware: [requireAuth(), requirePermission("settings.update")] as const,
+  middleware: [requireAuth(), requirePermission("settings.update"), audit({
+    action: "settings.update",
+    label: "修改系统配置",
+    resourceType: "setting",
+    resourceId: c => c.req.param("key") ?? "",
+    before: async (c) => {
+      return SystemSettingService.get(c.req.param("key") ?? "");
+    },
+  })] as const,
   security: authedSecurity,
   request: {
     params: SettingKeyParamSchema,

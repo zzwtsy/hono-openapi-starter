@@ -64,11 +64,13 @@ export function audit(config: AuditConfig) {
         }
       }
 
-      writeAudit({
+      // 先解析 resourceRefs(async),再 fire-and-forget writeAudit
+      const refs = config.resourceRefs != null
+        ? await config.resourceRefs(c)
+        : [{ type: config.resourceType ?? "unknown", id: await config.resourceId?.(c) ?? "" }];
+      void writeAudit({
         action: config.action,
-        resourceRefs: config.resourceRefs != null
-          ? config.resourceRefs(c)
-          : [{ type: config.resourceType, id: config.resourceId(c) }],
+        resourceRefs: refs,
         beforeState: before,
         afterState: after,
         relations: config.relations,

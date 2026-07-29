@@ -36,8 +36,8 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
     // 6. 组装记录入队
     const record: AuditRecord = {
       id: generateId(),
-      actorUserId: ctx?.actorUserId ?? null,
-      actorOrgId: ctx?.actorOrgId ?? null,
+      actorUserId: entry.actorUserId ?? ctx?.actorUserId ?? null,
+      actorOrgId: entry.actorOrgId ?? ctx?.actorOrgId ?? null,
       actorRoleSnapshot: ctx?.actorRoleSnapshot ?? null,
       action: entry.action,
       resourceRefs: refsWithNames,

@@ -1,8 +1,12 @@
 import { createRoute, z } from "@hono/zod-openapi";
 
+import { eq } from "drizzle-orm";
+import { audit } from "@/core/audit/index.js";
 import { requireAuth } from "@/core/auth/require-auth.js";
 import { jsonErrorResponse, jsonErrorResponses, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
+import { db } from "@/db/client.js";
+import { user } from "@/db/schema/index.js";
 import { ChangeMyPasswordSchema, MeSchema, UpdateMeSchema, UserSchema } from "./schemas.js";
 
 export const getMeRoute = createRoute({
@@ -29,7 +33,19 @@ export const updateMeRoute = createRoute({
   operationId: "updateMe",
   summary: "自助修改显示名",
   description: "当前用户修改自己的显示名(name)。不改 email/orgId/disabled;不删 session。",
-  middleware: [requireAuth()],
+  middleware: [requireAuth(), audit({
+    action: "me.update",
+    label: "自助修改显示名",
+    resourceType: "user",
+    resourceId: c => c.get("user")?.id ?? "",
+    before: async (c) => {
+      const userId = c.get("user")?.id;
+      if (userId == null)
+        return null;
+      const [u] = await db.select().from(user).where(eq(user.id, userId));
+      return u;
+    },
+  })],
   security: authedSecurity,
   request: {
     body: {
@@ -53,7 +69,12 @@ export const changeMyPasswordRoute = createRoute({
   summary: "自助修改密码",
   description:
     "当前用户修改自己的密码:验证当前密码 → 更新 → 删除全部 session(强制重新登录)。OAuth 用户无 credential account 返回 404。",
-  middleware: [requireAuth()],
+  middleware: [requireAuth(), audit({
+    action: "me.change_password",
+    label: "自助修改密码",
+    resourceType: "user",
+    resourceId: c => c.get("user")?.id ?? "",
+  })],
   security: authedSecurity,
   request: {
     body: {

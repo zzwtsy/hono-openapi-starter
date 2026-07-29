@@ -16,12 +16,12 @@ export interface AuditConfig {
   action: string;
   /** 前端展示的中文名,如"修改项目"。配置即 catalog,前端不维护映射。 */
   label: string;
-  /** 主资源类型(单资源快捷写法)。 */
-  resourceType: string;
-  /** 主资源 id(单资源快捷写法)。 */
-  resourceId: (c: Context<AppBindings>) => string;
-  /** 多资源操作时用此函数返回所有资源引用(覆盖 resourceType+resourceId)。 */
-  resourceRefs?: (c: Context<AppBindings>) => Array<{ type: string; id: string }>;
+  /** 主资源类型(单资源快捷写法;配了 resourceRefs 时可省略)。 */
+  resourceType?: string;
+  /** 主资源 id(单资源快捷写法;配了 resourceRefs 时可省略)。支持 async(create 操作从响应体取 id)。 */
+  resourceId?: (c: Context<AppBindings>) => string | Promise<string>;
+  /** 多资源操作时用此函数返回所有资源引用(覆盖 resourceType+resourceId)。支持 async。 */
+  resourceRefs?: (c: Context<AppBindings>) => Array<{ type: string; id: string }> | Promise<Array<{ type: string; id: string }>>;
   /** before/after 里需解析名称的关联字段名,如 `["orgId"]`。 */
   relations?: string[];
   /** handler 前查旧值。不配则无 before(diff 缺旧值)。 */
@@ -42,6 +42,10 @@ export interface AuditEntry {
   metadata?: Record<string, unknown>;
   status: "success" | "failure";
   errorCode?: string;
+  /** 手动传入 actor(认证事件不走 ALS)。不传则从 ALS 取。 */
+  actorUserId?: string | null;
+  /** 手动传入 actor 组织(认证事件不走 ALS)。不传则从 ALS 取。 */
+  actorOrgId?: string | null;
 }
 
 /** 审计日志数据库记录(队列中流转,最终 INSERT 到 audit_logs 表)。 */
