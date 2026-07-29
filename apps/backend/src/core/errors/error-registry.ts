@@ -81,6 +81,8 @@ export const errorRegistry = {
   PROJECT_NAME_CONFLICT: { status: 409, defaultMessage: "Project name already exists", expose: true },
   // SETTING
   SETTING_KEY_UNKNOWN: { status: 422, defaultMessage: "Unknown setting key", expose: true },
+  // AUDIT
+  AUDIT_LOG_NOT_FOUND: { status: 404, defaultMessage: "Audit log not found", expose: true },
 } as const;
 
 export type ErrorCode = keyof typeof errorRegistry;

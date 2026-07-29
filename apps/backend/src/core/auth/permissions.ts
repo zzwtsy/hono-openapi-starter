@@ -13,6 +13,7 @@ export const permissionResources = [
   { name: "users", label: "用户" },
   { name: "projects", label: "项目" },
   { name: "settings", label: "设置" },
+  { name: "audit", label: "操作日志" },
 ] as const satisfies readonly { name: string; label: string }[];
 
 export type ResourceName = (typeof permissionResources)[number]["name"];

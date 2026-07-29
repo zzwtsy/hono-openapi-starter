@@ -3,6 +3,7 @@ import { configureOpenApi } from "./core/app/openapi.js";
 import { registerAuthRoute } from "./core/app/register-routes.js";
 import { startRetentionCleanup } from "./core/audit/index.js";
 import { setPermissionChecker } from "./core/authorization/index.js";
+import auditRouter from "./features/audit/index.js";
 import healthRouter, { healthzRouter } from "./features/health/index.js";
 import iamRouter from "./features/iam/index.js";
 import { IamPermissionChecker } from "./features/iam/permission-checker.js";
@@ -27,6 +28,7 @@ app.route("/api/v1", meRouter);
 app.route("/api/v1", projectsRouter);
 app.route("/api/v1", iamRouter);
 app.route("/api/v1", systemSettingsRouter);
+app.route("/api/v1", auditRouter);
 configureOpenApi(app);
 
 export { app };

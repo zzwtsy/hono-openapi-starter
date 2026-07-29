@@ -1,0 +1,188 @@
+import type { Context } from "hono";
+
+import type { AppBindings } from "@/core/http/context.js";
+import { and, desc, eq, gte, inArray, lt, lte, or, sql } from "drizzle-orm";
+
+import { getRetentionCutoff } from "@/core/audit/retention.js";
+import { requireOrgUser } from "@/core/auth/context.js";
+import { AppError } from "@/core/errors/app-error.js";
+import { decodeCursor, encodeCursor } from "@/core/http/pagination.js";
+import { db } from "@/db/client.js";
+import { auditLogs, user } from "@/db/schema/index.js";
+import { getManagedSubtree } from "@/features/iam/org-tree.js";
+import { ProjectService } from "@/features/projects/service.js";
+import { auditActionCatalog } from "./audit-actions.js";
+
+/**
+ * audit feature service:审计日志查询 + by-resource 可见性校验 + action 目录。
+ *
+ * - 全局列表按 actorOrgId 管理子树过滤(与 IAM 可见性语义一致)
+ * - by-resource 用 GIN @> 查询,cursor 分页(时间线加载更多)
+ * - by-resource 可见性校验按 resourceType 分派(复用各 feature 现有校验逻辑)
+ * - 保留策略惰性过滤:查询时自动排除过期数据
+ */
+export const AuditService = {
+  /** 全局审计列表(offset 分页 + 筛选 + 管理子树过滤)。 */
+  async list(query: {
+    page: number;
+    pageSize: number;
+    action?: string;
+    actorUserId?: string;
+    status?: "success" | "failure";
+    from?: string;
+    to?: string;
+    actorOrgIds: string[];
+  }) {
+    const conditions = [];
+
+    // 管理子树过滤
+    conditions.push(inArray(auditLogs.actorOrgId, query.actorOrgIds));
+
+    // 保留策略惰性过滤
+    const cutoff = getRetentionCutoff();
+    if (cutoff != null) {
+      conditions.push(gte(auditLogs.occurredAt, cutoff));
+    }
+
+    // 筛选条件
+    if (query.action != null) {
+      conditions.push(eq(auditLogs.action, query.action));
+    }
+    if (query.actorUserId != null) {
+      conditions.push(eq(auditLogs.actorUserId, query.actorUserId));
+    }
+    if (query.status != null) {
+      conditions.push(eq(auditLogs.status, query.status));
+    }
+    if (query.from != null) {
+      conditions.push(gte(auditLogs.occurredAt, new Date(query.from)));
+    }
+    if (query.to != null) {
+      conditions.push(lte(auditLogs.occurredAt, new Date(query.to)));
+    }
+
+    const where = and(...conditions);
+    const offset = (query.page - 1) * query.pageSize;
+
+    // 并行查数据和 count
+    const [items, [countRow]] = await Promise.all([
+      db.select().from(auditLogs).where(where).orderBy(desc(auditLogs.occurredAt), desc(auditLogs.id)).limit(query.pageSize).offset(offset),
+      db.select({ count: sql<number>`cast(count(*) as int)` }).from(auditLogs).where(where),
+    ]);
+
+    const total = countRow?.count ?? 0;
+
+    return {
+      items,
+      meta: {
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+        totalPages: Math.ceil(total / query.pageSize),
+      },
+    };
+  },
+
+  /** by-resource 时间线(cursor 分页,GIN @> 查询)。 */
+  async listByResource(query: {
+    resourceType: string;
+    resourceId: string;
+    cursor?: string;
+    pageSize: number;
+  }) {
+    const conditions = [];
+
+    // GIN @> 查询:resource_refs 包含 { type, id }
+    conditions.push(
+      sql`${auditLogs.resourceRefs} @> ${JSON.stringify([{ type: query.resourceType, id: query.resourceId }])}::jsonb`,
+    );
+
+    // 保留策略惰性过滤
+    const cutoff = getRetentionCutoff();
+    if (cutoff != null) {
+      conditions.push(gte(auditLogs.occurredAt, cutoff));
+    }
+
+    // cursor 条件:(occurredAt, id) < (cursor.occurredAt, cursor.id)
+    if (query.cursor != null) {
+      const cursorData = decodeCursor(query.cursor);
+      if (cursorData == null) {
+        throw new AppError("COMMON_VALIDATION_FAILED");
+      }
+      conditions.push(
+        or(
+          lt(auditLogs.occurredAt, new Date(cursorData.occurredAt)),
+          and(
+            eq(auditLogs.occurredAt, new Date(cursorData.occurredAt)),
+            lt(auditLogs.id, cursorData.id),
+          ),
+        ),
+      );
+    }
+
+    const where = and(...conditions);
+
+    // 多取 1 条判断 hasMore
+    const items = await db
+      .select()
+      .from(auditLogs)
+      .where(where)
+      .orderBy(desc(auditLogs.occurredAt), desc(auditLogs.id))
+      .limit(query.pageSize + 1);
+
+    const hasMore = items.length > query.pageSize;
+    const pageItems = hasMore ? items.slice(0, -1) : items;
+    const lastItem = pageItems[pageItems.length - 1];
+    const nextCursor = hasMore && lastItem != null
+      ? encodeCursor({ occurredAt: lastItem.occurredAt.toISOString(), id: lastItem.id })
+      : null;
+
+    return {
+      items: pageItems,
+      meta: { nextCursor, hasMore },
+    };
+  },
+
+  /** by-resource 可见性校验:按 resourceType 分派,复用各 feature 现有校验逻辑。 */
+  async checkResourceVisibility(
+    c: Context<AppBindings>,
+    resourceType: string,
+    resourceId: string,
+  ): Promise<void> {
+    const { orgId: actorOrgId } = requireOrgUser(c);
+
+    switch (resourceType) {
+      case "project": {
+        // 复用 ProjectService.getById(含组织归属校验,不在本组织抛 NOT_FOUND)
+        await ProjectService.getById(resourceId, actorOrgId);
+        break;
+      }
+      case "user": {
+        // 查用户 orgId 是否在操作者管理子树内
+        const subtree = await getManagedSubtree(actorOrgId);
+        const [target] = await db
+          .select({ orgId: user.orgId })
+          .from(user)
+          .where(eq(user.id, resourceId));
+        if (target?.orgId == null || !subtree.includes(target.orgId)) {
+          throw new AppError("USER_NOT_FOUND");
+        }
+        break;
+      }
+      case "role":
+      case "org":
+      case "setting": {
+        // 全局资源不绑组织,有对应 read 权限即可(权限由路由中间件校验,service 不重复)
+        break;
+      }
+      default: {
+        throw new AppError("COMMON_VALIDATION_FAILED");
+      }
+    }
+  },
+
+  /** action 目录(前端渲染查表)。 */
+  async listActions() {
+    return [...auditActionCatalog];
+  },
+};
