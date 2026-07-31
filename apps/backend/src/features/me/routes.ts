@@ -1,13 +1,11 @@
 import { createRoute, z } from "@hono/zod-openapi";
 
-import { eq } from "drizzle-orm";
 import { audit } from "@/core/audit/index.js";
 import { requireAuth } from "@/core/auth/require-auth.js";
 import { jsonErrorResponse, jsonErrorResponses, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
-import { db } from "@/db/client.js";
-import { user } from "@/db/schema/index.js";
 import { ChangeMyPasswordSchema, MeSchema, UpdateMeSchema, UserSchema } from "./schemas.js";
+import { MeService } from "./service.js";
 
 export const getMeRoute = createRoute({
   method: "get",
@@ -38,13 +36,7 @@ export const updateMeRoute = createRoute({
     label: "自助修改显示名",
     resourceType: "user",
     resourceId: c => c.get("user")?.id ?? "",
-    before: async (c) => {
-      const userId = c.get("user")?.id;
-      if (userId == null)
-        return null;
-      const [u] = await db.select().from(user).where(eq(user.id, userId));
-      return u;
-    },
+    before: async c => MeService.getUserSnapshot(c.get("user")?.id ?? ""),
   })],
   security: authedSecurity,
   request: {

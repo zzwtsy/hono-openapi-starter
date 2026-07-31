@@ -1,12 +1,13 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { bearer } from "better-auth/plugins/bearer";
 
 import { db } from "../../db/client.js";
 import * as authSchema from "../../db/schema/auth-schema.js";
 import env from "../../env.js";
 import { writeAudit } from "../audit/index.js";
+import { resolveSignInEvent, signOutAuditUser } from "./auth-audit-events.js";
 
 /**
  * Better Auth 实例。
@@ -59,16 +60,18 @@ export const auth = betterAuth({
         });
       }
 
-      // sign-out 审计:session 删除前记(getSessionFromCtx 拿当前 session)
+      // sign-out 审计:session 删除前记(getSessionFromCtx 拿当前 session);
+      // 取不到 session(未登录/已失效)不记,成功失败判定以取到 session 为准(已知局限见计划)。
       if (pathname.endsWith("/sign-out")) {
         const session = await getSessionFromCtx(ctx, { disableRefresh: true });
-        if (session != null) {
+        const user = signOutAuditUser(session);
+        if (user != null) {
           void writeAudit({
             action: "auth.sign-out",
-            resourceRefs: [{ type: "user", id: session.user.id }],
+            resourceRefs: [{ type: "user", id: user.id }],
             status: "success",
-            actorUserId: session.user.id,
-            actorOrgId: (session.user as { orgId?: string | null }).orgId ?? null,
+            actorUserId: user.id,
+            actorOrgId: user.orgId,
           });
         }
       }
@@ -77,19 +80,16 @@ export const auth = betterAuth({
       const url = ctx.request?.url;
       const pathname = url != null ? new URL(url).pathname : "";
 
-      // sign-in 审计:成功和失败都执行(after hook 在 APIError 时也跑)
+      // sign-in 审计:成功和失败都执行(after hook 在 APIError 时也跑),解析收敛在纯函数
       if (pathname.endsWith("/sign-in/email")) {
-        const returned = ctx.context.returned;
-        const failed = isAPIError(returned);
-        const user = failed ? null : ctx.context.newSession?.user;
-
+        const event = resolveSignInEvent(ctx);
         void writeAudit({
           action: "auth.sign-in",
-          resourceRefs: user != null ? [{ type: "user", id: user.id }] : [],
-          status: failed ? "failure" : "success",
-          errorCode: failed ? (returned as { body?: { code?: string } }).body?.code : undefined,
-          actorUserId: user?.id ?? null,
-          actorOrgId: (user as { orgId?: string | null } | undefined)?.orgId ?? null,
+          resourceRefs: event.user != null ? [{ type: "user", id: event.user.id }] : [],
+          status: event.status,
+          errorCode: event.errorCode,
+          actorUserId: event.user?.id ?? null,
+          actorOrgId: event.user?.orgId ?? null,
         });
       }
     }),

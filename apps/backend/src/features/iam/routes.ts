@@ -1,13 +1,10 @@
 import { createRoute, z } from "@hono/zod-openapi";
 
-import { eq } from "drizzle-orm";
 import { audit } from "@/core/audit/index.js";
 import { requireAuth } from "@/core/auth/require-auth.js";
 import { requirePermission } from "@/core/auth/require-permission.js";
 import { jsonErrorResponse, jsonErrorResponses, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
-import { db } from "@/db/client.js";
-import { user, userPermissions, userRoles } from "@/db/schema/index.js";
 import {
   AssignRolePermissionsSchema,
   CreateOrganizationSchema,
@@ -62,12 +59,6 @@ const authErrorResponses = {
   401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
   403: jsonErrorResponse("无权限", "COMMON_FORBIDDEN"),
 };
-
-/** 查用户旧值(audit before 复用,不校验归属--校验由 handler 做)。 */
-async function getUserById(id: string) {
-  const [u] = await db.select().from(user).where(eq(user.id, id));
-  return u;
-}
 
 // --- 权限目录 ---
 export const listPermissionsRoute = createRoute({
@@ -137,8 +128,8 @@ export const updateRoleRoute = createRoute({
     action: "iam.role.update",
     label: "修改角色",
     resourceType: "role",
-    resourceId: c => c.req.param("roleId") ?? "",
-    before: async c => IamService.getRoleById(c.req.param("roleId") ?? ""),
+    resourceId: c => c.req.param("roleId")!,
+    before: async c => IamService.getRoleById(c.req.param("roleId")!),
   })],
   security: authedSecurity,
   request: {
@@ -164,8 +155,8 @@ export const deleteRoleRoute = createRoute({
     action: "iam.role.delete",
     label: "删除角色",
     resourceType: "role",
-    resourceId: c => c.req.param("roleId") ?? "",
-    before: async c => IamService.getRoleById(c.req.param("roleId") ?? ""),
+    resourceId: c => c.req.param("roleId")!,
+    before: async c => IamService.getRoleById(c.req.param("roleId")!),
   })],
   security: authedSecurity,
   request: { params: RoleIdParamSchema },
@@ -204,8 +195,8 @@ export const assignRolePermissionsRoute = createRoute({
     action: "iam.role.assign_permissions",
     label: "给角色配权限",
     resourceType: "role",
-    resourceId: c => c.req.param("roleId") ?? "",
-    before: async c => IamService.listRolePermissions(c.req.param("roleId") ?? ""),
+    resourceId: c => c.req.param("roleId")!,
+    before: async c => IamService.listRolePermissions(c.req.param("roleId")!),
   })],
   security: authedSecurity,
   request: {
@@ -230,8 +221,8 @@ export const deleteRolePermissionRoute = createRoute({
     action: "iam.role.revoke_permission",
     label: "撤角色权限",
     resourceType: "role",
-    resourceId: c => c.req.param("roleId") ?? "",
-    before: async c => IamService.listRolePermissions(c.req.param("roleId") ?? ""),
+    resourceId: c => c.req.param("roleId")!,
+    before: async c => IamService.listRolePermissions(c.req.param("roleId")!),
   })],
   security: authedSecurity,
   request: { params: z.object({ roleId: z.string(), permission: z.string() }) },
@@ -316,8 +307,8 @@ export const updateUserRoute = createRoute({
     action: "iam.user.update",
     label: "修改用户资料",
     resourceType: "user",
-    resourceId: c => c.req.param("userId") ?? "",
-    before: async c => getUserById(c.req.param("userId") ?? ""),
+    resourceId: c => c.req.param("userId")!,
+    before: async c => IamService.getUserById(c.req.param("userId")!),
   })],
   security: authedSecurity,
   request: {
@@ -343,7 +334,7 @@ export const resetUserPasswordRoute = createRoute({
     action: "iam.user.reset_password",
     label: "重置密码",
     resourceType: "user",
-    resourceId: c => c.req.param("userId") ?? "",
+    resourceId: c => c.req.param("userId")!,
   })],
   security: authedSecurity,
   request: {
@@ -368,8 +359,8 @@ export const disableUserRoute = createRoute({
     action: "iam.user.disable",
     label: "禁用用户",
     resourceType: "user",
-    resourceId: c => c.req.param("userId") ?? "",
-    before: async c => getUserById(c.req.param("userId") ?? ""),
+    resourceId: c => c.req.param("userId")!,
+    before: async c => IamService.getUserById(c.req.param("userId")!),
   })],
   security: authedSecurity,
   request: { params: UserIdParamSchema },
@@ -392,8 +383,8 @@ export const enableUserRoute = createRoute({
     action: "iam.user.enable",
     label: "启用用户",
     resourceType: "user",
-    resourceId: c => c.req.param("userId") ?? "",
-    before: async c => getUserById(c.req.param("userId") ?? ""),
+    resourceId: c => c.req.param("userId")!,
+    before: async c => IamService.getUserById(c.req.param("userId")!),
   })],
   security: authedSecurity,
   request: { params: UserIdParamSchema },
@@ -415,9 +406,14 @@ export const transferUserOrganizationRoute = createRoute({
     action: "iam.user.transfer_org",
     label: "用户调岗",
     resourceType: "user",
-    resourceId: c => c.req.param("userId") ?? "",
+    resourceId: c => c.req.param("userId")!,
     relations: ["orgId"],
-    before: async c => getUserById(c.req.param("userId") ?? ""),
+    before: async c => IamService.getUserById(c.req.param("userId")!),
+    metadata: async (c) => {
+      // 路由 middleware 先于 zod validators 执行,valid() 不可用;c.req.json() 有 Hono body 缓存,后读安全。
+      const body = await c.req.json<{ clearAllGrants?: boolean }>();
+      return { clearAllGrants: body.clearAllGrants ?? false };
+    },
   })],
   security: authedSecurity,
   request: {
@@ -445,11 +441,15 @@ export const assignUserRoleRoute = createRoute({
     action: "iam.assignment.grant_role",
     label: "授用户角色",
     resourceRefs: c => [
-      { type: "user", id: c.req.param("userId") ?? "" },
-      { type: "role", id: c.req.param("roleId") ?? "" },
+      { type: "user", id: c.req.param("userId")! },
+      { type: "role", id: c.req.param("roleId")! },
     ],
-    resourceId: c => c.req.param("userId") ?? "",
     relations: ["orgId"],
+    before: async (c) => {
+      // 路由 middleware 先于 zod validators 执行,valid() 不可用;c.req.json() 有 Hono body 缓存,后读安全。
+      const body = await c.req.json<{ orgId?: string }>();
+      return IamService.getUserRoleGrant(c.req.param("userId")!, c.req.param("roleId")!, body.orgId ?? "");
+    },
   })],
   security: authedSecurity,
   request: {
@@ -474,14 +474,14 @@ export const deleteUserRoleRoute = createRoute({
     action: "iam.assignment.revoke_role",
     label: "撤用户角色",
     resourceRefs: c => [
-      { type: "user", id: c.req.param("userId") ?? "" },
-      { type: "role", id: c.req.param("roleId") ?? "" },
+      { type: "user", id: c.req.param("userId")! },
+      { type: "role", id: c.req.param("roleId")! },
     ],
-    resourceId: c => c.req.param("userId") ?? "",
-    before: async (c) => {
-      const [row] = await db.select().from(userRoles).where(eq(userRoles.userId, c.req.param("userId") ?? ""));
-      return row;
-    },
+    before: async c => IamService.getUserRoleGrant(
+      c.req.param("userId")!,
+      c.req.param("roleId")!,
+      c.req.query("orgId") ?? "",
+    ),
   })],
   security: authedSecurity,
   request: { params: UserRoleParamSchema, query: OrgIdQuerySchema },
@@ -504,7 +504,12 @@ export const assignUserPermissionRoute = createRoute({
     action: "iam.assignment.grant_permission",
     label: "授用户权限",
     resourceType: "user",
-    resourceId: c => c.req.param("userId") ?? "",
+    resourceId: c => c.req.param("userId")!,
+    before: async (c) => {
+      // 路由 middleware 先于 zod validators 执行,valid() 不可用;c.req.json() 有 Hono body 缓存,后读安全。
+      const body = await c.req.json<{ orgId?: string }>();
+      return IamService.getUserPermissionGrant(c.req.param("userId")!, c.req.param("permission")!, body.orgId ?? "");
+    },
   })],
   security: authedSecurity,
   request: {
@@ -529,11 +534,12 @@ export const deleteUserPermissionRoute = createRoute({
     action: "iam.assignment.revoke_permission",
     label: "撤用户权限",
     resourceType: "user",
-    resourceId: c => c.req.param("userId") ?? "",
-    before: async (c) => {
-      const [row] = await db.select().from(userPermissions).where(eq(userPermissions.userId, c.req.param("userId") ?? ""));
-      return row;
-    },
+    resourceId: c => c.req.param("userId")!,
+    before: async c => IamService.getUserPermissionGrant(
+      c.req.param("userId")!,
+      c.req.param("permission")!,
+      c.req.query("orgId") ?? "",
+    ),
   })],
   security: authedSecurity,
   request: { params: UserPermissionParamSchema, query: OrgIdQuerySchema },
@@ -665,8 +671,8 @@ export const updateOrganizationRoute = createRoute({
     action: "iam.org.update",
     label: "修改组织",
     resourceType: "org",
-    resourceId: c => c.req.param("orgId") ?? "",
-    before: async c => IamService.getOrganizationById(c.req.param("orgId") ?? ""),
+    resourceId: c => c.req.param("orgId")!,
+    before: async c => IamService.getOrganizationById(c.req.param("orgId")!),
   })],
   security: authedSecurity,
   request: {
@@ -692,8 +698,8 @@ export const deleteOrganizationRoute = createRoute({
     action: "iam.org.delete",
     label: "删除组织",
     resourceType: "org",
-    resourceId: c => c.req.param("orgId") ?? "",
-    before: async c => IamService.getOrganizationById(c.req.param("orgId") ?? ""),
+    resourceId: c => c.req.param("orgId")!,
+    before: async c => IamService.getOrganizationById(c.req.param("orgId")!),
   })],
   security: authedSecurity,
   request: { params: OrganizationIdParamSchema },
