@@ -193,7 +193,7 @@ middleware: [requireAuth(), requirePermission(permission)] as const,
 users.read
 users.create
 users.update
-auditLogs.read
+audit.read
 projects.delete
 ```
 

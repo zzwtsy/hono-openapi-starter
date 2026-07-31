@@ -27,7 +27,6 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - 分级管理员（对目标 org 二次 manage 检查）。
 - Redis 权限缓存 + 事件失效（第一版 ALS 请求级 memoize 足够）。
 - 自定义角色之外的实例角色复杂策略；过期记录 housekeeping。
-- audit log（关键写操作审计，独立 feature 推进）。
 - 硬删除用户（用禁用替代，涉及权限/项目归属 cascade，延后）。
 - 邮件验证 + 找回密码邮件（走管理员代重置，不发邮件；邮件基础设施延后）。
 - 用户多组织 + 切换组织（保持单组织，`user.orgId` 不变）。
@@ -163,7 +162,9 @@ sequenceDiagram
 
 ## 10. Logging & Audit
 
-管理写操作走结构化日志（LogLayer，带 requestId）。userId 由 requireAuth 认证成功后用 `c.var.logger.getContextManager().appendContext({ userId })` 注入请求级 logger context（业务日志与 access log 均带 userId；appendContext 绕开 withContext 的 `ts/no-unsafe-argument` 误报，见 logging-loglayer.md）。关键写操作的 audit log 暂未实现（见 Non-goals）。
+管理写操作走结构化日志（LogLayer，带 requestId）。userId 由 requireAuth 认证成功后用 `c.var.logger.getContextManager().appendContext({ userId })` 注入请求级 logger context（业务日志与 access log 均带 userId；appendContext 绕开 withContext 的 `ts/no-unsafe-argument` 误报，见 logging-loglayer.md）。
+
+全部 18 个写路由已接入审计日志（`audit()` 中间件声明式接入，含 before 快照与 metadata），见 [backend audit feature 文档](../backend/audit.md) 与 ADR-0009。
 
 ## 11. Test Cases
 
