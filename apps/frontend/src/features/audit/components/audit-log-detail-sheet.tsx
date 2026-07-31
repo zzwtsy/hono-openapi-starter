@@ -1,7 +1,8 @@
 import type { AuditLog } from "@/api/globals";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { formatAuditTime, formatResourceRefs } from "../lib/format-diff";
+import { formatActorName, formatAuditTime, formatResourceRefs } from "../lib/format-diff";
+import { AuditDiffList } from "./audit-diff-list";
 
 interface AuditLogDetailSheetProps {
   log: AuditLog | null;
@@ -28,7 +29,7 @@ export function AuditLogDetailSheet({ log, open, onOpenChange }: AuditLogDetailS
             <div className="flex flex-col gap-3 text-sm">
               <div>
                 <span className="text-muted-foreground">操作人：</span>
-                <span>{log.actorUserId ?? "-"}</span>
+                <span>{formatActorName(log)}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">资源：</span>
@@ -62,9 +63,11 @@ export function AuditLogDetailSheet({ log, open, onOpenChange }: AuditLogDetailS
 
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">变更详情</span>
-              <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
-                {JSON.stringify({ before: log.beforeState, after: log.afterState }, null, 2)}
-              </pre>
+              <AuditDiffList
+                before={log.beforeState}
+                after={log.afterState}
+                changedFields={log.changedFields}
+              />
             </div>
           </>
         )}

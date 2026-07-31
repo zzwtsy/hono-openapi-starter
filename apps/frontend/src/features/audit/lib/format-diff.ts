@@ -1,6 +1,23 @@
 import type { AuditAction, AuditLog, ResourceRef } from "@/api/globals";
 
-import { format } from "date-fns";
+/**
+ * 审计时间格式:绝对时间 + 秒级精度(审计/合规场景,见 audit-frontend-polish-stage2 调研)。
+ * 浏览器本地时区渲染;时区消歧由调用方列头标注(如「时间(本地)」)。
+ * 模块级 formatter 避免每次 render 重建。
+ */
+const auditTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  dateStyle: "medium",
+  timeStyle: "medium",
+});
+
+/** 资源类型 -> 中文标签(与 IAM resourceLabel 对齐思路);未知类型回退原文。 */
+const resourceTypeLabels: Record<string, string> = {
+  user: "用户",
+  role: "角色",
+  org: "组织",
+  project: "项目",
+  setting: "配置",
+};
 
 /** 从 AuditLog 组装时间线摘要(变更字段 / 失败原因)。失败优先:失败时 before 有值也不展示"变更"。 */
 export function formatAuditSummary(log: AuditLog): string {
@@ -14,9 +31,10 @@ export function formatAuditSummary(log: AuditLog): string {
   return "";
 }
 
-/** 格式化时间(MM-dd HH:mm)。 */
+/** 格式化时间(绝对时间 + 秒,如 `2026年7月1日 14:30:45`);无效日期回退原文。 */
 export function formatAuditTime(iso: string): string {
-  return format(new Date(iso), "MM-dd HH:mm");
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : auditTimeFormatter.format(date);
 }
 
 /** 根据 action 代码查中文 label,未命中回退 action 本身。 */
@@ -30,6 +48,14 @@ export function formatResourceRefs(refs: ResourceRef[] | null | undefined): stri
     return "";
   }
   return refs
-    .map(r => r.name != null ? `${r.type} ${r.name}` : `${r.type} ${r.id}`)
+    .map((r) => {
+      const typeLabel = resourceTypeLabels[r.type] ?? r.type;
+      return r.name != null ? `${typeLabel} ${r.name}` : `${typeLabel} ${r.id}`;
+    })
     .join(" / ");
+}
+
+/** actor 显示:写时名称快照优先,快照缺失回退 ID,再退占位(登录失败等无 actor 事件)。 */
+export function formatActorName(log: Pick<AuditLog, "actorName" | "actorUserId">): string {
+  return log.actorName ?? log.actorUserId ?? "-";
 }
