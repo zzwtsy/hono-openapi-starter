@@ -37,7 +37,7 @@ lastReviewedAt: 2026-08-01
 | 参数 | 类型 | 说明 |
 | --- | --- | --- |
 | `page` / `pageSize` | int | 默认 1 / 25,pageSize ≤ 100 |
-| `action` / `actorUserId` / `status` | string | 按动作 / 操作者 / 结果(success\|failure)过滤 |
+| `action` / `actorUserId` / `actorKeyword` / `status` | string | 按动作 / 操作者 ID / **操作者名称模糊搜索**(ilike `actor_name_snapshot`)/ 结果(success\|failure)过滤 |
 | `from` / `to` | ISO datetime | 时间范围过滤 |
 
 响应 meta:`{ page, pageSize, total, totalPages }`。列表按操作者管理子树过滤(与 IAM 可见性语义一致),并包含 `actorOrgId IS NULL` 的无归属事件(登录失败等,任何管理员可见)。
@@ -46,7 +46,7 @@ lastReviewedAt: 2026-08-01
 
 **`listAuditActions`** — 返回 `[{ action, label }]` 数组,来自后端 `audit-actions.ts` catalog(26 项:24 个写路由 + 登录/登出)。
 
-每条日志(`AuditLog`)包含:`id` / `actorUserId` / `actorOrgId` / `action` / `resourceRefs`(`[{type,id,name?}]`)/ `beforeState` / `afterState` / `changedFields` / `ipAddress` / `userAgent` / `requestId` / `status` / `errorCode` / `metadata` / `occurredAt`。
+每条日志(`AuditLog`)包含:`id` / `actorUserId` / **`actorName`(写时快照)** / `actorOrgId` / `action` / `resourceRefs`(`[{type,id,name?}]`)/ `beforeState` / `afterState` / `changedFields` / `ipAddress` / `userAgent` / `requestId` / `status` / `errorCode` / `metadata` / `occurredAt`。
 
 ## 6. Auth & Permissions
 
@@ -73,6 +73,7 @@ by-resource 时间线**不需 `audit.read`**:`checkResourceVisibility` 按 resou
 | --- | --- | --- |
 | `id` | text PK | UUIDv4(应用层生成) |
 | `actor_user_id` / `actor_org_id` | text 可空 | 操作者;`actor_org_id` 为 null 表示无归属事件(登录失败) |
+| `actor_name_snapshot` | text 可空 | **写时名称快照**(requireAuth 注入 `session.user.name`,改名不污染历史;查询响应 `actorName` 即此列;登录失败等无 actor 事件为 null) |
 | `actor_role_snapshot` | text | 角色快照(阶段 1 暂不填) |
 | `action` | text NOT NULL | 业务动作,如 `projects.update` |
 | `resource_refs` | jsonb NOT NULL | 资源引用数组,写入时解析名称快照 |
@@ -135,6 +136,6 @@ sequenceDiagram
 
 ## 12. Rollout / Migration Notes
 
-- 迁移:新增 `audit_logs` 表 + 5 索引(含 GIN),见 `db/migrations`
+- 迁移:新增 `audit_logs` 表 + 5 索引(含 GIN),见 `db/migrations`;后续 0007 加 `actor_name_snapshot` 列(写时快照)
 - env:`AUDIT_LOG_RETENTION_DAYS`(默认 90,0 = 永久保留;查询时惰性过滤 + 每小时定时物理删除)
 - 埋点接入:写路由 `middleware` 数组追加 `audit({ action, label, resourceType/resourceRefs, before?, metadata? })` 即可;action/label 需与 `features/audit/audit-actions.ts` 目录一致(配置即 catalog)
