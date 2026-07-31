@@ -11,13 +11,15 @@ export function useAuditLogs(params: {
   pageSize: number;
   action?: string;
   actorUserId?: string;
+  /** 按操作者名称模糊搜索(后端 ilike actor_name_snapshot)。 */
+  actorKeyword?: string;
   status?: "success" | "failure";
   from?: string;
   to?: string;
 }) {
   const { data, loading, error, send } = useWatcher(
     () => Apis.Audit.listAuditLogs({ params }),
-    [params.page, params.action, params.actorUserId, params.status, params.from, params.to],
+    [params.page, params.action, params.actorUserId, params.actorKeyword, params.status, params.from, params.to],
     { immediate: true, cacheFor: 0 },
   );
 
