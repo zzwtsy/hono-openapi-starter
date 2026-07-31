@@ -122,6 +122,21 @@ describe("writeAudit", () => {
     expect(lastEnqueuedRecord()?.errorCode).toBe("PROJECT_NAME_CONFLICT");
   });
 
+  it("failure 时 changedFields 置 null(before/after 有值也不展示变更)", async () => {
+    vi.clearAllMocks();
+    await writeAudit({
+      action: "projects.update",
+      resourceRefs: [{ type: "project", id: "p1" }],
+      beforeState: { name: "旧名" },
+      afterState: { name: "新名" },
+      status: "failure",
+      errorCode: "PROJECT_NAME_CONFLICT",
+    });
+
+    expect(lastEnqueuedRecord()?.status).toBe("failure");
+    expect(lastEnqueuedRecord()?.changedFields).toBeNull();
+  });
+
   it("changedFields: after 为非对象时返回 null(边界)", async () => {
     vi.clearAllMocks();
     await writeAudit({

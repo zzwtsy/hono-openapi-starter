@@ -27,8 +27,10 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
     const beforeWithNames = await resolveRelationNames(beforeSanitized, entry.relations);
     const afterWithNames = await resolveRelationNames(afterSanitized, entry.relations);
 
-    // 4. 计算 changedFields
-    const changedFields = computeChangedFields(beforeSanitized, afterSanitized);
+    // 4. 计算 changedFields(失败路径无「变更」语义:before 有值也不展示,before 全 key 会误导)
+    const changedFields = entry.status === "failure"
+      ? null
+      : computeChangedFields(beforeSanitized, afterSanitized);
 
     // 5. 从 ALS 取 actor 上下文
     const ctx = getAuditContext();

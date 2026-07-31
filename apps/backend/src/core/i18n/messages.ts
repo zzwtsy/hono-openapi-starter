@@ -44,7 +44,6 @@ const zh: Record<ErrorCode, string> = {
   PROJECT_NOT_FOUND: "项目不存在",
   PROJECT_NAME_CONFLICT: "项目名已存在",
   SETTING_KEY_UNKNOWN: "未知配置项",
-  AUDIT_LOG_NOT_FOUND: "操作日志不存在",
 } satisfies Record<ErrorCode, string>;
 
 export const messages: Record<Locale, Record<ErrorCode, string>> = {

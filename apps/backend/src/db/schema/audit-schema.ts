@@ -10,8 +10,6 @@ import { createdAtColumn, idColumn } from "./shared/index.js";
  * - `changed_fields` 存变更字段名数组,前端时间线摘要展示用
  * - append-only:应用层自律(writeAudit 只 INSERT),不提供 update/delete 接口
  * - 保留策略:env `AUDIT_LOG_RETENTION_DAYS` 控制,查询时惰性过滤 + 定时物理删除
- *
- * 设计见 docs/adr/0009-audit-log.md(待补,功能未完整)。
  */
 export const auditLogs = pgTable(
   "audit_logs",

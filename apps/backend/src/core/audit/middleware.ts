@@ -16,12 +16,39 @@ import { writeAudit } from "./write-audit.js";
  * 3. handler 后:读 after(配了 `after` 函数则调函数;否则默认从响应体 `.data` 读)
  * 4. fire-and-forget:writeAudit 入队,不阻塞响应
  *
- * 失败路径:handler 抛错时,catch 里记 failure(before 有值、after 为空、errorCode 记错误码),
- * 然后 rethrow 给 errorHandler。finally 确保无论成功失败都记审计。
+ * 失败路径:Hono compose 在 handler 抛错时于最内层 dispatch 调用 errorHandler,并把错误挂到
+ * `c.error`,`next()` 不会 reject —— 失败检测以 `c.error` + `c.res.status` 为准(catch 仅作兜底)。
+ * finally 确保无论成功失败都记审计。
  *
  * 用 `createMiddleware<AppBindings>` 不带泛型,配置经闭包传入,不破坏 createRoute 类型推断。
  */
+/**
+ * 定义期校验(fail-fast):配置错误在 route 定义时即抛,不等到请求期。
+ * 与请求期 try/catch 互补:静态错误尽早暴露,运行时抖动(响应体不可读等)不覆盖业务。
+ */
+function assertAuditConfig(config: AuditConfig): void {
+  if (typeof config.action !== "string" || config.action.length === 0) {
+    throw new Error("audit config: action is required");
+  }
+  if (typeof config.label !== "string" || config.label.length === 0) {
+    throw new Error(`audit config: label is required (action: ${config.action})`);
+  }
+  const hasResourceType = config.resourceType != null;
+  const hasResourceRefs = config.resourceRefs != null;
+  if (hasResourceType === hasResourceRefs) {
+    throw new Error(
+      `audit config: exactly one of resourceType or resourceRefs must be set (action: ${config.action})`,
+    );
+  }
+  if (hasResourceType && config.resourceId == null) {
+    throw new Error(`audit config: resourceType set but resourceId missing (action: ${config.action})`);
+  }
+}
+
 export function audit(config: AuditConfig) {
+  // 配置错误在此抛(route 定义期),不会污染请求路径。
+  assertAuditConfig(config);
+
   return createMiddleware<AppBindings>(async (c, next) => {
     // 1. handler 前:查 before(配了才查)
     let before: unknown;
@@ -39,10 +66,21 @@ export function audit(config: AuditConfig) {
 
     try {
       await next();
-      if (c.res.status >= 400) {
+      // Hono compose 在 handler 抛错时于最内层 dispatch 调用 errorHandler 并把错误挂到
+      // context.error,next() 正常 resolve —— 失败检测以 c.error + c.res.status 为准。
+      // (旧实现依赖 catch,errorCode 对 handler 抛错恒为 undefined——隐性 bug)
+      const err = c.error;
+      if (err instanceof AppError) {
+        status = "failure";
+        errorCode = err.code;
+      } else if (err != null) {
+        status = "failure";
+        errorCode = "COMMON_INTERNAL_ERROR";
+      } else if (c.res.status >= 400) {
         status = "failure";
       }
     } catch (e) {
+      // 兜底:正常配置下 next() 不 reject(compose 内部消化),仅非 Error 抛错等边界走到这里。
       status = "failure";
       errorCode = e instanceof AppError ? e.code : "COMMON_INTERNAL_ERROR";
       throw e;
@@ -65,42 +103,50 @@ export function audit(config: AuditConfig) {
         }
       }
 
-      // 先解析 resourceRefs(async),再 fire-and-forget writeAudit
-      if (config.resourceRefs != null) {
-        const refs = await config.resourceRefs(c);
-        void writeAudit({
-          action: config.action,
-          resourceRefs: refs,
-          beforeState: before,
-          afterState: after,
-          relations: config.relations,
-          metadata: config.metadata,
-          status,
-          errorCode,
-        }).catch(() => {
-          // fire-and-forget:审计失败不阻塞响应,也不应崩溃进程。
-          // writeAudit 内部已 try/catch 并 log error,此处二次兜底。
-        });
-      } else if (config.resourceType != null) {
-        const id = await config.resourceId?.(c) ?? "";
-        void writeAudit({
-          action: config.action,
-          resourceRefs: [{ type: config.resourceType, id }],
-          beforeState: before,
-          afterState: after,
-          relations: config.relations,
-          metadata: config.metadata,
-          status,
-          errorCode,
-        }).catch(() => {
-          // fire-and-forget:审计失败不阻塞响应,也不应崩溃进程。
-          // writeAudit 内部已 try/catch 并 log error,此处二次兜底。
-        });
-      } else {
+      // 解析 resourceRefs(async),再 fire-and-forget writeAudit。
+      // 解析失败降级为空引用数组继续记(failure 审计不丢),不覆盖业务响应/错误码——
+      // create 路由失败路径响应体不可读,`c.res.clone().json()` 必然抛(旧实现此处
+      // 会把业务错误替换成 500)。
+      let refs: Array<{ type: string; id: string }> = [];
+      try {
+        if (config.resourceRefs != null) {
+          refs = await config.resourceRefs(c);
+        } else if (config.resourceType != null) {
+          const id = (await config.resourceId?.(c)) ?? "";
+          refs = [{ type: config.resourceType, id }];
+        }
+      } catch (e) {
         logger
+          .withError(e)
           .withMetadata({ action: config.action })
-          .error("audit config missing resourceType and resourceRefs, skipping audit record");
+          .error("audit resource refs resolution failed, recording without refs");
       }
+
+      // metadata 解析:支持函数形式(读请求上下文);解析失败不阻塞审计,降级 undefined
+      let metadata: Record<string, unknown> | undefined;
+      if (typeof config.metadata === "function") {
+        try {
+          metadata = await config.metadata(c);
+        } catch {
+          // metadata 解析失败不阻塞审计
+        }
+      } else {
+        metadata = config.metadata;
+      }
+
+      void writeAudit({
+        action: config.action,
+        resourceRefs: refs,
+        beforeState: before,
+        afterState: after,
+        relations: config.relations,
+        metadata,
+        status,
+        errorCode,
+      }).catch(() => {
+        // fire-and-forget:审计失败不阻塞响应,也不应崩溃进程。
+        // writeAudit 内部已 try/catch 并 log error,此处二次兜底。
+      });
     }
   });
 }
