@@ -13,6 +13,9 @@ interface AuditTimelineProps {
   resourceId: string;
 }
 
+/** 骨架屏占位 key(静态内容,不用 index key)。 */
+const SKELETON_KEYS = ["skeleton-1", "skeleton-2", "skeleton-3"];
+
 export function AuditTimeline({ resourceType, resourceId }: AuditTimelineProps) {
   const actions = useAuditActions();
   const { items, loading, error, hasMore, loadMore, refresh } = useResourceAuditLogs(resourceType, resourceId);
@@ -20,8 +23,8 @@ export function AuditTimeline({ resourceType, resourceId }: AuditTimelineProps) 
   if (loading && items.length === 0) {
     return (
       <div className="flex flex-col gap-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
+        {SKELETON_KEYS.map(k => (
+          <Skeleton key={k} className="h-16 w-full" />
         ))}
       </div>
     );
@@ -64,9 +67,14 @@ export function AuditTimeline({ resourceType, resourceId }: AuditTimelineProps) 
         ))}
       </Timeline>
       {hasMore && (
-        <Button variant="outline" size="sm" onClick={loadMore} disabled={loading}>
-          {loading ? "加载中..." : "加载更多"}
-        </Button>
+        <div className="flex flex-col items-start gap-1.5">
+          <Button variant="outline" size="sm" onClick={loadMore} disabled={loading}>
+            {loading ? "加载中..." : "加载更多"}
+          </Button>
+          {error != null && (
+            <span className="text-xs text-destructive">加载失败,点击重试</span>
+          )}
+        </div>
       )}
     </div>
   );

@@ -21,11 +21,22 @@ export function AuditLogTable() {
     action?: string;
     status?: "success" | "failure";
     actorUserId?: string;
+    from?: string;
+    to?: string;
   }>({});
   const [selected, setSelected] = useState<AuditLog | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const { data, loading, error, send } = useAuditLogs({ page, pageSize: 25, ...filters });
+  // 日期(YYYY-MM-DD)转 ISO:from 当天 00:00,to 当天 23:59:59.999(含当天)
+  const { data, loading, error, send } = useAuditLogs({
+    page,
+    pageSize: 25,
+    action: filters.action,
+    status: filters.status,
+    actorUserId: filters.actorUserId,
+    from: filters.from != null ? new Date(`${filters.from}T00:00:00`).toISOString() : undefined,
+    to: filters.to != null ? new Date(`${filters.to}T23:59:59.999`).toISOString() : undefined,
+  });
 
   const handleRowClick = (log: AuditLog) => {
     setSelected(log);
@@ -44,6 +55,8 @@ export function AuditLogTable() {
         action={filters.action}
         status={filters.status}
         actorUserId={filters.actorUserId}
+        from={filters.from}
+        to={filters.to}
         onActionChange={(v) => {
           setFilters(f => ({ ...f, action: v }));
           setPage(1);
@@ -54,6 +67,14 @@ export function AuditLogTable() {
         }}
         onActorChange={(v) => {
           setFilters(f => ({ ...f, actorUserId: v }));
+          setPage(1);
+        }}
+        onFromChange={(v) => {
+          setFilters(f => ({ ...f, from: v }));
+          setPage(1);
+        }}
+        onToChange={(v) => {
+          setFilters(f => ({ ...f, to: v }));
           setPage(1);
         }}
         onReset={handleReset}
@@ -83,7 +104,19 @@ export function AuditLogTable() {
                 </TableHeader>
                 <TableBody>
                   {data?.items.map(log => (
-                    <TableRow key={log.id} className="cursor-pointer" onClick={() => { handleRowClick(log); }}>
+                    <TableRow
+                      key={log.id}
+                      className="cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => { handleRowClick(log); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleRowClick(log);
+                        }
+                      }}
+                    >
                       <TableCell className="text-xs text-muted-foreground">{formatAuditTime(log.occurredAt)}</TableCell>
                       <TableCell className="text-sm">{getActionLabel(log.action, actions)}</TableCell>
                       <TableCell className="text-xs">{log.actorUserId ?? "-"}</TableCell>

@@ -40,10 +40,10 @@ export function AuditLogDetailSheet({ log, open, onOpenChange }: AuditLogDetailS
                   <span className="text-destructive">{log.errorCode}</span>
                 </div>
               )}
-              {Array.isArray(log.changedFields) && (log.changedFields as string[]).length > 0 && (
+              {Array.isArray(log.changedFields) && log.changedFields.length > 0 && (
                 <div>
                   <span className="text-muted-foreground">变更字段：</span>
-                  <span>{(log.changedFields as string[]).join(", ")}</span>
+                  <span>{log.changedFields.join(", ")}</span>
                 </div>
               )}
               {log.ipAddress != null && (

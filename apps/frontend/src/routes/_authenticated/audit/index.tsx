@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import Apis from "@/api";
 import { PageHeader } from "@/components/shared/page-header";
 import { AuditLogTable } from "@/features/audit/components/audit-log-table";
 import { requirePermission } from "@/lib/require-permission";
@@ -7,9 +6,6 @@ import { requirePermission } from "@/lib/require-permission";
 export const Route = createFileRoute("/_authenticated/audit/")({
   beforeLoad: ({ context }) => {
     requirePermission(context.auth.permissions, "audit.read");
-  },
-  loader: async () => {
-    await Apis.Audit.listAuditActions();
   },
   component: Audit,
 });

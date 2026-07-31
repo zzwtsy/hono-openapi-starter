@@ -1,48 +1,55 @@
 import type { AuditLog } from "@/api/globals";
 import { useWatcher } from "alova/client";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Apis from "@/api";
 
 /**
  * by-resource 时间线(cursor 分页,加载更多)。
  *
- * cursor 是触发重取的 reactive state:首次为 undefined,loadMore 时推进 cursor 触发下一页。
- * resourceType/resourceId 变化时重置 cursor 和 items(父组件用 key remount 也会重置)。
+ * - 资源变化/挂载:useWatcher 自动重取首页(immediate + deps)
+ * - 加载更多/刷新:手动 `send(cursor)`(cursor 作为请求参数,不放进 reactive state)
+ *   —— 失败时 cursor 不变,再点一次重试同一页(旧实现 cursor 推进后失败无法重试)
+ * - 竞态:alova 默认 abortLast=true,data 只反映最近请求;onSuccess 里再用 requestRef
+ *   校验资源一致(双保险),并按请求的 cursor 区分 替换(首页/刷新) vs append(加载更多)
+ * - 资源切换时旧列表不展示:page 状态带 resourceKey,渲染时按当前 key 派生(无 reset effect)
  */
 export function useResourceAuditLogs(resourceType: string, resourceId: string) {
-  const [items, setItems] = useState<AuditLog[]>([]);
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [hasMore, setHasMore] = useState(false);
-  // 记录上次请求的 cursor,区分「首次/重置」(替换)与「加载更多」(append)
-  const requestedCursorRef = useRef<string | undefined>(undefined);
+  const resourceKey = `${resourceType}:${resourceId}`;
+  const [page, setPage] = useState<{ resourceKey: string; items: AuditLog[]; hasMore: boolean } | null>(null);
+  // 最近一次请求的上下文:onSuccess 据此决定替换/append,并丢弃过期响应
+  const requestRef = useRef<{ resourceKey: string; cursor?: string } | null>(null);
 
-  const { data, loading, error, send } = useWatcher(
-    () => Apis.Audit.listAuditLogsByResource({
-      params: { resourceType, resourceId, cursor, pageSize: 20 },
-    }),
-    [resourceType, resourceId, cursor],
+  const watcher = useWatcher(
+    (cursor?: string) => {
+      requestRef.current = { resourceKey, cursor };
+      return Apis.Audit.listAuditLogsByResource({
+        params: { resourceType, resourceId, cursor, pageSize: 20 },
+      });
+    },
+    [resourceType, resourceId],
     { immediate: true, cacheFor: 0 },
   );
 
-  // resourceType/resourceId 变化时重置为首页
-  useEffect(() => {
-    requestedCursorRef.current = undefined;
-    setCursor(undefined);
-    setItems([]);
-  }, [resourceType, resourceId]);
-
-  // 数据返回后:按 requestedCursor 区分替换/append
-  useEffect(() => {
-    if (data == null) {
+  // 成功回调(binder 有类型):按请求的 cursor 区分 替换/append,并丢弃过期响应
+  watcher.onSuccess((event) => {
+    const req = requestRef.current;
+    if (req == null || req.resourceKey !== resourceKey) {
       return;
     }
-    if (requestedCursorRef.current == null) {
-      setItems(data.items);
-    } else {
-      setItems(prev => [...prev, ...data.items]);
-    }
-    setHasMore(data.meta.hasMore);
-  }, [data]);
+    setPage(prev => ({
+      resourceKey,
+      // cursor 有值 => 加载更多(同一资源,append);无值 => 首页/刷新(替换)
+      items: req.cursor != null ? [...(prev?.items ?? []), ...event.data.items] : event.data.items,
+      hasMore: event.data.meta.hasMore,
+    }));
+  });
+
+  const { data, loading, error, send } = watcher;
+
+  // 按当前资源派生:资源切换后、新首页到达前,旧列表不展示
+  const visible = page != null && page.resourceKey === resourceKey ? page : null;
+  const items = visible?.items ?? [];
+  const hasMore = visible?.hasMore ?? false;
 
   const loadMore = () => {
     if (!hasMore || loading) {
@@ -50,14 +57,11 @@ export function useResourceAuditLogs(resourceType: string, resourceId: string) {
     }
     const nextCursor = data?.meta.nextCursor;
     if (nextCursor != null) {
-      requestedCursorRef.current = nextCursor;
-      setCursor(nextCursor);
+      void send(nextCursor);
     }
   };
 
   const refresh = () => {
-    requestedCursorRef.current = undefined;
-    setCursor(undefined);
     void send();
   };
 
