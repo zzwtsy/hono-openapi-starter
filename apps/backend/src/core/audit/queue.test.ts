@@ -37,6 +37,7 @@ function makeRecord(action: string): AuditRecord {
     actorUserId: "u1",
     actorOrgId: "o1",
     actorRoleSnapshot: null,
+    actorNameSnapshot: null,
     action,
     resourceRefs: [{ type: "project", id: "p1" }],
     beforeState: null,

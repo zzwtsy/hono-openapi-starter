@@ -10,10 +10,11 @@ import { isAPIError } from "better-auth/api";
  * `ctx.context.newSession` 是 BA 类型化公开字段(types/context.d.ts),非内部 API。
  */
 
-/** 审计需要的用户最小信息(orgId 用于管理子树可见性过滤)。 */
+/** 审计需要的用户最小信息(orgId 用于管理子树可见性过滤;name 是写时名称快照)。 */
 export interface AuthAuditUser {
   id: string;
   orgId: string | null;
+  name: string | null;
 }
 
 /** sign-in 审计事件解析结果:成功/失败都记。 */
@@ -57,9 +58,13 @@ function toAuthAuditUser(user: unknown): AuthAuditUser | null {
   if (user == null || typeof user !== "object") {
     return null;
   }
-  const { id, orgId } = user as { id?: unknown; orgId?: unknown };
+  const { id, orgId, name } = user as { id?: unknown; orgId?: unknown; name?: unknown };
   if (typeof id !== "string") {
     return null;
   }
-  return { id, orgId: typeof orgId === "string" ? orgId : null };
+  return {
+    id,
+    orgId: typeof orgId === "string" ? orgId : null,
+    name: typeof name === "string" ? name : null,
+  };
 }

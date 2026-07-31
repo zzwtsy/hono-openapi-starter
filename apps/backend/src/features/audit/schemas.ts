@@ -18,6 +18,7 @@ export const ResourceRefSchema = z.object({
 export const AuditLogSchema = z.object({
   id: z.string().openapi({ description: "日志 ID" }),
   actorUserId: z.string().nullable().openapi({ description: "操作者 ID" }),
+  actorName: z.string().nullable().openapi({ description: "操作者名称(写时快照,改名不污染历史)" }),
   actorOrgId: z.string().nullable().openapi({ description: "操作者组织 ID" }),
   action: z.string().openapi({ description: "业务动作", example: "projects.update" }),
   resourceRefs: z.array(ResourceRefSchema).openapi({ description: "资源引用数组 [{type,id,name?}]" }),
@@ -46,7 +47,8 @@ export const AuditActionSchema = z.object({
 /** 全局审计列表查询参数(offset 分页 + 筛选)。 */
 export const ListAuditLogsQuerySchema = OffsetPaginationQuerySchema.extend({
   action: z.string().optional().openapi({ description: "按动作过滤" }),
-  actorUserId: z.string().optional().openapi({ description: "按操作者过滤" }),
+  actorUserId: z.string().optional().openapi({ description: "按操作者 ID 过滤" }),
+  actorKeyword: z.string().optional().openapi({ description: "按操作者名称模糊搜索" }),
   status: z.enum(["success", "failure"]).optional().openapi({ description: "按结果过滤" }),
   from: z.iso.datetime().optional().openapi({ description: "起始时间(ISO 8601)" }),
   to: z.iso.datetime().optional().openapi({ description: "截止时间(ISO 8601)" }),

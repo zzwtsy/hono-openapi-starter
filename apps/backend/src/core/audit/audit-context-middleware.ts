@@ -19,6 +19,7 @@ export function auditContextMiddleware() {
       actorUserId: null,
       actorOrgId: null,
       actorRoleSnapshot: null,
+      actorNameSnapshot: null,
       ipAddress: getRemoteAddress(c.req.raw),
       userAgent: c.req.header("user-agent") ?? undefined,
       requestId: c.get("requestId"),

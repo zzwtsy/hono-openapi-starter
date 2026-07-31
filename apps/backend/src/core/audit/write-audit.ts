@@ -41,6 +41,7 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
       actorUserId: entry.actorUserId ?? ctx?.actorUserId ?? null,
       actorOrgId: entry.actorOrgId ?? ctx?.actorOrgId ?? null,
       actorRoleSnapshot: ctx?.actorRoleSnapshot ?? null,
+      actorNameSnapshot: entry.actorNameSnapshot ?? ctx?.actorNameSnapshot ?? null,
       action: entry.action,
       resourceRefs: refsWithNames,
       beforeState: beforeWithNames,

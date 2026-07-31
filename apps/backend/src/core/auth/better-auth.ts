@@ -72,6 +72,7 @@ export const auth = betterAuth({
             status: "success",
             actorUserId: user.id,
             actorOrgId: user.orgId,
+            actorNameSnapshot: user.name,
           });
         }
       }
@@ -90,6 +91,7 @@ export const auth = betterAuth({
           errorCode: event.errorCode,
           actorUserId: event.user?.id ?? null,
           actorOrgId: event.user?.orgId ?? null,
+          actorNameSnapshot: event.user?.name ?? null,
         });
       }
     }),

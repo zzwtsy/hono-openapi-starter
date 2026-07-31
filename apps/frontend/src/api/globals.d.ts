@@ -446,6 +446,10 @@ export interface AuditLog {
    */
   actorUserId: string | null;
   /**
+   * 操作者名称(写时快照,改名不污染历史)
+   */
+  actorName: string | null;
+  /**
    * 操作者组织 ID
    */
   actorOrgId: string | null;
@@ -2653,8 +2657,10 @@ declare global {
        *   pageSize?: number
        *   // 按动作过滤
        *   action?: string
-       *   // 按操作者过滤
+       *   // 按操作者 ID 过滤
        *   actorUserId?: string
+       *   // 按操作者名称模糊搜索
+       *   actorKeyword?: string
        *   // 按结果过滤
        *   status?: 'success' | 'failure'
        *   // 起始时间(ISO 8601)
@@ -2676,6 +2682,8 @@ declare global {
        *     id: string
        *     // 操作者 ID
        *     actorUserId: string | null
+       *     // 操作者名称(写时快照,改名不污染历史)
+       *     actorName: string | null
        *     // 操作者组织 ID
        *     actorOrgId: string | null
        *     // 业务动作
@@ -2743,9 +2751,13 @@ declare global {
              */
             action?: string;
             /**
-             * 按操作者过滤
+             * 按操作者 ID 过滤
              */
             actorUserId?: string;
+            /**
+             * 按操作者名称模糊搜索
+             */
+            actorKeyword?: string;
             /**
              * 按结果过滤
              */
@@ -2797,6 +2809,8 @@ declare global {
        *     id: string
        *     // 操作者 ID
        *     actorUserId: string | null
+       *     // 操作者名称(写时快照,改名不污染历史)
+       *     actorName: string | null
        *     // 操作者组织 ID
        *     actorOrgId: string | null
        *     // 业务动作

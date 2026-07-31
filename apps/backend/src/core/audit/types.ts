@@ -46,6 +46,8 @@ export interface AuditEntry {
   actorUserId?: string | null;
   /** 手动传入 actor 组织(认证事件不走 ALS)。不传则从 ALS 取。 */
   actorOrgId?: string | null;
+  /** 手动传入 actor 名称快照(认证事件不走 ALS)。不传则从 ALS 取。 */
+  actorNameSnapshot?: string | null;
 }
 
 /** 审计日志数据库记录(队列中流转,最终 INSERT 到 audit_logs 表)。 */
@@ -54,6 +56,8 @@ export interface AuditRecord {
   actorUserId: string | null;
   actorOrgId: string | null;
   actorRoleSnapshot: string | null;
+  /** 操作者名称快照(写时从 session.user.name 存;历史不随改名漂移)。 */
+  actorNameSnapshot: string | null;
   action: string;
   resourceRefs: Array<{ type: string; id: string; name?: string }>;
   beforeState: unknown;

@@ -13,6 +13,8 @@ export interface AuditContext {
   actorUserId: string | null;
   actorOrgId: string | null;
   actorRoleSnapshot: string | null;
+  /** 操作者名称快照(session.user.name,改名不污染历史;认证事件手动传)。 */
+  actorNameSnapshot: string | null;
   ipAddress: string | undefined;
   userAgent: string | undefined;
   requestId: string | undefined;

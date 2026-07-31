@@ -21,6 +21,8 @@ export const auditLogs = pgTable(
     actorOrgId: text("actor_org_id"),
     /** 操作者角色快照(角色会变,记当时的)。阶段 1 暂不填。 */
     actorRoleSnapshot: text("actor_role_snapshot"),
+    /** 操作者名称快照(改名不污染历史;写时从 session.user.name 存)。 */
+    actorNameSnapshot: text("actor_name_snapshot"),
     /** 业务动作,如 `projects.update`。 */
     action: text("action").notNull(),
     /** 资源引用数组:`[{"type":"user","id":"u1","name":"张三"}]`,name 是写入时解析的快照。 */

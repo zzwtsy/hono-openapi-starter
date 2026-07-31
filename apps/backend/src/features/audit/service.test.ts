@@ -68,11 +68,12 @@ function makeCtx(user: { id: string; orgId: string } | undefined): Context<AppBi
   } as unknown as Context<AppBindings>;
 }
 
-/** 审计日志 DB 行(与 $inferSelect 形状一致,jsonb 字段用真实值)。 */
+/** 审计日志 DB 行($inferSelect 形状,含 actorNameSnapshot 快照列)。 */
 function row(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: "log-1",
     actorUserId: "u1",
+    actorNameSnapshot: "张三",
     actorOrgId: "org-a",
     actorRoleSnapshot: null,
     action: "projects.update",
@@ -97,7 +98,7 @@ beforeEach(() => {
 });
 
 describe("AuditService.list", () => {
-  it("分页 meta 计算 + DB 行转 DTO(occurredAt ISO、jsonb 透传)", async () => {
+  it("分页 meta 计算 + DB 行转 DTO(occurredAt ISO、jsonb 透传、actorName 直通)", async () => {
     mockDbChain([[row()], [{ count: 1 }]]);
 
     const result = await AuditService.list({ page: 2, pageSize: 25, actorOrgIds: ["org-a"] });
@@ -107,6 +108,7 @@ describe("AuditService.list", () => {
       id: "log-1",
       action: "projects.update",
       status: "success",
+      actorName: "张三",
       occurredAt: "2026-07-01T00:00:00.000Z",
       resourceRefs: [{ type: "project", id: "p1", name: "项目A" }],
     });
@@ -145,6 +147,36 @@ describe("AuditService.list", () => {
     expect(sql).toContain("status");
     expect(sql).toContain("created_at");
     expect(params).toEqual(expect.arrayContaining(["projects.update", "u1", "failure"]));
+  });
+
+  it("actorName 为 null(登录失败等无 actor 事件):DTO 直通 null", async () => {
+    mockDbChain([[row({ actorNameSnapshot: null })], [{ count: 1 }]]);
+
+    const result = await AuditService.list({ page: 1, pageSize: 25, actorOrgIds: ["org-a"] });
+
+    expect(result.items[0].actorName).toBeNull();
+  });
+
+  it("actorKeyword:WHERE 含 actor_name_snapshot ilike 谓词与参数", async () => {
+    const { captured } = mockDbChain([[], [{ count: 0 }]]);
+
+    await AuditService.list({ page: 1, pageSize: 25, actorOrgIds: ["org-a"], actorKeyword: "张" });
+
+    const { sql, params } = sqlQuery(captured[0]);
+    expect(sql).toContain("ilike");
+    expect(sql).toContain("actor_name_snapshot");
+    expect(params).toContain("%张%");
+  });
+
+  it("count 查询与 items 共享同一 where(含 actorKeyword 谓词)", async () => {
+    const { captured } = mockDbChain([[], [{ count: 0 }]]);
+
+    await AuditService.list({ page: 1, pageSize: 25, actorOrgIds: ["org-a"], actorKeyword: "张" });
+
+    // items 与 count 各调一次 where,同一条件对象(引用相等)
+    expect(captured).toHaveLength(2);
+    expect(captured[1]).toBe(captured[0]);
+    expect(sqlQuery(captured[1]).sql).toContain("ilike");
   });
 
   it("保留策略:cutoff 非 null 时 WHERE 含 occurred_at >= cutoff", async () => {

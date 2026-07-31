@@ -4,7 +4,7 @@ import type { Context } from "hono";
 import type { AuditLogSchema } from "./schemas.js";
 import type { AppBindings } from "@/core/http/context.js";
 
-import { and, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { getRetentionCutoff } from "@/core/audit/retention.js";
 import { requireOrgUser } from "@/core/auth/context.js";
 import { PermissionService } from "@/core/authorization/index.js";
@@ -23,6 +23,8 @@ type AuditLogDto = z.infer<typeof AuditLogSchema>;
 function toAuditLogDto(row: typeof auditLogs.$inferSelect): AuditLogDto {
   return {
     ...row,
+    // actorName 是写时名称快照列(改名不污染历史);登录失败等无 actor 事件为 null
+    actorName: row.actorNameSnapshot,
     resourceRefs: row.resourceRefs as AuditLogDto["resourceRefs"],
     beforeState: row.beforeState as AuditLogDto["beforeState"],
     afterState: row.afterState as AuditLogDto["afterState"],
@@ -48,6 +50,8 @@ export const AuditService = {
     pageSize: number;
     action?: string;
     actorUserId?: string;
+    /** 按操作者名称模糊搜索(ilike,通配符 % 当通配符用)。 */
+    actorKeyword?: string;
     status?: "success" | "failure";
     from?: string;
     to?: string;
@@ -75,6 +79,9 @@ export const AuditService = {
     if (query.actorUserId != null) {
       conditions.push(eq(auditLogs.actorUserId, query.actorUserId));
     }
+    if (query.actorKeyword != null) {
+      conditions.push(ilike(auditLogs.actorNameSnapshot, `%${query.actorKeyword}%`));
+    }
     if (query.status != null) {
       conditions.push(eq(auditLogs.status, query.status));
     }
@@ -88,7 +95,7 @@ export const AuditService = {
     const where = and(...conditions);
     const offset = (query.page - 1) * query.pageSize;
 
-    // 并行查数据和 count
+    // 并行查数据和 count(单表查询,无 join:actor 名称用写时快照列)
     const [items, [countRow]] = await Promise.all([
       db.select().from(auditLogs).where(where).orderBy(desc(auditLogs.occurredAt), desc(auditLogs.id)).limit(query.pageSize).offset(offset),
       db.select({ count: sql<number>`cast(count(*) as int)` }).from(auditLogs).where(where),

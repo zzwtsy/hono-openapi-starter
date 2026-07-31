@@ -9,7 +9,7 @@ describe("resolveSignInEvent", () => {
         newSession: { user: { id: "u1", orgId: "org-1", name: "张三" } },
       },
     });
-    expect(event).toEqual({ user: { id: "u1", orgId: "org-1" }, status: "success", errorCode: undefined });
+    expect(event).toEqual({ user: { id: "u1", orgId: "org-1", name: "张三" }, status: "success", errorCode: undefined });
   });
 
   it("失败:returned 是 APIError 形状(name=APIError),记 failure + errorCode,无 user", () => {
@@ -31,9 +31,9 @@ describe("resolveSignInEvent", () => {
 
   it("user 无 orgId 或 orgId 非字符串:归一为 null", () => {
     expect(resolveSignInEvent({ context: { newSession: { user: { id: "u1" } } } }).user)
-      .toEqual({ id: "u1", orgId: null });
+      .toEqual({ id: "u1", orgId: null, name: null });
     expect(resolveSignInEvent({ context: { newSession: { user: { id: "u1", orgId: 42 } } } }).user)
-      .toEqual({ id: "u1", orgId: null });
+      .toEqual({ id: "u1", orgId: null, name: null });
   });
 
   it("user 缺 id 或非对象:user null", () => {
@@ -44,7 +44,7 @@ describe("resolveSignInEvent", () => {
 
 describe("signOutAuditUser", () => {
   it("session 存在:提取用户 id/orgId", () => {
-    expect(signOutAuditUser({ user: { id: "u1", orgId: "org-1" } })).toEqual({ id: "u1", orgId: "org-1" });
+    expect(signOutAuditUser({ user: { id: "u1", orgId: "org-1", name: "张三" } })).toEqual({ id: "u1", orgId: "org-1", name: "张三" });
   });
 
   it("session 为 null(未登录):返回 null,不记", () => {
