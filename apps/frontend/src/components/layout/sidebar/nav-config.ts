@@ -1,7 +1,15 @@
 import type { LucideIcon } from "lucide-react";
 import type { FileRouteTypes } from "@/routeTree.gen";
 import type { AppPermission } from "@/types/permissions";
-import { Building2, FolderKanban, LayoutDashboard, Settings, ShieldCheck, Users } from "lucide-react";
+import {
+  Building2,
+  FolderKanban,
+  LayoutDashboard,
+  ScrollText,
+  Settings,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 
 interface NavItemMeta {
   title: string;
@@ -39,6 +47,10 @@ export const navGroups: readonly NavGroup[] = [
   },
   {
     label: "系统",
-    items: [{ to: "/settings", title: "系统设置", icon: Settings, permission: "settings.read" }],
+    icon: Settings,
+    items: [
+      { to: "/settings", title: "系统设置", icon: Settings, permission: "settings.read" },
+      { to: "/audit", title: "操作日志", icon: ScrollText, permission: "audit.read" },
+    ],
   },
 ];

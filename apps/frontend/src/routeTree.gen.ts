@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedAuditIndexRouteImport } from './routes/_authenticated/audit/index'
 import { Route as AuthenticatedIamOrganizationsRouteImport } from './routes/_authenticated/iam/organizations'
 import { Route as AuthenticatedIamRolesRouteImport } from './routes/_authenticated/iam/roles'
 import { Route as AuthenticatedIamUsersRouteImport } from './routes/_authenticated/iam/users'
@@ -55,6 +56,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAuditIndexRoute = AuthenticatedAuditIndexRouteImport.update({
+  id: '/audit/',
+  path: '/audit/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedIamOrganizationsRoute =
   AuthenticatedIamOrganizationsRouteImport.update({
     id: '/iam/organizations',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
   '/iam/roles': typeof AuthenticatedIamRolesRoute
   '/iam/users': typeof AuthenticatedIamUsersRoute
+  '/audit/': typeof AuthenticatedAuditIndexRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
   '/iam/roles': typeof AuthenticatedIamRolesRoute
   '/iam/users': typeof AuthenticatedIamUsersRoute
+  '/audit': typeof AuthenticatedAuditIndexRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
 }
 export interface FileRoutesById {
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/_authenticated/iam/organizations': typeof AuthenticatedIamOrganizationsRoute
   '/_authenticated/iam/roles': typeof AuthenticatedIamRolesRoute
   '/_authenticated/iam/users': typeof AuthenticatedIamUsersRoute
+  '/_authenticated/audit/': typeof AuthenticatedAuditIndexRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
 }
 export interface FileRouteTypes {
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/iam/organizations'
     | '/iam/roles'
     | '/iam/users'
+    | '/audit/'
     | '/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/iam/organizations'
     | '/iam/roles'
     | '/iam/users'
+    | '/audit'
     | '/projects'
   id:
     | '__root__'
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/_authenticated/iam/organizations'
     | '/_authenticated/iam/roles'
     | '/_authenticated/iam/users'
+    | '/_authenticated/audit/'
     | '/_authenticated/projects/'
   fileRoutesById: FileRoutesById
 }
@@ -214,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/audit/': {
+      id: '/_authenticated/audit/'
+      path: '/audit'
+      fullPath: '/audit/'
+      preLoaderRoute: typeof AuthenticatedAuditIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/iam/organizations': {
       id: '/_authenticated/iam/organizations'
       path: '/iam/organizations'
@@ -252,6 +271,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIamOrganizationsRoute: typeof AuthenticatedIamOrganizationsRoute
   AuthenticatedIamRolesRoute: typeof AuthenticatedIamRolesRoute
   AuthenticatedIamUsersRoute: typeof AuthenticatedIamUsersRoute
+  AuthenticatedAuditIndexRoute: typeof AuthenticatedAuditIndexRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
 }
 
@@ -262,6 +282,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIamOrganizationsRoute: AuthenticatedIamOrganizationsRoute,
   AuthenticatedIamRolesRoute: AuthenticatedIamRolesRoute,
   AuthenticatedIamUsersRoute: AuthenticatedIamUsersRoute,
+  AuthenticatedAuditIndexRoute: AuthenticatedAuditIndexRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
 }
 

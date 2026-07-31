@@ -200,6 +200,7 @@ export interface Me {
     | 'users.enable'
     | 'settings.read'
     | 'settings.update'
+    | 'audit.read'
   )[];
 }
 export interface Project {
@@ -342,6 +343,16 @@ export interface SystemSetting {
    */
   updatedByUserId: string | null;
 }
+export interface AuditAction {
+  /**
+   * 动作代码
+   */
+  action: string;
+  /**
+   * 中文标签
+   */
+  label: string;
+}
 export interface UpdateProject {
   name?: string;
   description?: string | null;
@@ -410,6 +421,84 @@ export interface RoleUserAssignment {
    * 过期时间(ISO 8601),null 表示永不过期
    */
   expiresAt: string | null;
+}
+export interface AuditLog {
+  /**
+   * 日志 ID
+   */
+  id: string;
+  /**
+   * 操作者 ID
+   */
+  actorUserId: string | null;
+  /**
+   * 操作者组织 ID
+   */
+  actorOrgId: string | null;
+  /**
+   * 业务动作
+   */
+  action: string;
+  /**
+   * 资源引用数组 [{type,id,name?}]
+   */
+  resourceRefs?: null;
+  /**
+   * 旧值快照(脱敏)
+   */
+  beforeState?: null;
+  /**
+   * 新值快照(脱敏)
+   */
+  afterState?: null;
+  /**
+   * 变更字段名数组
+   */
+  changedFields?: null;
+  /**
+   * 请求 IP
+   */
+  ipAddress: string | null;
+  /**
+   * 请求 UA
+   */
+  userAgent: string | null;
+  /**
+   * 请求 ID
+   */
+  requestId: string | null;
+  /**
+   * 操作结果
+   */
+  status: 'success' | 'failure';
+  /**
+   * 失败错误码
+   */
+  errorCode: string | null;
+  /**
+   * 业务自定义上下文
+   */
+  metadata?: null;
+  /**
+   * 发生时间(ISO 8601)
+   */
+  occurredAt: string;
+}
+export interface AuditLogList {
+  items: AuditLog[];
+  meta: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+export interface AuditLogTimeline {
+  items: AuditLog[];
+  meta: {
+    nextCursor: string | null;
+    hasMore: boolean;
+  };
 }
 export interface PermissionSource {
   /**
@@ -629,6 +718,7 @@ declare global {
        *     | 'users.enable'
        *     | 'settings.read'
        *     | 'settings.update'
+       *     | 'audit.read'
        *   )[]
        * }
        * ```
@@ -2531,6 +2621,224 @@ declare global {
       >(
         config: Config
       ): Alova2Method<SystemSetting, 'Settings.updateSetting', Config>;
+    };
+    Audit: {
+      /**
+       * ---
+       *
+       * [GET] 审计日志列表
+       *
+       * **path:** /api/v1/audit-logs
+       *
+       * ---
+       *
+       * **Query Parameters**
+       * ```ts
+       * type QueryParameters = {
+       *   page?: number
+       *   pageSize?: number
+       *   // 按动作过滤
+       *   action?: string
+       *   // 按操作者过滤
+       *   actorUserId?: string
+       *   // 按结果过滤
+       *   status?: 'success' | 'failure'
+       *   // 起始时间(ISO 8601)
+       *   from?: string
+       *   // 截止时间(ISO 8601)
+       *   to?: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // [items] start
+       *   // [items] end
+       *   items: Array<{
+       *     // 日志 ID
+       *     id: string
+       *     // 操作者 ID
+       *     actorUserId: string | null
+       *     // 操作者组织 ID
+       *     actorOrgId: string | null
+       *     // 业务动作
+       *     action: string
+       *     // 资源引用数组 [{type,id,name?}]
+       *     resourceRefs?: null
+       *     // 旧值快照(脱敏)
+       *     beforeState?: null
+       *     // 新值快照(脱敏)
+       *     afterState?: null
+       *     // 变更字段名数组
+       *     changedFields?: null
+       *     // 请求 IP
+       *     ipAddress: string | null
+       *     // 请求 UA
+       *     userAgent: string | null
+       *     // 请求 ID
+       *     requestId: string | null
+       *     // 操作结果
+       *     status: 'success' | 'failure'
+       *     // 失败错误码
+       *     errorCode: string | null
+       *     // 业务自定义上下文
+       *     metadata?: null
+       *     // 发生时间(ISO 8601)
+       *     occurredAt: string
+       *   }>
+       *   meta: {
+       *     page: number
+       *     pageSize: number
+       *     total: number
+       *     totalPages: number
+       *   }
+       * }
+       * ```
+       */
+      listAuditLogs<
+        Config extends Alova2MethodConfig<AuditLogList> & {
+          params: {
+            page?: number;
+            pageSize?: number;
+            /**
+             * 按动作过滤
+             */
+            action?: string;
+            /**
+             * 按操作者过滤
+             */
+            actorUserId?: string;
+            /**
+             * 按结果过滤
+             */
+            status?: 'success' | 'failure';
+            /**
+             * 起始时间(ISO 8601)
+             */
+            from?: string;
+            /**
+             * 截止时间(ISO 8601)
+             */
+            to?: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<AuditLogList, 'Audit.listAuditLogs', Config>;
+      /**
+       * ---
+       *
+       * [GET] 资源操作历史
+       *
+       * **path:** /api/v1/audit-logs/by-resource
+       *
+       * ---
+       *
+       * **Query Parameters**
+       * ```ts
+       * type QueryParameters = {
+       *   // 游标(首次不传)
+       *   cursor?: string
+       *   pageSize?: number
+       *   // 资源类型
+       *   resourceType: string
+       *   // 资源 ID
+       *   resourceId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // [items] start
+       *   // [items] end
+       *   items: Array<{
+       *     // 日志 ID
+       *     id: string
+       *     // 操作者 ID
+       *     actorUserId: string | null
+       *     // 操作者组织 ID
+       *     actorOrgId: string | null
+       *     // 业务动作
+       *     action: string
+       *     // 资源引用数组 [{type,id,name?}]
+       *     resourceRefs?: null
+       *     // 旧值快照(脱敏)
+       *     beforeState?: null
+       *     // 新值快照(脱敏)
+       *     afterState?: null
+       *     // 变更字段名数组
+       *     changedFields?: null
+       *     // 请求 IP
+       *     ipAddress: string | null
+       *     // 请求 UA
+       *     userAgent: string | null
+       *     // 请求 ID
+       *     requestId: string | null
+       *     // 操作结果
+       *     status: 'success' | 'failure'
+       *     // 失败错误码
+       *     errorCode: string | null
+       *     // 业务自定义上下文
+       *     metadata?: null
+       *     // 发生时间(ISO 8601)
+       *     occurredAt: string
+       *   }>
+       *   meta: {
+       *     nextCursor: string | null
+       *     hasMore: boolean
+       *   }
+       * }
+       * ```
+       */
+      listAuditLogsByResource<
+        Config extends Alova2MethodConfig<AuditLogTimeline> & {
+          params: {
+            /**
+             * 游标(首次不传)
+             */
+            cursor?: string;
+            pageSize?: number;
+            /**
+             * 资源类型
+             */
+            resourceType: string;
+            /**
+             * 资源 ID
+             */
+            resourceId: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<AuditLogTimeline, 'Audit.listAuditLogsByResource', Config>;
+      /**
+       * ---
+       *
+       * [GET] 审计动作目录
+       *
+       * **path:** /api/v1/audit-logs/actions
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = Array<{
+       *   // 动作代码
+       *   action: string
+       *   // 中文标签
+       *   label: string
+       * }>
+       * ```
+       */
+      listAuditActions<Config extends Alova2MethodConfig<AuditAction[]>>(
+        config?: Config
+      ): Alova2Method<AuditAction[], 'Audit.listAuditActions', Config>;
     };
   }
 

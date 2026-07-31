@@ -56,5 +56,8 @@ export default {
   'IAM.updateOrganization': ['PATCH', '/api/v1/organizations/{orgId}'],
   'IAM.deleteOrganization': ['DELETE', '/api/v1/organizations/{orgId}'],
   'Settings.listSettings': ['GET', '/api/v1/settings'],
-  'Settings.updateSetting': ['PATCH', '/api/v1/settings/{key}']
+  'Settings.updateSetting': ['PATCH', '/api/v1/settings/{key}'],
+  'Audit.listAuditLogs': ['GET', '/api/v1/audit-logs'],
+  'Audit.listAuditLogsByResource': ['GET', '/api/v1/audit-logs/by-resource'],
+  'Audit.listAuditActions': ['GET', '/api/v1/audit-logs/actions']
 };
