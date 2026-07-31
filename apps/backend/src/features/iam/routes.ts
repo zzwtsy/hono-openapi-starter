@@ -113,8 +113,8 @@ export const createRoleRoute = createRoute({
     label: "创建角色",
     resourceType: "role",
     resourceId: async (c) => {
-      const body = await c.res.clone().json() as { id?: string };
-      return body.id ?? "";
+      const body = await c.res.clone().json() as { data?: { id?: string } };
+      return body.data?.id ?? "";
     },
   })],
   security: authedSecurity,
@@ -288,8 +288,8 @@ export const createUserRoute = createRoute({
     label: "创建用户",
     resourceType: "user",
     resourceId: async (c) => {
-      const body = await c.res.clone().json() as { id?: string };
-      return body.id ?? "";
+      const body = await c.res.clone().json() as { data?: { id?: string } };
+      return body.data?.id ?? "";
     },
     relations: ["orgId"],
   })],
@@ -624,8 +624,8 @@ export const createOrganizationRoute = createRoute({
     label: "创建组织",
     resourceType: "org",
     resourceId: async (c) => {
-      const body = await c.res.clone().json() as { id?: string };
-      return body.id ?? "";
+      const body = await c.res.clone().json() as { data?: { id?: string } };
+      return body.data?.id ?? "";
     },
   })],
   security: authedSecurity,

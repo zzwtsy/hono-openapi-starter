@@ -40,8 +40,14 @@ vi.mock("../logger/index.js", () => ({
 
 const { enqueue } = await import("./queue.js");
 
+function lastEnqueuedRecord() {
+  const calls = vi.mocked(enqueue).mock.calls;
+  return calls[calls.length - 1]?.[0];
+}
+
 describe("writeAudit", () => {
   it("组装 record 并入队,从 ALS 注入 actor 上下文", async () => {
+    vi.clearAllMocks();
     await writeAudit({
       action: "projects.create",
       resourceRefs: [{ type: "project", id: "p1" }],
@@ -50,8 +56,7 @@ describe("writeAudit", () => {
     });
 
     expect(enqueue).toHaveBeenCalledTimes(1);
-    const record = vi.mocked(enqueue).mock.calls[0]?.[0];
-    expect(record).toMatchObject({
+    expect(lastEnqueuedRecord()).toMatchObject({
       id: "test-uuid",
       actorUserId: "actor-1",
       actorOrgId: "org-1",
@@ -60,12 +65,13 @@ describe("writeAudit", () => {
       ipAddress: "1.2.3.4",
       requestId: "req-1",
     });
-    expect(record?.resourceRefs).toEqual([
+    expect(lastEnqueuedRecord()?.resourceRefs).toEqual([
       { type: "project", id: "p1", name: "resolved-name" },
     ]);
   });
 
   it("脱敏 before/after 里的敏感字段", async () => {
+    vi.clearAllMocks();
     await writeAudit({
       action: "iam.user.update",
       resourceRefs: [{ type: "user", id: "u1" }],
@@ -74,12 +80,12 @@ describe("writeAudit", () => {
       status: "success",
     });
 
-    const record = vi.mocked(enqueue).mock.calls[1]?.[0];
-    expect(record?.beforeState).toMatchObject({ password: "[REDACTED]" });
-    expect(record?.afterState).toMatchObject({ password: "[REDACTED]" });
+    expect(lastEnqueuedRecord()?.beforeState).toMatchObject({ password: "[REDACTED]" });
+    expect(lastEnqueuedRecord()?.afterState).toMatchObject({ password: "[REDACTED]" });
   });
 
   it("changedFields: create 时为 after 的所有 key", async () => {
+    vi.clearAllMocks();
     await writeAudit({
       action: "projects.create",
       resourceRefs: [{ type: "project", id: "p1" }],
@@ -87,11 +93,11 @@ describe("writeAudit", () => {
       status: "success",
     });
 
-    const record = vi.mocked(enqueue).mock.calls[2]?.[0];
-    expect(record?.changedFields).toEqual(expect.arrayContaining(["name", "orgId"]));
+    expect(lastEnqueuedRecord()?.changedFields).toEqual(expect.arrayContaining(["name", "orgId"]));
   });
 
   it("changedFields: update 时为值不同的 key", async () => {
+    vi.clearAllMocks();
     await writeAudit({
       action: "projects.update",
       resourceRefs: [{ type: "project", id: "p1" }],
@@ -100,11 +106,11 @@ describe("writeAudit", () => {
       status: "success",
     });
 
-    const record = vi.mocked(enqueue).mock.calls[3]?.[0];
-    expect(record?.changedFields).toEqual(["name"]);
+    expect(lastEnqueuedRecord()?.changedFields).toEqual(["name"]);
   });
 
   it("failure 时记 errorCode", async () => {
+    vi.clearAllMocks();
     await writeAudit({
       action: "projects.create",
       resourceRefs: [{ type: "project", id: "p1" }],
@@ -112,8 +118,19 @@ describe("writeAudit", () => {
       errorCode: "PROJECT_NAME_CONFLICT",
     });
 
-    const record = vi.mocked(enqueue).mock.calls[4]?.[0];
-    expect(record?.status).toBe("failure");
-    expect(record?.errorCode).toBe("PROJECT_NAME_CONFLICT");
+    expect(lastEnqueuedRecord()?.status).toBe("failure");
+    expect(lastEnqueuedRecord()?.errorCode).toBe("PROJECT_NAME_CONFLICT");
+  });
+
+  it("changedFields: after 为非对象时返回 null(边界)", async () => {
+    vi.clearAllMocks();
+    await writeAudit({
+      action: "projects.create",
+      resourceRefs: [{ type: "project", id: "p1" }],
+      afterState: "unexpected-string",
+      status: "success",
+    });
+
+    expect(lastEnqueuedRecord()?.changedFields).toBeNull();
   });
 });

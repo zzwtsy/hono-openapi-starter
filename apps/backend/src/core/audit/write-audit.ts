@@ -78,10 +78,10 @@ function computeChangedFields(before: unknown, after: unknown): string[] | null 
     return null;
   }
   if (before == null) {
-    return Object.keys(after as Record<string, unknown>);
+    return typeof after === "object" && after !== null ? Object.keys(after) : null;
   }
   if (after == null) {
-    return Object.keys(before);
+    return typeof before === "object" && before !== null ? Object.keys(before) : null;
   }
   if (typeof before !== "object" || typeof after !== "object") {
     return null;

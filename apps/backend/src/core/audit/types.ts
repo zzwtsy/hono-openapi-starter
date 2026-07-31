@@ -9,7 +9,7 @@ import type { AppBindings } from "../http/context.js";
  * - `before`/`after` 是可选函数,默认 after 从响应体读
  * - `relations` 声明 before/after 里哪些字段是关联 id,writeAudit 据此查名称存历史快照
  *
- * 设计见 [审计日志计划](../../../docs/plans/audit-log.md)。
+ * 设计见 docs/plans/audit-log-quality-cleanup.md(质量收敛计划)。
  */
 export interface AuditConfig {
   /** 业务动作,如 `projects.update`。 */

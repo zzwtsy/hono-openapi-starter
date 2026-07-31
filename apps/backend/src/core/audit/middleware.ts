@@ -4,6 +4,7 @@ import type { AuditConfig } from "./types.js";
 
 import { createMiddleware } from "hono/factory";
 import { AppError } from "../errors/app-error.js";
+import { logger } from "../logger/index.js";
 import { writeAudit } from "./write-audit.js";
 
 /**
@@ -65,22 +66,41 @@ export function audit(config: AuditConfig) {
       }
 
       // 先解析 resourceRefs(async),再 fire-and-forget writeAudit
-      const refs = config.resourceRefs != null
-        ? await config.resourceRefs(c)
-        : [{ type: config.resourceType ?? "unknown", id: await config.resourceId?.(c) ?? "" }];
-      void writeAudit({
-        action: config.action,
-        resourceRefs: refs,
-        beforeState: before,
-        afterState: after,
-        relations: config.relations,
-        metadata: config.metadata,
-        status,
-        errorCode,
-      }).catch(() => {
-        // fire-and-forget:审计失败不阻塞响应,也不应崩溃进程。
-        // writeAudit 内部已 try/catch 并 log error,此处二次兜底。
-      });
+      if (config.resourceRefs != null) {
+        const refs = await config.resourceRefs(c);
+        void writeAudit({
+          action: config.action,
+          resourceRefs: refs,
+          beforeState: before,
+          afterState: after,
+          relations: config.relations,
+          metadata: config.metadata,
+          status,
+          errorCode,
+        }).catch(() => {
+          // fire-and-forget:审计失败不阻塞响应,也不应崩溃进程。
+          // writeAudit 内部已 try/catch 并 log error,此处二次兜底。
+        });
+      } else if (config.resourceType != null) {
+        const id = await config.resourceId?.(c) ?? "";
+        void writeAudit({
+          action: config.action,
+          resourceRefs: [{ type: config.resourceType, id }],
+          beforeState: before,
+          afterState: after,
+          relations: config.relations,
+          metadata: config.metadata,
+          status,
+          errorCode,
+        }).catch(() => {
+          // fire-and-forget:审计失败不阻塞响应,也不应崩溃进程。
+          // writeAudit 内部已 try/catch 并 log error,此处二次兜底。
+        });
+      } else {
+        logger
+          .withMetadata({ action: config.action })
+          .error("audit config missing resourceType and resourceRefs, skipping audit record");
+      }
     }
   });
 }

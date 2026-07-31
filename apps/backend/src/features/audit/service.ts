@@ -5,6 +5,7 @@ import { and, desc, eq, gte, inArray, lt, lte, or, sql } from "drizzle-orm";
 
 import { getRetentionCutoff } from "@/core/audit/retention.js";
 import { requireOrgUser } from "@/core/auth/context.js";
+import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { decodeCursor, encodeCursor } from "@/core/http/pagination.js";
 import { db } from "@/db/client.js";
@@ -149,7 +150,7 @@ export const AuditService = {
     resourceType: string,
     resourceId: string,
   ): Promise<void> {
-    const { orgId: actorOrgId } = requireOrgUser(c);
+    const { orgId: actorOrgId, id: userId } = requireOrgUser(c);
 
     switch (resourceType) {
       case "project": {
@@ -169,10 +170,28 @@ export const AuditService = {
         }
         break;
       }
-      case "role":
-      case "org":
+      case "role": {
+        // 全局资源:需 roles.read(角色不绑组织,有 read 即可查其审计历史)
+        const allowed = await PermissionService.check(userId, "roles.read", actorOrgId);
+        if (!allowed) {
+          throw new AppError("COMMON_FORBIDDEN");
+        }
+        break;
+      }
+      case "org": {
+        // 全局资源:需 organizations.read
+        const allowed = await PermissionService.check(userId, "organizations.read", actorOrgId);
+        if (!allowed) {
+          throw new AppError("COMMON_FORBIDDEN");
+        }
+        break;
+      }
       case "setting": {
-        // 全局资源不绑组织,有对应 read 权限即可(权限由路由中间件校验,service 不重复)
+        // 全局资源:需 settings.read
+        const allowed = await PermissionService.check(userId, "settings.read", actorOrgId);
+        if (!allowed) {
+          throw new AppError("COMMON_FORBIDDEN");
+        }
         break;
       }
       default: {
