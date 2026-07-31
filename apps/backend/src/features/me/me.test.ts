@@ -20,11 +20,9 @@ vi.mock("../../core/auth/session.js", () => ({ getSession: mockGetSession }));
 vi.mock("../../core/authorization/index.js", () => ({
   PermissionService: { listEffectivePermissions: mockListEffective },
 }));
-vi.mock("../../core/audit/index.js", () => ({ audit: () => async (_c: unknown, next: () => Promise<void>) => {
-  await next();
-} }));
-vi.mock("@/db/client.js", () => ({ db: {} }));
-vi.mock("@/db/schema/index.js", () => ({ user: {} }));
+vi.mock("../../core/audit/index.js", async () => ({
+  audit: (await import("../../core/audit/testing.js")).auditPassthrough,
+}));
 vi.mock("./service.js", () => ({
   MeService: { updateMe: mockUpdateMe, changeMyPassword: mockChangeMyPassword },
 }));

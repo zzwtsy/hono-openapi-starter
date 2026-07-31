@@ -1,8 +1,10 @@
+import type { z } from "@hono/zod-openapi";
+
 import type { Context } from "hono";
-
+import type { AuditLogSchema } from "./schemas.js";
 import type { AppBindings } from "@/core/http/context.js";
-import { and, desc, eq, gte, inArray, lt, lte, or, sql } from "drizzle-orm";
 
+import { and, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { getRetentionCutoff } from "@/core/audit/retention.js";
 import { requireOrgUser } from "@/core/auth/context.js";
 import { PermissionService } from "@/core/authorization/index.js";
@@ -13,6 +15,23 @@ import { auditLogs, user } from "@/db/schema/index.js";
 import { getManagedSubtree } from "@/features/iam/org-tree.js";
 import { ProjectService } from "@/features/projects/service.js";
 import { auditActionCatalog } from "./audit-actions.js";
+
+/** API 响应 DTO 类型(与 AuditLogSchema 同源,jsonb 列在 DB 边界显式转换)。 */
+type AuditLogDto = z.infer<typeof AuditLogSchema>;
+
+/** DB 行 -> DTO:jsonb 列在 drizzle 里是 unknown,在边界转成响应契约类型(唯一真相:AuditLogSchema)。 */
+function toAuditLogDto(row: typeof auditLogs.$inferSelect): AuditLogDto {
+  return {
+    ...row,
+    resourceRefs: row.resourceRefs as AuditLogDto["resourceRefs"],
+    beforeState: row.beforeState as AuditLogDto["beforeState"],
+    afterState: row.afterState as AuditLogDto["afterState"],
+    changedFields: row.changedFields as AuditLogDto["changedFields"],
+    metadata: row.metadata as AuditLogDto["metadata"],
+    // DB 列是 Date,响应契约是 ISO 8601 string(z.iso.datetime)
+    occurredAt: row.occurredAt.toISOString(),
+  };
+}
 
 /**
  * audit feature service:审计日志查询 + by-resource 可见性校验 + action 目录。
@@ -36,8 +55,12 @@ export const AuditService = {
   }) {
     const conditions = [];
 
-    // 管理子树过滤
-    conditions.push(inArray(auditLogs.actorOrgId, query.actorOrgIds));
+    // 管理子树过滤 + 无归属事件:actorOrgId IS NULL(登录失败等全局事件)任何管理员可见。
+    // 旧实现 IN 子树会把 NULL 记录排除掉,安全审计最关心的失败登录反而查不到。
+    conditions.push(or(
+      inArray(auditLogs.actorOrgId, query.actorOrgIds),
+      isNull(auditLogs.actorOrgId),
+    ));
 
     // 保留策略惰性过滤
     const cutoff = getRetentionCutoff();
@@ -74,7 +97,7 @@ export const AuditService = {
     const total = countRow?.count ?? 0;
 
     return {
-      items,
+      items: items.map(toAuditLogDto),
       meta: {
         page: query.page,
         pageSize: query.pageSize,
@@ -139,7 +162,7 @@ export const AuditService = {
       : null;
 
     return {
-      items: pageItems,
+      items: pageItems.map(toAuditLogDto),
       meta: { nextCursor, hasMore },
     };
   },

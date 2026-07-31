@@ -422,6 +422,20 @@ export interface RoleUserAssignment {
    */
   expiresAt: string | null;
 }
+export interface ResourceRef {
+  /**
+   * 资源类型
+   */
+  type: string;
+  /**
+   * 资源 ID
+   */
+  id: string;
+  /**
+   * 资源名称快照
+   */
+  name?: string | null;
+}
 export interface AuditLog {
   /**
    * 日志 ID
@@ -442,19 +456,19 @@ export interface AuditLog {
   /**
    * 资源引用数组 [{type,id,name?}]
    */
-  resourceRefs?: null;
+  resourceRefs: ResourceRef[];
   /**
-   * 旧值快照(脱敏)
+   * 旧值快照(脱敏),对象或数组
    */
-  beforeState?: null;
+  beforeState: null[] | Record<string, undefined> | null;
   /**
-   * 新值快照(脱敏)
+   * 新值快照(脱敏),对象或数组
    */
-  afterState?: null;
+  afterState: null[] | Record<string, undefined> | null;
   /**
    * 变更字段名数组
    */
-  changedFields?: null;
+  changedFields: string[] | null;
   /**
    * 请求 IP
    */
@@ -478,7 +492,7 @@ export interface AuditLog {
   /**
    * 业务自定义上下文
    */
-  metadata?: null;
+  metadata: Record<string, undefined> | null;
   /**
    * 发生时间(ISO 8601)
    */
@@ -2667,13 +2681,34 @@ declare global {
        *     // 业务动作
        *     action: string
        *     // 资源引用数组 [{type,id,name?}]
-       *     resourceRefs?: null
-       *     // 旧值快照(脱敏)
-       *     beforeState?: null
-       *     // 新值快照(脱敏)
-       *     afterState?: null
+       *     // [items] start
+       *     // [items] end
+       *     resourceRefs: Array<{
+       *       // 资源类型
+       *       type: string
+       *       // 资源 ID
+       *       id: string
+       *       // 资源名称快照
+       *       name?: string | null
+       *     }>
+       *     // 旧值快照(脱敏),对象或数组
+       *     // [params1] start
+       *     // [items] start
+       *     // [items] end
+       *     // [params1] end
+       *     beforeState: null[] | Record<string, undefined> | null
+       *     // 新值快照(脱敏),对象或数组
+       *     // [params1] start
+       *     // [items] start
+       *     // [items] end
+       *     // [params1] end
+       *     afterState: null[] | Record<string, undefined> | null
        *     // 变更字段名数组
-       *     changedFields?: null
+       *     // [params1] start
+       *     // [items] start
+       *     // [items] end
+       *     // [params1] end
+       *     changedFields: string[] | null
        *     // 请求 IP
        *     ipAddress: string | null
        *     // 请求 UA
@@ -2685,7 +2720,7 @@ declare global {
        *     // 失败错误码
        *     errorCode: string | null
        *     // 业务自定义上下文
-       *     metadata?: null
+       *     metadata: Record<string, undefined> | null
        *     // 发生时间(ISO 8601)
        *     occurredAt: string
        *   }>
@@ -2740,7 +2775,7 @@ declare global {
        * **Query Parameters**
        * ```ts
        * type QueryParameters = {
-       *   // 游标(首次不传)
+       *   // 上一页最后一条记录返回的游标(opaque,首次请求不传)
        *   cursor?: string
        *   pageSize?: number
        *   // 资源类型
@@ -2767,13 +2802,34 @@ declare global {
        *     // 业务动作
        *     action: string
        *     // 资源引用数组 [{type,id,name?}]
-       *     resourceRefs?: null
-       *     // 旧值快照(脱敏)
-       *     beforeState?: null
-       *     // 新值快照(脱敏)
-       *     afterState?: null
+       *     // [items] start
+       *     // [items] end
+       *     resourceRefs: Array<{
+       *       // 资源类型
+       *       type: string
+       *       // 资源 ID
+       *       id: string
+       *       // 资源名称快照
+       *       name?: string | null
+       *     }>
+       *     // 旧值快照(脱敏),对象或数组
+       *     // [params1] start
+       *     // [items] start
+       *     // [items] end
+       *     // [params1] end
+       *     beforeState: null[] | Record<string, undefined> | null
+       *     // 新值快照(脱敏),对象或数组
+       *     // [params1] start
+       *     // [items] start
+       *     // [items] end
+       *     // [params1] end
+       *     afterState: null[] | Record<string, undefined> | null
        *     // 变更字段名数组
-       *     changedFields?: null
+       *     // [params1] start
+       *     // [items] start
+       *     // [items] end
+       *     // [params1] end
+       *     changedFields: string[] | null
        *     // 请求 IP
        *     ipAddress: string | null
        *     // 请求 UA
@@ -2785,7 +2841,7 @@ declare global {
        *     // 失败错误码
        *     errorCode: string | null
        *     // 业务自定义上下文
-       *     metadata?: null
+       *     metadata: Record<string, undefined> | null
        *     // 发生时间(ISO 8601)
        *     occurredAt: string
        *   }>
@@ -2800,7 +2856,7 @@ declare global {
         Config extends Alova2MethodConfig<AuditLogTimeline> & {
           params: {
             /**
-             * 游标(首次不传)
+             * 上一页最后一条记录返回的游标(opaque,首次请求不传)
              */
             cursor?: string;
             pageSize?: number;
