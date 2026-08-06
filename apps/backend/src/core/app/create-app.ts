@@ -3,6 +3,7 @@ import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import env from "../../env.js";
+import { auditContextMiddleware } from "../audit/index.js";
 import { permissionCacheMiddleware } from "../authorization/index.js";
 import { errorHandler } from "../errors/error-handler.js";
 import { apiRateLimiter, authRateLimiter } from "../http/rate-limit.js";
@@ -46,6 +47,9 @@ export function createApp() {
   app.use("/api/v1/*", apiRateLimiter);
   // 请求级权限 cache（ALS）：同请求内 PermissionService.check 共享结果，避免重复递归 CTE。
   app.use("*", permissionCacheMiddleware());
+  // 审计上下文(ALS):注入 ip/ua/requestId,requireAuth 补充 actorUserId/actorOrgId。
+  // 挂在 permissionCacheMiddleware 之后(两个 ALS 互不干扰)。
+  app.use("*", auditContextMiddleware());
   // 错误处理和 404 在 app 边界统一收口，避免 feature handler 自己拼响应格式。
   app.onError(errorHandler);
   app.notFound(notFoundHandler);

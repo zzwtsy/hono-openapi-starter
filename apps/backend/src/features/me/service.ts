@@ -16,6 +16,22 @@ import { account, session, user } from "@/db/schema/index.js";
  * 改密码后删全部 session 强制重新登录(与 resetPassword/disableUser 同构,见 iam.md §7)。
  */
 export const MeService = {
+  /** 审计 before 快照:查用户(UserSummary 形状,不含 password 等敏感列)。 */
+  async getUserSnapshot(userId: string) {
+    const [row] = await db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        orgId: user.orgId,
+        disabled: user.disabled,
+        createdAt: user.createdAt,
+      })
+      .from(user)
+      .where(eq(user.id, userId));
+    return row;
+  },
+
   /**
    * 改自己的显示名。固定 userId = 当前用户;不改 email/orgId/disabled。
    * name 是 user 表已有列,无需 migration。

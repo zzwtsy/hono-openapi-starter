@@ -638,6 +638,60 @@ export const IamService = {
       .orderBy(asc(userPermissions.permission));
   },
 
+  // --- 审计 before 快照(供 audit() 中间件查旧值;不校验归属,校验由 handler 做) ---
+  /** 审计 before 快照:查用户(UserSummary 形状,不含 password 等敏感列)。 */
+  async getUserById(id: string) {
+    const [row] = await db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        orgId: user.orgId,
+        disabled: user.disabled,
+        createdAt: user.createdAt,
+      })
+      .from(user)
+      .where(eq(user.id, id));
+    return row;
+  },
+
+  /** 审计 before 快照:用户在某组织对某角色的授权记录(userRoles 主键 (userId, roleId, orgId),单行)。 */
+  async getUserRoleGrant(userId: string, roleId: string, orgId: string) {
+    const [row] = await db
+      .select({
+        roleId: userRoles.roleId,
+        roleName: roles.name,
+        orgId: userRoles.orgId,
+        expiresAt: userRoles.expiresAt,
+      })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(and(
+        eq(userRoles.userId, userId),
+        eq(userRoles.roleId, roleId),
+        eq(userRoles.orgId, orgId),
+      ));
+    return row;
+  },
+
+  /** 审计 before 快照:用户在某组织的直接权限授权记录(userPermissions 主键 (userId, permission, orgId),单行)。 */
+  async getUserPermissionGrant(userId: string, permission: string, orgId: string) {
+    const [row] = await db
+      .select({
+        permission: userPermissions.permission,
+        effect: userPermissions.effect,
+        orgId: userPermissions.orgId,
+        expiresAt: userPermissions.expiresAt,
+      })
+      .from(userPermissions)
+      .where(and(
+        eq(userPermissions.userId, userId),
+        eq(userPermissions.permission, permission),
+        eq(userPermissions.orgId, orgId),
+      ));
+    return row;
+  },
+
   // --- 组织 ---
   /** 列出所有组织(扁平,带 parentId,前端构建树)。 */
   async listOrganizations() {

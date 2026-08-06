@@ -1,7 +1,10 @@
+import { registerAuditResolvers } from "./audit-resolvers.js";
 import { createApp } from "./core/app/create-app.js";
 import { configureOpenApi } from "./core/app/openapi.js";
 import { registerAuthRoute } from "./core/app/register-routes.js";
+import { startRetentionCleanup } from "./core/audit/index.js";
 import { setPermissionChecker } from "./core/authorization/index.js";
+import auditRouter from "./features/audit/index.js";
 import healthRouter, { healthzRouter } from "./features/health/index.js";
 import iamRouter from "./features/iam/index.js";
 import { IamPermissionChecker } from "./features/iam/permission-checker.js";
@@ -13,6 +16,12 @@ import systemSettingsRouter from "./features/system-settings/index.js";
 // core 的 PermissionService 经 holder 调用,不直接依赖 features(见 ADR-0004)。
 setPermissionChecker(new IamPermissionChecker());
 
+// 装配审计名称 resolver:业务表依赖留在 app assembly,core/audit 只持有 port。
+registerAuditResolvers();
+
+// 启动审计日志保留策略定时清理(RETENTION_DAYS=0 时不启动)。
+startRetentionCleanup();
+
 // 组装主 app:创建(挂全局中间件)-> 挂认证路由 + feature 路由 -> 配置 OpenAPI 文档。
 // 顺序固定:全局中间件必须在 app.route 之前注册,否则不作用于子路由(Hono 按注册顺序派发)。
 const app = createApp();
@@ -23,6 +32,7 @@ app.route("/api/v1", meRouter);
 app.route("/api/v1", projectsRouter);
 app.route("/api/v1", iamRouter);
 app.route("/api/v1", systemSettingsRouter);
+app.route("/api/v1", auditRouter);
 configureOpenApi(app);
 
 export { app };

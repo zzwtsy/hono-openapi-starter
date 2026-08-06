@@ -13,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { AuditTimeline } from "@/features/audit/components/audit-timeline";
 import { UserDetailPanel } from "@/features/iam/components/user-detail-panel";
 import { UserForm } from "@/features/iam/components/user-form";
 import { UserListPanel } from "@/features/iam/components/user-list";
@@ -104,6 +105,7 @@ function UsersPage() {
           onTabChange={handleTabChange}
           onNavigateRole={handleNavigateRole}
           onTransferred={handleTransferred}
+          auditTabContent={<AuditTimeline resourceType="user" resourceId={selectedUser.id} />}
         />
       )
     : (

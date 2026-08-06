@@ -2,6 +2,7 @@ import type { ILogLayer } from "loglayer";
 import type { AppBindings } from "../http/context.js";
 
 import { createMiddleware } from "hono/factory";
+import { setAuditContext } from "../audit/context.js";
 import { AppError } from "../errors/app-error.js";
 import { getSession } from "./session.js";
 
@@ -19,6 +20,14 @@ export function requireAuth() {
 
     c.set("user", result.user);
     c.set("session", result.session);
+    // 注入审计 ALS 上下文(actorUserId/actorOrgId/actorNameSnapshot),供 writeAudit 自动取用。
+    // actorNameSnapshot 是写时名称快照:改名不污染历史记录。
+    // auditContextMiddleware 已初始化 ALS store,此处增量补充 actor 信息。
+    setAuditContext({
+      actorUserId: result.user.id,
+      actorOrgId: result.user.orgId ?? null,
+      actorNameSnapshot: result.user.name,
+    });
     // userId 追加到请求级 logger context(appendContext 原地改 child logger 的 context manager,
     // 业务日志与 access log 用同一 childLogger 均带 userId)。不用 withContext():其 polymorphic this
     // 在 typescript-eslint 退化为 ILogLayer<any> 触发 ts/no-unsafe-argument。honoLogLayer 在生产全局

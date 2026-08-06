@@ -1,3 +1,4 @@
+export * from "./audit-schema.js";
 export * from "./auth-schema.js";
 export * from "./authorization-schema.js";
 export * from "./projects-schema.js";

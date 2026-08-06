@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Role, UserSummary } from "@/api/globals";
 import { useState } from "react";
 import Apis from "@/api";
@@ -32,9 +33,24 @@ interface UserDetailPanelProps {
   onTabChange: (tab: string) => void;
   onNavigateRole: (roleId: string) => void;
   onTransferred?: (newOrgId: string) => void;
+  /** 操作历史 Tab 内容(由 routes 层传入,避免 features 间依赖)。 */
+  auditTabContent?: ReactNode;
 }
 
-export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrgPath, currentUserId, roles, tab, onTabChange, onNavigateRole, onTransferred }: UserDetailPanelProps) {
+export function UserDetailPanel({
+  user,
+  orgId,
+  onOrgIdChange,
+  orgOptions,
+  getOrgPath,
+  currentUserId,
+  roles,
+  tab,
+  onTabChange,
+  onNavigateRole,
+  onTransferred,
+  auditTabContent,
+}: UserDetailPanelProps) {
   const canUpdate = useCan("users.update");
   const canReset = useCan("users.reset-password");
   const canDisable = useCan("users.disable");
@@ -110,6 +126,7 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
             <TabsTrigger value="roles">角色授权</TabsTrigger>
             <TabsTrigger value="direct">直接授权</TabsTrigger>
             <TabsTrigger value="effective">有效权限</TabsTrigger>
+            <TabsTrigger value="audit">操作历史</TabsTrigger>
           </TabsList>
           <TabsContent value="info" className="min-h-0 flex-1 overflow-y-auto">
             <UserInfoTab
@@ -146,6 +163,9 @@ export function UserDetailPanel({ user, orgId, onOrgIdChange, orgOptions, getOrg
               onNavigateRole={onNavigateRole}
               onOrgIdChange={onOrgIdChange}
             />
+          </TabsContent>
+          <TabsContent value="audit" className="min-h-0 flex-1 overflow-y-auto">
+            {auditTabContent}
           </TabsContent>
         </Tabs>
       </CardContent>

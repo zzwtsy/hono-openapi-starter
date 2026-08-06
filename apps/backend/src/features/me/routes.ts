@@ -1,9 +1,12 @@
 import { createRoute, z } from "@hono/zod-openapi";
 
+import { audit } from "@/core/audit/index.js";
 import { requireAuth } from "@/core/auth/require-auth.js";
 import { jsonErrorResponse, jsonErrorResponses, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
+import { meAuditActions } from "./audit-actions.js";
 import { ChangeMyPasswordSchema, MeSchema, UpdateMeSchema, UserSchema } from "./schemas.js";
+import { MeService } from "./service.js";
 
 export const getMeRoute = createRoute({
   method: "get",
@@ -29,7 +32,13 @@ export const updateMeRoute = createRoute({
   operationId: "updateMe",
   summary: "自助修改显示名",
   description: "当前用户修改自己的显示名(name)。不改 email/orgId/disabled;不删 session。",
-  middleware: [requireAuth()],
+  middleware: [requireAuth(), audit({
+    action: meAuditActions.update,
+    resourceType: "user",
+    resourceId: c => c.get("user")?.id ?? "",
+    before: async c => MeService.getUserSnapshot(c.get("user")?.id ?? ""),
+    after: "response",
+  })],
   security: authedSecurity,
   request: {
     body: {
@@ -53,7 +62,12 @@ export const changeMyPasswordRoute = createRoute({
   summary: "自助修改密码",
   description:
     "当前用户修改自己的密码:验证当前密码 → 更新 → 删除全部 session(强制重新登录)。OAuth 用户无 credential account 返回 404。",
-  middleware: [requireAuth()],
+  middleware: [requireAuth(), audit({
+    action: meAuditActions.changePassword,
+    resourceType: "user",
+    resourceId: c => c.get("user")?.id ?? "",
+    after: "none",
+  })],
   security: authedSecurity,
   request: {
     body: {

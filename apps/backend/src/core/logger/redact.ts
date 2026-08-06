@@ -1,6 +1,6 @@
 export const REDACTED = "[REDACTED]";
 
-const SENSITIVE_FIELD_NAMES = [
+export const SENSITIVE_FIELD_NAMES = [
   "authorization",
   "Authorization",
   "cookie",

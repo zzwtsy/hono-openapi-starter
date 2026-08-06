@@ -1,11 +1,18 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { bearer } from "better-auth/plugins/bearer";
 
 import { db } from "../../db/client.js";
 import * as authSchema from "../../db/schema/auth-schema.js";
 import env from "../../env.js";
+import { registerAuditAction, writeAudit } from "../audit/index.js";
+import { authAuditActions } from "./audit-actions.js";
+import { resolveSignInEvent, signOutAuditUser } from "./auth-audit-events.js";
+
+// 认证事件不经过 audit() 路由中间件,在 Better Auth hook 装配前显式注册 action。
+registerAuditAction(authAuditActions.signIn);
+registerAuditAction(authAuditActions.signOut);
 
 /**
  * Better Auth 实例。
@@ -44,20 +51,55 @@ export const auth = betterAuth({
     },
   },
   hooks: {
-    // 模板不提供自助注册:hooks.before 对所有 /api/auth/* 触发(BA 用户级 hook 无路径 matcher),
-    // 命中 /sign-up/email 一律拒绝(不依赖 DB 开关)。ctx 不暴露 path(运行时由 dispatch 注入),
-    // 用 request.url 的 pathname 判断端点(见 ADR-0007 superseded 注记:原运行时 signUp 开关已取消)。
-    before: async (ctx) => {
-      // pathname 判断(去 query/fragment),防带参 URL 绕过 endsWith 整个 url
-      // (如 /sign-up/email?foo=bar 的 url.endsWith("/sign-up/email") 为 false 会放行)。
+    // 模板不提供自助注册 + sign-out 审计:hooks.before 对所有 /api/auth/* 触发。
+    // 用 createAuthMiddleware 包装获取完整 ctx 类型(GenericEndpointContext)。
+    before: createAuthMiddleware(async (ctx) => {
       const url = ctx.request?.url;
-      if (url != null && new URL(url).pathname.endsWith("/sign-up/email")) {
+      const pathname = url != null ? new URL(url).pathname : "";
+
+      // 禁注册
+      if (pathname.endsWith("/sign-up/email")) {
         throw APIError.from("FORBIDDEN", {
           message: "不支持自助注册",
           code: "AUTH_SIGNUP_DISABLED",
         });
       }
-    },
+
+      // sign-out 审计:session 删除前记(getSessionFromCtx 拿当前 session);
+      // 取不到 session(未登录/已失效)不记,成功失败判定以取到 session 为准(已知局限见计划)。
+      if (pathname.endsWith("/sign-out")) {
+        const session = await getSessionFromCtx(ctx, { disableRefresh: true });
+        const user = signOutAuditUser(session);
+        if (user != null) {
+          void writeAudit({
+            action: authAuditActions.signOut.action,
+            resourceRefs: [{ type: "user", id: user.id }],
+            status: "success",
+            actorUserId: user.id,
+            actorOrgId: user.orgId,
+            actorNameSnapshot: user.name,
+          });
+        }
+      }
+    }),
+    after: createAuthMiddleware(async (ctx) => {
+      const url = ctx.request?.url;
+      const pathname = url != null ? new URL(url).pathname : "";
+
+      // sign-in 审计:成功和失败都执行(after hook 在 APIError 时也跑),解析收敛在纯函数
+      if (pathname.endsWith("/sign-in/email")) {
+        const event = resolveSignInEvent(ctx);
+        void writeAudit({
+          action: authAuditActions.signIn.action,
+          resourceRefs: event.user != null ? [{ type: "user", id: event.user.id }] : [],
+          status: event.status,
+          errorCode: event.errorCode,
+          actorUserId: event.user?.id ?? null,
+          actorOrgId: event.user?.orgId ?? null,
+          actorNameSnapshot: event.user?.name ?? null,
+        });
+      }
+    }),
   },
   databaseHooks: {
     session: {

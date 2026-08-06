@@ -1,4 +1,5 @@
 import type { AllPermissionsCovered, AppPermission } from "./core/auth/permissions.js";
+import { auditPermissions } from "./features/audit/permissions.js";
 import { iamPermissions } from "./features/iam/permissions.js";
 import { projectPermissions } from "./features/projects/permissions.js";
 import { systemSettingPermissions } from "./features/system-settings/permissions.js";
@@ -11,7 +12,7 @@ import { systemSettingPermissions } from "./features/system-settings/permissions
  *
  * core 不 import features;本模块是组装层,供 `index.ts`/`bootstrap.ts`/`seed.ts`/测试复用。
  */
-export const allPermissions = [...projectPermissions, ...iamPermissions, ...systemSettingPermissions] as const;
+export const allPermissions = [...projectPermissions, ...iamPermissions, ...systemSettingPermissions, ...auditPermissions] as const;
 
 // 编译期覆盖校验:漏展开某 feature -> AppPermission 不被覆盖 -> never = true 编译报。
 const _coverCheck: AllPermissionsCovered<typeof allPermissions> = true;

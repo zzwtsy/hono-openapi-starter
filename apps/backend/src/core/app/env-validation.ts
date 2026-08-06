@@ -35,6 +35,10 @@ export const EnvSchema = z.object({
   /** 生产环境是否公开 /openapi.json（默认关闭，避免暴露端点结构） */
   OPENAPI_PUBLIC: z.stringbool().default(false),
 
+  // --- 审计日志相关配置 ---
+  /** 审计日志保留天数(0 = 永久保留,默认 90 天)。查询时惰性过滤 + 定时物理删除。 */
+  AUDIT_LOG_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
+
   // --- bootstrap（首次部署造第一个 admin，用后可清除密码）---
   /** bootstrap：首个 admin 邮箱 */
   BOOTSTRAP_ADMIN_EMAIL: z.email().optional(),

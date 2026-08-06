@@ -22,6 +22,9 @@ const { mockGetSession, mockCheck, mockList, mockGetById, mockCreate, mockUpdate
 
 vi.mock("../../core/auth/session.js", () => ({ getSession: mockGetSession }));
 vi.mock("../../core/authorization/index.js", () => ({ PermissionService: { check: mockCheck } }));
+vi.mock("../../core/audit/index.js", async () => ({
+  audit: (await import("../../core/audit/testing.js")).auditPassthrough,
+}));
 vi.mock("./service.js", () => ({
   ProjectService: {
     list: mockList,

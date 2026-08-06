@@ -143,6 +143,10 @@ export const $$userConfigMap = withConfigType({
   "IAM.disableUser": { name: "IAM.disableUser" },
   "IAM.enableUser": { name: "IAM.enableUser" },
   "Settings.updateSetting": { name: "Settings.updateSetting" },
+  // Audit:action 目录静态永久缓存;列表/时间线实时性高不缓存
+  "Audit.listAuditActions": { cacheFor: Infinity },
+  "Audit.listAuditLogs": { cacheFor: 0 },
+  "Audit.listAuditLogsByResource": { cacheFor: 0 },
 });
 
 const Apis = createApis(alovaInstance, $$userConfigMap);
