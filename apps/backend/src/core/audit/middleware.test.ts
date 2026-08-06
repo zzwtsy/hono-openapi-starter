@@ -96,6 +96,63 @@ describe("audit() 中间件", () => {
     });
   });
 
+  it("after=response 模式从响应体 data 读取快照", async () => {
+    const app = buildApp(
+      {
+        action: testAction("projects.create", "创建项目"),
+        resourceType: "project",
+        resourceId: () => "p1",
+        after: "response",
+      },
+      okHandler,
+    );
+
+    const res = await app.request("/test/p1");
+
+    expect(res.status).toBe(200);
+    expect(lastAuditCall()?.afterState).toEqual({ id: "p1", name: "项目A" });
+  });
+
+  it("after 未配置时不捕获快照", async () => {
+    const app = buildApp(
+      {
+        action: testAction("projects.delete", "删除项目"),
+        resourceType: "project",
+        resourceId: c => c.req.param("id") ?? "",
+      },
+      okHandler,
+    );
+
+    await app.request("/test/p1");
+
+    expect(lastAuditCall()?.afterState).toBeUndefined();
+  });
+
+  it("snapshot transform 在通用 sanitize 前执行", async () => {
+    const app = buildApp(
+      {
+        action: testAction("projects.update", "修改项目"),
+        resourceType: "project",
+        resourceId: () => "p1",
+        after: {
+          capture: async () => ({ name: "项目A", internalNote: "内部" }),
+          transform: value => ({
+            name: (value as { name: string }).name,
+            internalNote: "[BUSINESS_REDACTED]",
+          }),
+        },
+      },
+      okHandler,
+    );
+
+    await app.request("/test/p1");
+
+    expect(lastAuditCall()?.afterState).toEqual({
+      name: "项目A",
+      internalNote: "[BUSINESS_REDACTED]",
+    });
+  });
+
   it("handler 抛 AppError:记 failure + 原错误码,不被解析异常覆盖", async () => {
     const app = buildApp(
       {

@@ -1,27 +1,45 @@
 import type { Context } from "hono";
 import type { AppBindings } from "../http/context.js";
 import type { AuditActionDefinition } from "./action.js";
+import type { AuditRelationSpec, AuditResourceRef } from "./ports.js";
 
 /** 审计资源 id 解析器。 */
 export type AuditResourceIdResolver = (c: Context<AppBindings>) => string | Promise<string>;
 
 /** 多资源引用解析器。 */
 export type AuditResourceRefsResolver = (c: Context<AppBindings>) =>
-  Array<{ type: string; id: string }>
-  | Promise<Array<{ type: string; id: string }>>;
+  readonly AuditResourceRef[]
+  | Promise<readonly AuditResourceRef[]>;
 
 /** before/after 快照解析器。 */
 export type AuditSnapshotResolver = (c: Context<AppBindings>) => unknown | Promise<unknown>;
 
+/** 业务特定的快照投影/脱敏器。 */
+export type AuditSnapshotTransform = (
+  value: unknown,
+  c: Context<AppBindings>,
+) => unknown | Promise<unknown>;
+
+/** 显式快照配置:先捕获,再执行 feature 提供的投影。 */
+export interface AuditSnapshotConfig {
+  capture: AuditSnapshotResolver;
+  transform?: AuditSnapshotTransform;
+}
+
+export type AuditSnapshotInput = AuditSnapshotResolver | AuditSnapshotConfig;
+
+/** after 的捕获模式;阶段 2 起不配置时不再默认读取响应体。 */
+export type AuditAfterConfig = "response" | "none" | AuditSnapshotInput;
+
 interface AuditConfigBase<TAction extends AuditActionDefinition> {
   /** 类型安全的业务动作定义(action code + label)。 */
   action: TAction;
-  /** before/after 里需解析名称的关联字段名,如 `["orgId"]`。 */
-  relations?: readonly string[];
-  /** handler 前查旧值。不配则无 before(diff 缺旧值)。 */
-  before?: AuditSnapshotResolver;
-  /** handler 后查新值。不配时暂时兼容旧行为,从响应体 `.data` 读取；阶段 2 再改为显式捕获模式。 */
-  after?: AuditSnapshotResolver;
+  /** before/after 里需解析名称的关联字段。 */
+  relations?: readonly AuditRelationSpec[];
+  /** handler 前查旧值,可附加 feature-specific transform。 */
+  before?: AuditSnapshotInput;
+  /** handler 后显式选择 response/none 或自定义快照 provider。 */
+  after?: AuditAfterConfig;
   /** 业务自定义上下文(如 `clearAllGrants`)。支持静态对象或按请求动态生成。 */
   metadata?: Record<string, unknown> | ((c: Context<AppBindings>) => Record<string, unknown> | Promise<Record<string, unknown>>);
 }
@@ -56,10 +74,10 @@ export type AuditConfig<TAction extends AuditActionDefinition = AuditActionDefin
 /** writeAudit 接收的审计条目(audit() 中间件组装后传入)。 */
 export interface AuditEntry {
   action: string;
-  resourceRefs: Array<{ type: string; id: string }>;
+  resourceRefs: readonly AuditResourceRef[];
   beforeState?: unknown;
   afterState?: unknown;
-  relations?: readonly string[];
+  relations?: readonly AuditRelationSpec[];
   metadata?: Record<string, unknown>;
   status: "success" | "failure";
   errorCode?: string;
@@ -80,7 +98,7 @@ export interface AuditRecord {
   /** 操作者名称快照(写时从 session.user.name 存;历史不随改名漂移)。 */
   actorNameSnapshot: string | null;
   action: string;
-  resourceRefs: Array<{ type: string; id: string; name?: string }>;
+  resourceRefs: AuditResourceRef[];
   beforeState: unknown;
   afterState: unknown;
   changedFields: string[] | null;

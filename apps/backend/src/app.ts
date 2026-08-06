@@ -1,3 +1,4 @@
+import { registerAuditResolvers } from "./audit-resolvers.js";
 import { createApp } from "./core/app/create-app.js";
 import { configureOpenApi } from "./core/app/openapi.js";
 import { registerAuthRoute } from "./core/app/register-routes.js";
@@ -14,6 +15,9 @@ import systemSettingsRouter from "./features/system-settings/index.js";
 // 装配权限检查 Adapter(Port/Adapter):IamPermissionChecker 提供递归 CTE 实现,
 // core 的 PermissionService 经 holder 调用,不直接依赖 features(见 ADR-0004)。
 setPermissionChecker(new IamPermissionChecker());
+
+// 装配审计名称 resolver:业务表依赖留在 app assembly,core/audit 只持有 port。
+registerAuditResolvers();
 
 // 启动审计日志保留策略定时清理(RETENTION_DAYS=0 时不启动)。
 startRetentionCleanup();

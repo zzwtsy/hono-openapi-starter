@@ -65,6 +65,7 @@ export const createProjectRoute = createRoute({
       const body = await c.res.clone().json() as { data?: { id?: string } };
       return body.data?.id ?? "";
     },
+    after: "response",
   })],
   security: authedSecurity,
   request: { body: { content: { "application/json": { schema: CreateProjectSchema } } } },
@@ -90,6 +91,7 @@ export const updateProjectRoute = createRoute({
       const { orgId } = requireOrgUser(c);
       return ProjectService.getById(c.req.param("projectId") ?? "", orgId);
     },
+    after: "response",
   })],
   security: authedSecurity,
   request: {
@@ -119,6 +121,7 @@ export const deleteProjectRoute = createRoute({
       const { orgId } = requireOrgUser(c);
       return ProjectService.getById(c.req.param("projectId") ?? "", orgId);
     },
+    after: async () => null,
   })],
   security: authedSecurity,
   request: { params: ProjectIdParamSchema },

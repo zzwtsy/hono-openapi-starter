@@ -1,3 +1,4 @@
+import type { AuditResolverErrorContext } from "./ports.js";
 import type { AuditEntry, AuditRecord } from "./types.js";
 import { generateId } from "@/db/schema/shared/index.js";
 import { logger } from "../logger/index.js";
@@ -20,22 +21,32 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
     const beforeSanitized = sanitize(entry.beforeState);
     const afterSanitized = sanitize(entry.afterState);
 
-    // 2. 解析 resourceRefs 名称快照(历史快照,写入时查)
-    const refsWithNames = await resolveResourceRefNames(entry.resourceRefs);
+    const reportResolverError = (error: unknown, context: AuditResolverErrorContext) => {
+      logger
+        .withError(error)
+        .withMetadata({ action: entry.action, ...context })
+        .error("audit name resolver failed, recording without resolved name");
+    };
+
+    // 2. 解析 resourceRefs 名称快照(调用方提供的 name 优先,解析失败不丢事件)
+    const refsWithNames = await resolveResourceRefNames(entry.resourceRefs, reportResolverError);
 
     // 3. 解析 before/after 的 relations 名称快照
-    const beforeWithNames = await resolveRelationNames(beforeSanitized, entry.relations);
-    const afterWithNames = await resolveRelationNames(afterSanitized, entry.relations);
+    const beforeWithNames = await resolveRelationNames(beforeSanitized, entry.relations, reportResolverError);
+    const afterWithNames = await resolveRelationNames(afterSanitized, entry.relations, reportResolverError);
 
     // 4. 计算 changedFields(失败路径无「变更」语义:before 有值也不展示,before 全 key 会误导)
     const changedFields = entry.status === "failure"
       ? null
       : computeChangedFields(beforeSanitized, afterSanitized);
 
-    // 5. 从 ALS 取 actor 上下文
+    // 5. metadata 也经过通用 sanitize;业务特定字段由 audit() 配置在 capture 时投影。
+    const metadataSanitized = sanitize(entry.metadata);
+
+    // 6. 从 ALS 取 actor 上下文
     const ctx = getAuditContext();
 
-    // 6. 组装记录入队
+    // 7. 组装记录入队
     const record: AuditRecord = {
       id: generateId(),
       actorUserId: entry.actorUserId ?? ctx?.actorUserId ?? null,
@@ -52,7 +63,7 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
       requestId: ctx?.requestId ?? null,
       status: entry.status,
       errorCode: entry.errorCode,
-      metadata: entry.metadata,
+      metadata: isRecord(metadataSanitized) ? metadataSanitized : undefined,
     };
 
     enqueue(record);
@@ -77,14 +88,18 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
  * 导致假阳性 diff。
  */
 function computeChangedFields(before: unknown, after: unknown): string[] | null {
-  if (before == null && after == null) {
+  // undefined 表示未捕获该侧快照;两侧都未捕获或 after 未捕获时不生成伪 diff。
+  if (before === undefined && after === undefined) {
+    return null;
+  }
+  if (after === undefined) {
     return null;
   }
   if (before == null) {
     return typeof after === "object" && after !== null ? Object.keys(after) : null;
   }
-  if (after == null) {
-    return typeof before === "object" && before !== null ? Object.keys(before) : null;
+  if (after === null) {
+    return Object.keys(before);
   }
   if (typeof before !== "object" || typeof after !== "object") {
     return null;
@@ -95,6 +110,11 @@ function computeChangedFields(before: unknown, after: unknown): string[] | null 
   const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]);
 
   return Array.from(allKeys).filter(key => !valuesEqual(beforeObj[key], afterObj[key]));
+}
+
+/** JSON object 判断,metadata 非 object 时不写入 JSONB。 */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }
 
 /** 值级比较:基本类型 ===,对象/数组用 JSON.stringify(此时只比较值内容,不受外层 key-order 影响)。 */

@@ -67,4 +67,25 @@ describe("audit sanitize", () => {
       cookie: REDACTED,
     });
   });
+
+  it("date、bigint 和非有限数字规范化为 JSON-safe 值", () => {
+    expect(sanitize({
+      occurredAt: new Date("2026-01-02T03:04:05.000Z"),
+      count: 1n,
+      nan: Number.NaN,
+      infinity: Number.POSITIVE_INFINITY,
+    })).toEqual({
+      occurredAt: "2026-01-02T03:04:05.000Z",
+      count: "1",
+      nan: null,
+      infinity: null,
+    });
+  });
+
+  it("循环引用不导致栈溢出", () => {
+    const value: { name: string; self?: unknown } = { name: "node" };
+    value.self = value;
+
+    expect(sanitize(value)).toEqual({ name: "node", self: "[Circular]" });
+  });
 });

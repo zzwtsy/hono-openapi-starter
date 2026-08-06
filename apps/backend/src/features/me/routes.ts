@@ -37,6 +37,7 @@ export const updateMeRoute = createRoute({
     resourceType: "user",
     resourceId: c => c.get("user")?.id ?? "",
     before: async c => MeService.getUserSnapshot(c.get("user")?.id ?? ""),
+    after: "response",
   })],
   security: authedSecurity,
   request: {
@@ -65,6 +66,7 @@ export const changeMyPasswordRoute = createRoute({
     action: meAuditActions.changePassword,
     resourceType: "user",
     resourceId: c => c.get("user")?.id ?? "",
+    after: "none",
   })],
   security: authedSecurity,
   request: {

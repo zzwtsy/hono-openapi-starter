@@ -1,6 +1,12 @@
+import type { Context } from "hono";
 import type { AppBindings } from "../http/context.js";
 
-import type { AuditConfig } from "./types.js";
+import type { AuditResourceRef } from "./ports.js";
+import type {
+  AuditConfig,
+  AuditSnapshotConfig,
+  AuditSnapshotInput,
+} from "./types.js";
 
 import { createMiddleware } from "hono/factory";
 import { AppError } from "../errors/app-error.js";
@@ -14,7 +20,7 @@ import { writeAudit } from "./write-audit.js";
  * 执行流程:
  * 1. handler 前:调 `before(c)` 查旧值(配了才查)
  * 2. await next():执行 handler
- * 3. handler 后:调配置的 `after`;未配置时暂时兼容从响应体 `.data` 读取
+ * 3. handler 后:按 `after` 显式配置捕获 response/none/自定义快照,未配置则不捕获
  * 4. fire-and-forget:writeAudit 入队,不阻塞响应
  *
  * 失败路径:Hono compose 在 handler 抛错时于最内层 dispatch 调用 errorHandler,并把错误挂到
@@ -27,6 +33,29 @@ import { writeAudit } from "./write-audit.js";
  * 定义期校验(fail-fast):配置错误在 route 定义时即抛,不等到请求期。
  * 与请求期 try/catch 互补:静态错误尽早暴露,运行时抖动(响应体不可读等)不覆盖业务。
  */
+function isSnapshotConfig(value: unknown): value is AuditSnapshotConfig {
+  return typeof value === "object"
+    && value !== null
+    && typeof (value as { capture?: unknown }).capture === "function";
+}
+
+function isSnapshotInput(value: unknown): value is AuditSnapshotInput {
+  return typeof value === "function" || isSnapshotConfig(value);
+}
+
+async function resolveSnapshot(input: AuditSnapshotInput, c: Context<AppBindings>): Promise<unknown> {
+  if (typeof input === "function") {
+    return input(c);
+  }
+  const value = await input.capture(c);
+  return input.transform == null ? value : input.transform(value, c);
+}
+
+async function readResponseData(c: Context<AppBindings>): Promise<unknown> {
+  const body = await c.res.clone().json() as { data?: unknown };
+  return body.data;
+}
+
 function assertAuditConfig(config: AuditConfig): void {
   if (
     config.action == null
@@ -38,6 +67,17 @@ function assertAuditConfig(config: AuditConfig): void {
   }
   if (typeof config.action.label !== "string" || config.action.label.length === 0) {
     throw new Error(`audit config: action label is required (action: ${config.action.action})`);
+  }
+  if (config.before != null && !isSnapshotInput(config.before)) {
+    throw new Error(`audit config: invalid before snapshot (action: ${config.action.action})`);
+  }
+  if (
+    config.after != null
+    && config.after !== "response"
+    && config.after !== "none"
+    && !isSnapshotInput(config.after)
+  ) {
+    throw new Error(`audit config: invalid after snapshot (action: ${config.action.action})`);
   }
   const actionCode = config.action.action;
   const hasResourceType = config.resourceType != null;
@@ -63,7 +103,7 @@ export function audit(config: AuditConfig) {
     let before: unknown;
     if (config.before != null) {
       try {
-        before = await config.before(c);
+        before = await resolveSnapshot(config.before, c);
       } catch {
         // before 查询失败不阻塞业务(如资源不存在让 handler 自己抛 404)
       }
@@ -97,25 +137,26 @@ export function audit(config: AuditConfig) {
       // 3/4. handler 后:读 after,fire-and-forget 记审计
       let after: unknown;
 
-      if (config.after != null) {
-        try {
-          after = await config.after(c);
-        } catch {
-          // after 查询失败不阻塞响应
+      if (config.after === "response") {
+        if (status === "success") {
+          try {
+            after = await readResponseData(c);
+          } catch {
+            // 响应体不是 JSON 或读取失败,after 为空
+          }
         }
-      } else if (status === "success") {
+      } else if (config.after != null && config.after !== "none") {
         try {
-          const body = await c.res.clone().json() as { data?: unknown };
-          after = body.data;
+          after = await resolveSnapshot(config.after, c);
         } catch {
-          // 响应体不是 JSON 或读取失败,after 为空
+          // after 查询/transform 失败不阻塞响应
         }
       }
 
       // 解析 resourceRefs(async),再 fire-and-forget writeAudit。
       // 解析失败降级为空引用数组继续记(failure 审计不丢),不覆盖业务响应/错误码——
       // create 路由失败路径可能没有资源 id,此时继续记录不带资源引用的事件。
-      let refs: Array<{ type: string; id: string }> = [];
+      let refs: readonly AuditResourceRef[] = [];
       try {
         if (config.resourceRefs != null) {
           refs = await config.resourceRefs(c);

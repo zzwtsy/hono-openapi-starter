@@ -150,4 +150,33 @@ describe("writeAudit", () => {
 
     expect(lastEnqueuedRecord()?.changedFields).toBeNull();
   });
+
+  it("after 未捕获时不生成伪 diff", async () => {
+    vi.clearAllMocks();
+    await writeAudit({
+      action: "projects.delete",
+      resourceRefs: [{ type: "project", id: "p1" }],
+      beforeState: { id: "p1", name: "项目A" },
+      status: "success",
+    });
+
+    expect(lastEnqueuedRecord()?.changedFields).toBeNull();
+  });
+
+  it("metadata 使用通用 sanitize 且 Date 快照转为 ISO", async () => {
+    vi.clearAllMocks();
+    await writeAudit({
+      action: "settings.update",
+      resourceRefs: [{ type: "setting", id: "site-name" }],
+      beforeState: { updatedAt: new Date("2026-01-02T03:04:05.000Z") },
+      metadata: { token: "secret", updatedAt: new Date("2026-01-02T03:04:05.000Z") },
+      status: "success",
+    });
+
+    expect(lastEnqueuedRecord()?.beforeState).toEqual({ updatedAt: "2026-01-02T03:04:05.000Z" });
+    expect(lastEnqueuedRecord()?.metadata).toEqual({
+      token: "[REDACTED]",
+      updatedAt: "2026-01-02T03:04:05.000Z",
+    });
+  });
 });

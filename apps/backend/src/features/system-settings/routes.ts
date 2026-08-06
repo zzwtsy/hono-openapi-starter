@@ -43,6 +43,7 @@ export const updateSettingRoute = createRoute({
     before: async (c) => {
       return SystemSettingService.get(c.req.param("key") ?? "");
     },
+    after: "response",
   })] as const,
   security: authedSecurity,
   request: {

@@ -1,51 +1,61 @@
-import { eq } from "drizzle-orm";
-
-import { db } from "@/db/client.js";
-import { organizations, roles, user } from "@/db/schema/index.js";
+import type {
+  AuditNameResolver,
+  AuditRelationSpec,
+  AuditResolverErrorHandler,
+  AuditResourceRef,
+} from "./ports.js";
 
 /**
- * 关联名称解析注册表(统一):resourceRefs 和 before/after 共用同一套 resolver。
+ * 审计名称解析 registry。
  *
- * - `resolveResourceRefNames`:给 resourceRefs 数组的每个 ref 加 `name`(历史快照)
- * - `resolveRelationNames`:给 before/after 对象里的约定关联字段加 `_names` 子对象
- *
- * 按"资源类型"注册 resolver;`fieldToType` 把 before/after 的字段名映射到 resolver type。
- * 加新关联类型只需在 `relationResolvers` + `fieldToType` 各加一行。
+ * core 只提供 resolver port 和注册机制,具体数据库查询由应用装配层注册,
+ * 避免 core/audit 直接依赖 user/org/role 等业务表。
  */
+const resourceResolvers = new Map<string, AuditNameResolver>();
+const relationResourceTypes = new Map<string, string>();
 
-export const relationResolvers = {
-  org: async (id: string): Promise<string | undefined> => {
-    const [row] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, id));
-    return row?.name;
-  },
-  user: async (id: string): Promise<string | undefined> => {
-    const [row] = await db.select({ name: user.name }).from(user).where(eq(user.id, id));
-    return row?.name;
-  },
-  role: async (id: string): Promise<string | undefined> => {
-    const [row] = await db.select({ name: roles.name }).from(roles).where(eq(roles.id, id));
-    return row?.name;
-  },
-} as const;
+/** 注册资源类型名称解析器。重复注册同一 resolver 类型时必须保持实现一致。 */
+export function registerAuditResourceResolver(type: string, resolver: AuditNameResolver): void {
+  const existing = resourceResolvers.get(type);
+  if (existing != null && existing !== resolver) {
+    throw new Error(`duplicate audit resource resolver: ${type}`);
+  }
+  resourceResolvers.set(type, resolver);
+}
 
-export type RelationType = keyof typeof relationResolvers;
+/** 注册 before/after 字段到资源类型的映射。 */
+export function registerAuditRelationResolver(spec: AuditRelationSpec): void {
+  const existing = relationResourceTypes.get(spec.field);
+  if (existing != null && existing !== spec.resourceType) {
+    throw new Error(`audit relation field type mismatch: ${spec.field}`);
+  }
+  relationResourceTypes.set(spec.field, spec.resourceType);
+}
 
-/** before/after 字段名 -> resolver type 的映射。 */
-const fieldToType: Record<string, RelationType> = {
-  orgId: "org",
-  userId: "user",
-  roleId: "role",
-};
-
-/** 解析 resourceRefs 里的名称快照,返回带 `name` 的新数组。 */
+/** 解析 resourceRefs 名称快照;调用方已提供 name 时优先保留,不再查询。 */
 export async function resolveResourceRefNames(
-  refs: Array<{ type: string; id: string }>,
-): Promise<Array<{ type: string; id: string; name?: string }>> {
+  refs: readonly AuditResourceRef[],
+  onError?: AuditResolverErrorHandler,
+): Promise<AuditResourceRef[]> {
   return Promise.all(
     refs.map(async (ref) => {
-      const resolver = relationResolvers[ref.type as RelationType];
-      const name = resolver != null ? await resolver(ref.id) : undefined;
-      return { ...ref, name };
+      if (ref.name !== undefined) {
+        return { ...ref };
+      }
+
+      const resolver = resourceResolvers.get(ref.type);
+      // 名称快照是可选增强;未注册 resolver 时保留 type/id,不丢事件也不报错。
+      if (resolver == null) {
+        return { ...ref };
+      }
+
+      try {
+        const name = await resolver(ref.id);
+        return name === undefined ? { ...ref } : { ...ref, name };
+      } catch (error) {
+        onError?.(error, { kind: "resource", resourceType: ref.type, id: ref.id });
+        return { ...ref };
+      }
     }),
   );
 }
@@ -53,33 +63,64 @@ export async function resolveResourceRefNames(
 /**
  * 解析 before/after 对象里的关联字段名称,存到 `_names` 子对象。
  *
- * 例:`{ orgId: "org_001", name: "张三" }` + relations: `["orgId"]`
+ * 例:`{ orgId: "org_001", name: "张三" }` + `{ field: "orgId", resourceType: "org" }`
  * -> `{ orgId: "org_001", name: "张三", _names: { orgId: "华南总部" } }`
  *
- * 非 object 或无 relations 时原样返回。不修改原对象。
+ * 非 object、数组或无 relations 时原样返回。不修改原对象。
  */
 export async function resolveRelationNames(
   data: unknown,
-  relations?: readonly string[],
+  relations?: readonly AuditRelationSpec[],
+  onError?: AuditResolverErrorHandler,
 ): Promise<unknown> {
-  if (data == null || typeof data !== "object" || relations == null || relations.length === 0) {
+  if (
+    data == null
+    || typeof data !== "object"
+    || Array.isArray(data)
+    || relations == null
+    || relations.length === 0
+  ) {
     return data;
   }
 
   const obj = data as Record<string, unknown>;
-  const names: Record<string, string | undefined> = {};
+  const names: Record<string, string> = {};
 
   await Promise.all(
-    relations.map(async (field) => {
+    relations.map(async ({ field, resourceType }) => {
       const value = obj[field];
-      if (typeof value === "string") {
-        const type = fieldToType[field];
-        if (type != null) {
-          names[field] = await relationResolvers[type](value);
+      if (typeof value !== "string") {
+        return;
+      }
+
+      const registeredResourceType = relationResourceTypes.get(field);
+      const resolver = registeredResourceType === resourceType
+        ? resourceResolvers.get(registeredResourceType)
+        : undefined;
+      if (resolver == null) {
+        onError?.(
+          new Error(`audit relation resolver is not registered: ${field} -> ${resourceType}`),
+          { kind: "relation", resourceType, id: value, field },
+        );
+        return;
+      }
+
+      try {
+        const name = await resolver(value);
+        if (name !== undefined) {
+          names[field] = name;
         }
+      } catch (error) {
+        onError?.(error, { kind: "relation", resourceType, id: value, field });
       }
     }),
   );
 
   return { ...obj, _names: names };
+}
+
+/** 测试辅助:隔离模块级 resolver registry。 */
+export function __resetAuditResolverRegistryForTest(): void {
+  resourceResolvers.clear();
+  relationResourceTypes.clear();
 }
