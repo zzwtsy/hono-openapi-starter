@@ -17,7 +17,6 @@ describe("audit context (ALS)", () => {
       {
         actorUserId: null,
         actorOrgId: null,
-        actorRoleSnapshot: null,
         actorNameSnapshot: null,
         ipAddress: "1.2.3.4",
         userAgent: "test",
@@ -37,7 +36,6 @@ describe("audit context (ALS)", () => {
       {
         actorUserId: null,
         actorOrgId: null,
-        actorRoleSnapshot: null,
         actorNameSnapshot: null,
         ipAddress: undefined,
         userAgent: undefined,

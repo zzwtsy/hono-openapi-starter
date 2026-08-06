@@ -498,9 +498,13 @@ export interface AuditLog {
    */
   metadata: Record<string, undefined> | null;
   /**
-   * 发生时间(ISO 8601)
+   * 业务发生时间(ISO 8601)
    */
   occurredAt: string;
+  /**
+   * 审计入库时间(ISO 8601)
+   */
+  recordedAt: string;
 }
 export interface AuditLogList {
   items: AuditLog[];
@@ -511,8 +515,58 @@ export interface AuditLogList {
     totalPages: number;
   };
 }
+export interface AuditTimelineLog {
+  /**
+   * 日志 ID
+   */
+  id: string;
+  /**
+   * 操作者 ID
+   */
+  actorUserId: string | null;
+  /**
+   * 操作者名称(写时快照,改名不污染历史)
+   */
+  actorName: string | null;
+  /**
+   * 业务动作
+   */
+  action: string;
+  /**
+   * 资源引用数组 [{type,id,name?}]
+   */
+  resourceRefs: ResourceRef[];
+  /**
+   * 旧值快照(脱敏),对象或数组
+   */
+  beforeState: null[] | Record<string, undefined> | null;
+  /**
+   * 新值快照(脱敏),对象或数组
+   */
+  afterState: null[] | Record<string, undefined> | null;
+  /**
+   * 变更字段名数组
+   */
+  changedFields: string[] | null;
+  /**
+   * 操作结果
+   */
+  status: 'success' | 'failure';
+  /**
+   * 失败错误码
+   */
+  errorCode: string | null;
+  /**
+   * 业务发生时间(ISO 8601)
+   */
+  occurredAt: string;
+  /**
+   * 动作展示名称
+   */
+  actionLabel: string;
+}
 export interface AuditLogTimeline {
-  items: AuditLog[];
+  items: AuditTimelineLog[];
   meta: {
     nextCursor: string | null;
     hasMore: boolean;
@@ -2729,8 +2783,10 @@ declare global {
        *     errorCode: string | null
        *     // 业务自定义上下文
        *     metadata: Record<string, undefined> | null
-       *     // 发生时间(ISO 8601)
+       *     // 业务发生时间(ISO 8601)
        *     occurredAt: string
+       *     // 审计入库时间(ISO 8601)
+       *     recordedAt: string
        *   }>
        *   meta: {
        *     page: number
@@ -2811,8 +2867,6 @@ declare global {
        *     actorUserId: string | null
        *     // 操作者名称(写时快照,改名不污染历史)
        *     actorName: string | null
-       *     // 操作者组织 ID
-       *     actorOrgId: string | null
        *     // 业务动作
        *     action: string
        *     // 资源引用数组 [{type,id,name?}]
@@ -2844,20 +2898,14 @@ declare global {
        *     // [items] end
        *     // [params1] end
        *     changedFields: string[] | null
-       *     // 请求 IP
-       *     ipAddress: string | null
-       *     // 请求 UA
-       *     userAgent: string | null
-       *     // 请求 ID
-       *     requestId: string | null
        *     // 操作结果
        *     status: 'success' | 'failure'
        *     // 失败错误码
        *     errorCode: string | null
-       *     // 业务自定义上下文
-       *     metadata: Record<string, undefined> | null
-       *     // 发生时间(ISO 8601)
+       *     // 业务发生时间(ISO 8601)
        *     occurredAt: string
+       *     // 动作展示名称
+       *     actionLabel: string
        *   }>
        *   meta: {
        *     nextCursor: string | null

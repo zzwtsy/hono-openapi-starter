@@ -75,7 +75,6 @@ function row(overrides: Partial<Record<string, unknown>> = {}) {
     actorUserId: "u1",
     actorNameSnapshot: "张三",
     actorOrgId: "org-a",
-    actorRoleSnapshot: null,
     action: "projects.update",
     resourceRefs: [{ type: "project", id: "p1", name: "项目A" }],
     beforeState: { name: "旧名" },
@@ -88,6 +87,7 @@ function row(overrides: Partial<Record<string, unknown>> = {}) {
     errorCode: null,
     metadata: { clearAllGrants: false },
     occurredAt: new Date("2026-07-01T00:00:00.000Z"),
+    recordedAt: new Date("2026-07-01T00:00:01.000Z"),
     ...overrides,
   };
 }
@@ -95,6 +95,7 @@ function row(overrides: Partial<Record<string, unknown>> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetRetentionCutoff.mockReturnValue(null); // 默认不过滤
+  mockPermissionCheck.mockResolvedValue(true);
 });
 
 describe("AuditService.list", () => {
@@ -110,6 +111,7 @@ describe("AuditService.list", () => {
       status: "success",
       actorName: "张三",
       occurredAt: "2026-07-01T00:00:00.000Z",
+      recordedAt: "2026-07-01T00:00:01.000Z",
       resourceRefs: [{ type: "project", id: "p1", name: "项目A" }],
     });
   });
@@ -145,7 +147,7 @@ describe("AuditService.list", () => {
     expect(sql).toContain("action");
     expect(sql).toContain("actor_user_id");
     expect(sql).toContain("status");
-    expect(sql).toContain("created_at");
+    expect(sql).toContain("occurred_at");
     expect(params).toEqual(expect.arrayContaining(["projects.update", "u1", "failure"]));
   });
 
@@ -186,7 +188,7 @@ describe("AuditService.list", () => {
     await AuditService.list({ page: 1, pageSize: 25, actorOrgIds: ["org-a"] });
 
     const { sql, params } = sqlQuery(captured[0]);
-    expect(sql).toContain("created_at");
+    expect(sql).toContain("occurred_at");
     expect(sql).toMatch(/>=/);
     expect(params).toContain("2026-06-01T00:00:00.000Z");
   });
@@ -196,7 +198,7 @@ describe("AuditService.list", () => {
 
     await AuditService.list({ page: 1, pageSize: 25, actorOrgIds: ["org-a"] });
 
-    expect(sqlQuery(captured[0]).sql).not.toContain("created_at");
+    expect(sqlQuery(captured[0]).sql).not.toContain("occurred_at");
   });
 });
 
@@ -211,6 +213,14 @@ describe("AuditService.listByResource", () => {
     expect(result.items.map(i => i.id)).toEqual(["log-1", "log-2"]);
     expect(result.meta.hasMore).toBe(true);
     expect(result.meta.nextCursor).toBeTruthy();
+    expect(result.items[0]).toMatchObject({
+      actionLabel: "projects.update",
+      actorName: "张三",
+      resourceRefs: [{ type: "project", id: "p1", name: "项目A" }],
+    });
+    expect(result.items[0]).not.toHaveProperty("ipAddress");
+    expect(result.items[0]).not.toHaveProperty("userAgent");
+    expect(result.items[0]).not.toHaveProperty("requestId");
     // 游标可解码回最后一条的时间 + id
     const decoded = JSON.parse(Buffer.from(result.meta.nextCursor!, "base64").toString("utf8")) as { occurredAt: string; id: string };
     expect(decoded).toEqual({ occurredAt: "2026-07-02T00:00:00.000Z", id: "log-2" });
@@ -242,7 +252,7 @@ describe("AuditService.listByResource", () => {
 
     const { sql } = sqlQuery(captured[0]);
     expect(sql).toContain("@>");
-    expect(sql).toContain("created_at");
+    expect(sql).toContain("occurred_at");
   });
 });
 
@@ -253,6 +263,7 @@ describe("AuditService.checkResourceVisibility", () => {
     await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "project", "p1"))
       .resolves
       .toBeUndefined();
+    expect(mockPermissionCheck).toHaveBeenCalledWith("u1", "projects.read", "org-a");
     expect(mockProjectGetById).toHaveBeenCalledWith("p1", "org-a");
   });
 
@@ -296,6 +307,19 @@ describe("AuditService.checkResourceVisibility", () => {
     expect(mockPermissionCheck).toHaveBeenNthCalledWith(1, "u1", "roles.read", "org-a");
     expect(mockPermissionCheck).toHaveBeenNthCalledWith(2, "u1", "organizations.read", "org-a");
     expect(mockPermissionCheck).toHaveBeenNthCalledWith(3, "u1", "settings.read", "org-a");
+  });
+
+  it("project/user:无业务 read 权限抛 COMMON_FORBIDDEN", async () => {
+    mockPermissionCheck.mockResolvedValue(false);
+
+    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "project", "p1"))
+      .rejects
+      .toMatchObject({ code: "COMMON_FORBIDDEN" });
+    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "user", "u2"))
+      .rejects
+      .toMatchObject({ code: "COMMON_FORBIDDEN" });
+    expect(mockProjectGetById).not.toHaveBeenCalled();
+    expect(mockGetManagedSubtree).not.toHaveBeenCalled();
   });
 
   it("role:无 roles.read 权限抛 COMMON_FORBIDDEN", async () => {

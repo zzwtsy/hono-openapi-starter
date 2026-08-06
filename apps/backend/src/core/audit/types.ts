@@ -80,6 +80,8 @@ export interface AuditEntry {
   relations?: readonly AuditRelationSpec[];
   metadata?: Record<string, unknown>;
   status: "success" | "failure";
+  /** 事件发生时间;路由 middleware 在 handler 前捕获,认证事件未传时由 writeAudit 生成。 */
+  occurredAt?: Date;
   errorCode?: string;
   /** 手动传入 actor(认证事件不走 ALS)。不传则从 ALS 取。 */
   actorUserId?: string | null;
@@ -94,10 +96,11 @@ export interface AuditRecord {
   id: string;
   actorUserId: string | null;
   actorOrgId: string | null;
-  actorRoleSnapshot: string | null;
   /** 操作者名称快照(写时从 session.user.name 存;历史不随改名漂移)。 */
   actorNameSnapshot: string | null;
   action: string;
+  /** 业务事件发生时间,不等于异步入库时间。 */
+  occurredAt: Date;
   resourceRefs: AuditResourceRef[];
   beforeState: unknown;
   afterState: unknown;

@@ -99,6 +99,9 @@ export function audit(config: AuditConfig) {
   const actionCode = config.action.action;
 
   return createMiddleware<AppBindings>(async (c, next) => {
+    // 在 handler 前捕获业务发生时间,避免 after/名称解析延迟污染事件时间。
+    const occurredAt = new Date();
+
     // 1. handler 前:查 before(配了才查)
     let before: unknown;
     if (config.before != null) {
@@ -191,6 +194,7 @@ export function audit(config: AuditConfig) {
         relations: config.relations,
         metadata,
         status,
+        occurredAt,
         errorCode,
       }).catch(() => {
         // fire-and-forget:审计失败不阻塞响应,也不应崩溃进程。

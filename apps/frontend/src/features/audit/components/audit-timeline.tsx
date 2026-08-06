@@ -3,7 +3,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuditActions } from "../hooks/use-audit-actions";
 import { useResourceAuditLogs } from "../hooks/use-resource-audit-logs";
 import { AuditTimelineItem } from "./audit-timeline-item";
 import { Timeline, TimelineItem } from "./timeline";
@@ -17,7 +16,6 @@ interface AuditTimelineProps {
 const SKELETON_KEYS = ["skeleton-1", "skeleton-2", "skeleton-3"];
 
 export function AuditTimeline({ resourceType, resourceId }: AuditTimelineProps) {
-  const actions = useAuditActions();
   const { items, loading, error, hasMore, loadMore, refresh } = useResourceAuditLogs(resourceType, resourceId);
 
   if (loading && items.length === 0) {
@@ -62,7 +60,7 @@ export function AuditTimeline({ resourceType, resourceId }: AuditTimelineProps) 
       <Timeline>
         {items.map((log, i) => (
           <TimelineItem key={log.id} isLast={i === items.length - 1} variant={log.status === "failure" ? "destructive" : "default"}>
-            <AuditTimelineItem log={log} actions={actions} />
+            <AuditTimelineItem log={log} />
           </TimelineItem>
         ))}
       </Timeline>

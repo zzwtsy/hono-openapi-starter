@@ -19,8 +19,8 @@ const resourceTypeLabels: Record<string, string> = {
   setting: "配置",
 };
 
-/** 从 AuditLog 组装时间线摘要(变更字段 / 失败原因)。失败优先:失败时 before 有值也不展示"变更"。 */
-export function formatAuditSummary(log: AuditLog): string {
+/** 从审计条目组装时间线摘要(变更字段 / 失败原因)。失败优先:失败时 before 有值也不展示"变更"。 */
+export function formatAuditSummary(log: Pick<AuditLog, "status" | "errorCode" | "changedFields">): string {
   if (log.status === "failure") {
     return `失败：${log.errorCode ?? "未知错误"}`;
   }

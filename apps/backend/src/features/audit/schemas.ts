@@ -35,8 +35,26 @@ export const AuditLogSchema = z.object({
   status: z.enum(["success", "failure"]).openapi({ description: "操作结果" }),
   errorCode: z.string().nullable().openapi({ description: "失败错误码" }),
   metadata: z.record(z.string(), z.unknown()).nullable().openapi({ description: "业务自定义上下文" }),
-  occurredAt: z.iso.datetime().openapi({ description: "发生时间(ISO 8601)" }),
+  occurredAt: z.iso.datetime().openapi({ description: "业务发生时间(ISO 8601)" }),
+  recordedAt: z.iso.datetime().openapi({ description: "审计入库时间(ISO 8601)" }),
 }).openapi("AuditLog");
+
+/** 资源时间线条目:仅返回业务详情页展示所需字段,不暴露请求取证字段。 */
+export const AuditTimelineLogSchema = AuditLogSchema.pick({
+  id: true,
+  actorUserId: true,
+  actorName: true,
+  action: true,
+  resourceRefs: true,
+  beforeState: true,
+  afterState: true,
+  changedFields: true,
+  status: true,
+  errorCode: true,
+  occurredAt: true,
+}).extend({
+  actionLabel: z.string().openapi({ description: "动作展示名称", example: "修改项目" }),
+}).openapi("AuditTimelineLog");
 
 /** action 目录项。 */
 export const AuditActionSchema = z.object({
@@ -68,6 +86,6 @@ export const AuditLogListSchema = z.object({
 
 /** by-resource 时间线响应(cursor 分页)。 */
 export const AuditLogTimelineSchema = z.object({
-  items: z.array(AuditLogSchema),
+  items: z.array(AuditTimelineLogSchema),
   meta: CursorMetaSchema,
 }).openapi("AuditLogTimeline");

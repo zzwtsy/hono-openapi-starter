@@ -1,4 +1,4 @@
-import type { AuditLog } from "@/api/globals";
+import type { AuditTimelineLog } from "@/api/globals";
 import { useWatcher } from "alova/client";
 import { useRef, useState } from "react";
 import Apis from "@/api";
@@ -15,7 +15,7 @@ import Apis from "@/api";
  */
 export function useResourceAuditLogs(resourceType: string, resourceId: string) {
   const resourceKey = `${resourceType}:${resourceId}`;
-  const [page, setPage] = useState<{ resourceKey: string; items: AuditLog[]; hasMore: boolean } | null>(null);
+  const [page, setPage] = useState<{ resourceKey: string; items: AuditTimelineLog[]; hasMore: boolean } | null>(null);
   // 最近一次请求的上下文:onSuccess 据此决定替换/append,并丢弃过期响应
   const requestRef = useRef<{ resourceKey: string; cursor?: string } | null>(null);
 

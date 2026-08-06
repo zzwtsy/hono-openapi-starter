@@ -1,6 +1,7 @@
-import { index, jsonb, pgTable, text } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-import { createdAtColumn, idColumn } from "./shared/index.js";
+import { idColumn } from "./shared/index.js";
 
 /**
  * 审计日志表:全项目通用操作日志,记录 who/what/when/where/change/outcome。
@@ -8,6 +9,7 @@ import { createdAtColumn, idColumn } from "./shared/index.js";
  * - `resource_refs` 存资源引用数组(支持多资源),GIN 索引加速 `@>` 查询
  * - `before_state`/`after_state` 存脱敏后的 JSON 快照,`_names` 子字段存关联名称历史快照
  * - `changed_fields` 存变更字段名数组,前端时间线摘要展示用
+ * - `occurred_at` 是业务事件发生时间;`recorded_at` 是异步写入数据库时间
  * - append-only:应用层自律(writeAudit 只 INSERT),不提供 update/delete 接口
  * - 保留策略:env `AUDIT_LOG_RETENTION_DAYS` 控制,查询时惰性过滤 + 定时物理删除
  */
@@ -19,8 +21,6 @@ export const auditLogs = pgTable(
     actorUserId: text("actor_user_id"),
     /** 操作者组织快照(管理子树过滤用)。ALS 注入。 */
     actorOrgId: text("actor_org_id"),
-    /** 操作者角色快照(角色会变,记当时的)。阶段 1 暂不填。 */
-    actorRoleSnapshot: text("actor_role_snapshot"),
     /** 操作者名称快照(改名不污染历史;写时从 session.user.name 存)。 */
     actorNameSnapshot: text("actor_name_snapshot"),
     /** 业务动作,如 `projects.update`。 */
@@ -45,10 +45,15 @@ export const auditLogs = pgTable(
     errorCode: text("error_code"),
     /** 业务自定义上下文。 */
     metadata: jsonb("metadata"),
-    /** 发生时间(= 创建时间,带时区,服务端 defaultNow)。 */
-    occurredAt: createdAtColumn(),
+    /** 业务操作发生时间,由 writeAudit 在事件捕获时写入。 */
+    occurredAt: timestamp("occurred_at", { mode: "date", withTimezone: true }).notNull(),
+    /** 实际 INSERT 入库时间,由数据库生成。 */
+    recordedAt: timestamp("recorded_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    /** 快照/事件 payload 解释版本。 */
+    schemaVersion: integer("schema_version").default(1).notNull(),
   },
   t => [
+    check("audit_logs_status_check", sql`${t.status} in ('success', 'failure')`),
     index("audit_logs_occurred_at_idx").on(t.occurredAt),
     index("audit_logs_actor_user_idx").on(t.actorUserId),
     index("audit_logs_action_idx").on(t.action),

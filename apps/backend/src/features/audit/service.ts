@@ -1,7 +1,7 @@
 import type { z } from "@hono/zod-openapi";
 
 import type { Context } from "hono";
-import type { AuditLogSchema } from "./schemas.js";
+import type { AuditLogSchema, AuditTimelineLogSchema } from "./schemas.js";
 import type { AppBindings } from "@/core/http/context.js";
 
 import { and, desc, eq, gte, ilike, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
@@ -18,6 +18,7 @@ import { listRegisteredAuditActions } from "./audit-actions.js";
 
 /** API 响应 DTO 类型(与 AuditLogSchema 同源,jsonb 列在 DB 边界显式转换)。 */
 type AuditLogDto = z.infer<typeof AuditLogSchema>;
+type AuditTimelineLogDto = z.infer<typeof AuditTimelineLogSchema>;
 
 /** DB 行 -> DTO:jsonb 列在 drizzle 里是 unknown,在边界转成响应契约类型(唯一真相:AuditLogSchema)。 */
 function toAuditLogDto(row: typeof auditLogs.$inferSelect): AuditLogDto {
@@ -31,6 +32,25 @@ function toAuditLogDto(row: typeof auditLogs.$inferSelect): AuditLogDto {
     changedFields: row.changedFields as AuditLogDto["changedFields"],
     metadata: row.metadata as AuditLogDto["metadata"],
     // DB 列是 Date,响应契约是 ISO 8601 string(z.iso.datetime)
+    occurredAt: row.occurredAt.toISOString(),
+    recordedAt: row.recordedAt.toISOString(),
+  };
+}
+
+/** DB 行 -> 时间线 DTO:只返回业务详情页需要的最小字段。 */
+function toAuditTimelineLogDto(row: typeof auditLogs.$inferSelect): AuditTimelineLogDto {
+  return {
+    id: row.id,
+    actorUserId: row.actorUserId,
+    actorName: row.actorNameSnapshot,
+    action: row.action,
+    actionLabel: listRegisteredAuditActions().find(item => item.action === row.action)?.label ?? row.action,
+    resourceRefs: row.resourceRefs as AuditTimelineLogDto["resourceRefs"],
+    beforeState: row.beforeState as AuditTimelineLogDto["beforeState"],
+    afterState: row.afterState as AuditTimelineLogDto["afterState"],
+    changedFields: row.changedFields as AuditTimelineLogDto["changedFields"],
+    status: row.status,
+    errorCode: row.errorCode,
     occurredAt: row.occurredAt.toISOString(),
   };
 }
@@ -169,7 +189,7 @@ export const AuditService = {
       : null;
 
     return {
-      items: pageItems.map(toAuditLogDto),
+      items: pageItems.map(toAuditTimelineLogDto),
       meta: { nextCursor, hasMore },
     };
   },
@@ -184,11 +204,19 @@ export const AuditService = {
 
     switch (resourceType) {
       case "project": {
+        const allowed = await PermissionService.check(userId, "projects.read", actorOrgId);
+        if (!allowed) {
+          throw new AppError("COMMON_FORBIDDEN");
+        }
         // 复用 ProjectService.getById(含组织归属校验,不在本组织抛 NOT_FOUND)
         await ProjectService.getById(resourceId, actorOrgId);
         break;
       }
       case "user": {
+        const allowed = await PermissionService.check(userId, "users.read", actorOrgId);
+        if (!allowed) {
+          throw new AppError("COMMON_FORBIDDEN");
+        }
         // 查用户 orgId 是否在操作者管理子树内
         const subtree = await getManagedSubtree(actorOrgId);
         const [target] = await db

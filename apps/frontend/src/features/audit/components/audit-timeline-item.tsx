@@ -1,16 +1,15 @@
-import type { AuditAction, AuditLog } from "@/api/globals";
+import type { AuditTimelineLog } from "@/api/globals";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { formatActorName, formatAuditSummary, formatAuditTime, getActionLabel } from "../lib/format-diff";
+import { formatActorName, formatAuditSummary, formatAuditTime } from "../lib/format-diff";
 import { AuditDiffList } from "./audit-diff-list";
 
 interface AuditTimelineItemProps {
-  log: AuditLog;
-  actions: readonly AuditAction[];
+  log: AuditTimelineLog;
 }
 
-export function AuditTimelineItem({ log, actions }: AuditTimelineItemProps) {
-  const label = getActionLabel(log.action, actions);
+export function AuditTimelineItem({ log }: AuditTimelineItemProps) {
+  const label = log.actionLabel;
   const summary = formatAuditSummary(log);
   const time = formatAuditTime(log.occurredAt);
   const isFailure = log.status === "failure";

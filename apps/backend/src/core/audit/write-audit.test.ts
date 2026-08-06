@@ -22,7 +22,6 @@ vi.mock("./context.js", () => ({
   getAuditContext: () => ({
     actorUserId: "actor-1",
     actorOrgId: "org-1",
-    actorRoleSnapshot: null,
     actorNameSnapshot: "张三",
     ipAddress: "1.2.3.4",
     userAgent: "test-ua",
