@@ -3,7 +3,7 @@ import type { AuditEntry, AuditRecord } from "./types.js";
 import { generateId } from "@/db/schema/shared/index.js";
 import { logger } from "../logger/index.js";
 import { getAuditContext } from "./context.js";
-import { enqueue } from "./queue.js";
+import { beginAuditWrite, endAuditWrite, enqueue } from "./queue.js";
 import { resolveRelationNames, resolveResourceRefNames } from "./relation-resolvers.js";
 import { sanitize } from "./sanitize.js";
 
@@ -16,6 +16,21 @@ import { sanitize } from "./sanitize.js";
  * 认证事件(不走 audit() 中间件)也可直接调此函数,手动传 resourceRefs。
  */
 export async function writeAudit(entry: AuditEntry): Promise<void> {
+  const eventId = generateId();
+  const ctx = getAuditContext();
+
+  if (!beginAuditWrite()) {
+    logger
+      .withMetadata({
+        eventId,
+        requestId: ctx?.requestId ?? null,
+        action: entry.action,
+        stage: "shutdown-reject",
+      })
+      .warn("audit writer rejected during shutdown");
+    return;
+  }
+
   try {
     // 1. 脱敏 before/after
     const beforeSanitized = sanitize(entry.beforeState);
@@ -24,7 +39,13 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
     const reportResolverError = (error: unknown, context: AuditResolverErrorContext) => {
       logger
         .withError(error)
-        .withMetadata({ action: entry.action, ...context })
+        .withMetadata({
+          eventId,
+          requestId: ctx?.requestId ?? null,
+          action: entry.action,
+          stage: "resolve",
+          ...context,
+        })
         .error("audit name resolver failed, recording without resolved name");
     };
 
@@ -43,12 +64,9 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
     // 5. metadata 也经过通用 sanitize;业务特定字段由 audit() 配置在 capture 时投影。
     const metadataSanitized = sanitize(entry.metadata);
 
-    // 6. 从 ALS 取 actor 上下文
-    const ctx = getAuditContext();
-
-    // 7. 组装记录入队
+    // 6. 组装记录入队
     const record: AuditRecord = {
-      id: generateId(),
+      id: eventId,
       actorUserId: entry.actorUserId ?? ctx?.actorUserId ?? null,
       actorOrgId: entry.actorOrgId ?? ctx?.actorOrgId ?? null,
       actorNameSnapshot: entry.actorNameSnapshot ?? ctx?.actorNameSnapshot ?? null,
@@ -66,11 +84,21 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
       metadata: isRecord(metadataSanitized) ? metadataSanitized : undefined,
     };
 
-    enqueue(record);
+    enqueue(record, true);
   } catch (e) {
     // fire-and-forget 语义:审计写入失败不抛给调用方(避免 unhandled rejection 崩进程)。
     // 记录 error 日志确保可观测——审计记录可能丢失,但进程不受影响。
-    logger.withError(e).withMetadata({ action: entry.action }).error("writeAudit failed, audit record lost");
+    logger
+      .withError(e)
+      .withMetadata({
+        eventId,
+        requestId: ctx?.requestId ?? null,
+        action: entry.action,
+        stage: "capture",
+      })
+      .error("writeAudit failed, audit record lost");
+  } finally {
+    endAuditWrite();
   }
 }
 

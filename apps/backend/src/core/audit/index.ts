@@ -15,6 +15,8 @@ export type {
   AuditResolverErrorHandler,
   AuditResourceRef,
 } from "./ports.js";
+export { getAuditQueueStats, shutdownAuditQueue } from "./queue.js";
+export type { AuditQueueStats } from "./queue.js";
 export {
   registerAuditRelationResolver,
   registerAuditResourceResolver,

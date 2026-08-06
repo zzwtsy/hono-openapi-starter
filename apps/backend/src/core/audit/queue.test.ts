@@ -29,7 +29,14 @@ vi.mock("../logger/index.js", () => ({
 
 // 动态导入以获取 reset 函数(导入时触发 process.on("beforeExit") 注册)。
 // process.on 调用在模块顶层,通过模块成功加载间接验证。
-const { enqueue, __resetQueueForTest } = await import("./queue.js");
+const {
+  beginAuditWrite,
+  endAuditWrite,
+  enqueue,
+  getAuditQueueStats,
+  shutdownAuditQueue,
+  __resetQueueForTest,
+} = await import("./queue.js");
 
 function makeRecord(action: string): AuditRecord {
   return {
@@ -135,6 +142,72 @@ describe("audit queue", () => {
 
       expect(mockLoggerError).toHaveBeenCalledWith("audit flush failed, re-enqueueing batch");
       // 队列中有 2 条(放回 + 未 flush 的 — 实际 2 条都在 batch 里,放回后队列恢复)
+    });
+  });
+
+  describe("shutdown", () => {
+    it("等待 in-flight writer 完成后再 flush 队列", async () => {
+      expect(beginAuditWrite()).toBe(true);
+      enqueue(makeRecord("writer-record"), true);
+
+      const shutdown = shutdownAuditQueue();
+      expect(mockInsertValues).not.toHaveBeenCalled();
+
+      endAuditWrite();
+      await shutdown;
+
+      expect(mockInsertValues).toHaveBeenCalledTimes(1);
+      expect(getAuditQueueStats()).toMatchObject({
+        queueDepth: 0,
+        activeWriters: 0,
+        shuttingDown: true,
+      });
+    });
+
+    it("等待 in-flight flush 完成,不提前返回", async () => {
+      vi.useFakeTimers();
+      let resolveInsert!: () => void;
+      mockInsertValues.mockImplementationOnce(async () => new Promise<void>((resolve) => {
+        resolveInsert = resolve;
+      }));
+
+      enqueue(makeRecord("flush-record"));
+      await vi.advanceTimersByTimeAsync(5000);
+      const shutdown = shutdownAuditQueue();
+
+      expect(mockInsertValues).toHaveBeenCalledTimes(1);
+      resolveInsert();
+      await shutdown;
+
+      expect(getAuditQueueStats().queueDepth).toBe(0);
+    });
+
+    it("shutdown 超时记录剩余 writer 和队列诊断", async () => {
+      vi.useFakeTimers();
+      expect(beginAuditWrite()).toBe(true);
+      const shutdown = shutdownAuditQueue();
+
+      await vi.advanceTimersByTimeAsync(10_000);
+      await shutdown;
+
+      expect(mockLoggerWarn).toHaveBeenCalledWith("audit queue shutdown timed out, remaining records may be lost");
+    });
+  });
+
+  describe("stats", () => {
+    it("暴露队列深度和写入/丢弃/flush 计数", async () => {
+      vi.useFakeTimers();
+      enqueue(makeRecord("stats-record"));
+
+      expect(getAuditQueueStats()).toMatchObject({
+        queueDepth: 1,
+        enqueued: 1,
+        dropped: 0,
+        flushing: false,
+      });
+
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(getAuditQueueStats().flushCount).toBe(1);
     });
   });
 

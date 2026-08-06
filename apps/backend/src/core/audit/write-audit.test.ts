@@ -8,6 +8,8 @@ vi.mock("@/db/schema/shared/index.js", () => ({
 }));
 
 vi.mock("./queue.js", () => ({
+  beginAuditWrite: vi.fn().mockReturnValue(true),
+  endAuditWrite: vi.fn(),
   enqueue: vi.fn(),
 }));
 
@@ -35,6 +37,7 @@ vi.mock("../logger/index.js", () => ({
     withError: vi.fn().mockReturnThis(),
     withMetadata: vi.fn().mockReturnThis(),
     error: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 
