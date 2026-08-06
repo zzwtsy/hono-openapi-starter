@@ -5,6 +5,7 @@ import { requireAuth } from "@/core/auth/require-auth.js";
 import { requirePermission } from "@/core/auth/require-permission.js";
 import { jsonErrorResponse, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
+import { systemSettingsAuditActions } from "./audit-actions.js";
 import { SettingKeyParamSchema, SystemSettingSchema, UpdateSettingSchema } from "./schemas.js";
 import { SystemSettingService } from "./service.js";
 
@@ -36,8 +37,7 @@ export const updateSettingRoute = createRoute({
   summary: "修改或创建系统配置",
   description: "修改或创建一条配置。需 settings.update。",
   middleware: [requireAuth(), requirePermission("settings.update"), audit({
-    action: "settings.update",
-    label: "修改系统配置",
+    action: systemSettingsAuditActions.update,
     resourceType: "setting",
     resourceId: c => c.req.param("key") ?? "",
     before: async (c) => {

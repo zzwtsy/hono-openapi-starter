@@ -5,6 +5,7 @@ import type { AuditConfig } from "./types.js";
 import { createMiddleware } from "hono/factory";
 import { AppError } from "../errors/app-error.js";
 import { logger } from "../logger/index.js";
+import { registerAuditAction } from "./action.js";
 import { writeAudit } from "./write-audit.js";
 
 /**
@@ -13,7 +14,7 @@ import { writeAudit } from "./write-audit.js";
  * 执行流程:
  * 1. handler 前:调 `before(c)` 查旧值(配了才查)
  * 2. await next():执行 handler
- * 3. handler 后:读 after(配了 `after` 函数则调函数;否则默认从响应体 `.data` 读)
+ * 3. handler 后:调配置的 `after`;未配置时暂时兼容从响应体 `.data` 读取
  * 4. fire-and-forget:writeAudit 入队,不阻塞响应
  *
  * 失败路径:Hono compose 在 handler 抛错时于最内层 dispatch 调用 errorHandler,并把错误挂到
@@ -27,27 +28,35 @@ import { writeAudit } from "./write-audit.js";
  * 与请求期 try/catch 互补:静态错误尽早暴露,运行时抖动(响应体不可读等)不覆盖业务。
  */
 function assertAuditConfig(config: AuditConfig): void {
-  if (typeof config.action !== "string" || config.action.length === 0) {
-    throw new Error("audit config: action is required");
+  if (
+    config.action == null
+    || typeof config.action !== "object"
+    || typeof config.action.action !== "string"
+    || config.action.action.length === 0
+  ) {
+    throw new Error("audit config: action definition is required");
   }
-  if (typeof config.label !== "string" || config.label.length === 0) {
-    throw new Error(`audit config: label is required (action: ${config.action})`);
+  if (typeof config.action.label !== "string" || config.action.label.length === 0) {
+    throw new Error(`audit config: action label is required (action: ${config.action.action})`);
   }
+  const actionCode = config.action.action;
   const hasResourceType = config.resourceType != null;
   const hasResourceRefs = config.resourceRefs != null;
   if (hasResourceType === hasResourceRefs) {
     throw new Error(
-      `audit config: exactly one of resourceType or resourceRefs must be set (action: ${config.action})`,
+      `audit config: exactly one of resourceType or resourceRefs must be set (action: ${actionCode})`,
     );
   }
   if (hasResourceType && config.resourceId == null) {
-    throw new Error(`audit config: resourceType set but resourceId missing (action: ${config.action})`);
+    throw new Error(`audit config: resourceType set but resourceId missing (action: ${actionCode})`);
   }
 }
 
 export function audit(config: AuditConfig) {
   // 配置错误在此抛(route 定义期),不会污染请求路径。
   assertAuditConfig(config);
+  registerAuditAction(config.action);
+  const actionCode = config.action.action;
 
   return createMiddleware<AppBindings>(async (c, next) => {
     // 1. handler 前:查 before(配了才查)
@@ -105,8 +114,7 @@ export function audit(config: AuditConfig) {
 
       // 解析 resourceRefs(async),再 fire-and-forget writeAudit。
       // 解析失败降级为空引用数组继续记(failure 审计不丢),不覆盖业务响应/错误码——
-      // create 路由失败路径响应体不可读,`c.res.clone().json()` 必然抛(旧实现此处
-      // 会把业务错误替换成 500)。
+      // create 路由失败路径可能没有资源 id,此时继续记录不带资源引用的事件。
       let refs: Array<{ type: string; id: string }> = [];
       try {
         if (config.resourceRefs != null) {
@@ -118,7 +126,7 @@ export function audit(config: AuditConfig) {
       } catch (e) {
         logger
           .withError(e)
-          .withMetadata({ action: config.action })
+          .withMetadata({ action: actionCode })
           .error("audit resource refs resolution failed, recording without refs");
       }
 
@@ -135,7 +143,7 @@ export function audit(config: AuditConfig) {
       }
 
       void writeAudit({
-        action: config.action,
+        action: actionCode,
         resourceRefs: refs,
         beforeState: before,
         afterState: after,

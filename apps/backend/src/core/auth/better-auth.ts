@@ -6,8 +6,13 @@ import { bearer } from "better-auth/plugins/bearer";
 import { db } from "../../db/client.js";
 import * as authSchema from "../../db/schema/auth-schema.js";
 import env from "../../env.js";
-import { writeAudit } from "../audit/index.js";
+import { registerAuditAction, writeAudit } from "../audit/index.js";
+import { authAuditActions } from "./audit-actions.js";
 import { resolveSignInEvent, signOutAuditUser } from "./auth-audit-events.js";
+
+// 认证事件不经过 audit() 路由中间件,在 Better Auth hook 装配前显式注册 action。
+registerAuditAction(authAuditActions.signIn);
+registerAuditAction(authAuditActions.signOut);
 
 /**
  * Better Auth 实例。
@@ -67,7 +72,7 @@ export const auth = betterAuth({
         const user = signOutAuditUser(session);
         if (user != null) {
           void writeAudit({
-            action: "auth.sign-out",
+            action: authAuditActions.signOut.action,
             resourceRefs: [{ type: "user", id: user.id }],
             status: "success",
             actorUserId: user.id,
@@ -85,7 +90,7 @@ export const auth = betterAuth({
       if (pathname.endsWith("/sign-in/email")) {
         const event = resolveSignInEvent(ctx);
         void writeAudit({
-          action: "auth.sign-in",
+          action: authAuditActions.signIn.action,
           resourceRefs: event.user != null ? [{ type: "user", id: event.user.id }] : [],
           status: event.status,
           errorCode: event.errorCode,

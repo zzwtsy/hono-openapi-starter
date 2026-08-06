@@ -6,6 +6,7 @@ import { requireAuth } from "@/core/auth/require-auth.js";
 import { requirePermission } from "@/core/auth/require-permission.js";
 import { jsonErrorResponse, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
+import { projectAuditActions } from "./audit-actions.js";
 import { CreateProjectSchema, ProjectIdParamSchema, ProjectSchema, UpdateProjectSchema } from "./schemas.js";
 import { ProjectService } from "./service.js";
 
@@ -58,8 +59,7 @@ export const createProjectRoute = createRoute({
   summary: "创建项目",
   description: "在当前用户所属组织下创建项目。同组织内项目名唯一。需 projects.create。",
   middleware: [requireAuth(), requirePermission("projects.create"), audit({
-    action: "projects.create",
-    label: "创建项目",
+    action: projectAuditActions.create,
     resourceType: "project",
     resourceId: async (c) => {
       const body = await c.res.clone().json() as { data?: { id?: string } };
@@ -83,8 +83,7 @@ export const updateProjectRoute = createRoute({
   summary: "修改项目",
   description: "修改项目名称或描述。同组织内项目名唯一。需 projects.update。",
   middleware: [requireAuth(), requirePermission("projects.update"), audit({
-    action: "projects.update",
-    label: "修改项目",
+    action: projectAuditActions.update,
     resourceType: "project",
     resourceId: c => c.req.param("projectId") ?? "",
     before: async (c) => {
@@ -113,8 +112,7 @@ export const deleteProjectRoute = createRoute({
   summary: "删除项目",
   description: "删除项目。需 projects.delete。",
   middleware: [requireAuth(), requirePermission("projects.delete"), audit({
-    action: "projects.delete",
-    label: "删除项目",
+    action: projectAuditActions.delete,
     resourceType: "project",
     resourceId: c => c.req.param("projectId") ?? "",
     before: async (c) => {

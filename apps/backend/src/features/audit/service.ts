@@ -14,7 +14,7 @@ import { db } from "@/db/client.js";
 import { auditLogs, user } from "@/db/schema/index.js";
 import { getManagedSubtree } from "@/features/iam/org-tree.js";
 import { ProjectService } from "@/features/projects/service.js";
-import { auditActionCatalog } from "./audit-actions.js";
+import { listRegisteredAuditActions } from "./audit-actions.js";
 
 /** API 响应 DTO 类型(与 AuditLogSchema 同源,jsonb 列在 DB 边界显式转换)。 */
 type AuditLogDto = z.infer<typeof AuditLogSchema>;
@@ -232,6 +232,6 @@ export const AuditService = {
 
   /** action 目录(前端渲染查表)。 */
   async listActions() {
-    return [...auditActionCatalog];
+    return listRegisteredAuditActions();
   },
 };

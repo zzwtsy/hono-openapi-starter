@@ -1,3 +1,9 @@
+export {
+  defineAuditAction,
+  getAuditActionCatalog,
+  registerAuditAction,
+} from "./action.js";
+export type { AuditActionCatalogItem, AuditActionDefinition } from "./action.js";
 export { auditContextMiddleware } from "./audit-context-middleware.js";
 export { getAuditContext, setAuditContext } from "./context.js";
 export type { AuditContext } from "./context.js";

@@ -60,7 +60,7 @@ export async function resolveResourceRefNames(
  */
 export async function resolveRelationNames(
   data: unknown,
-  relations?: string[],
+  relations?: readonly string[],
 ): Promise<unknown> {
   if (data == null || typeof data !== "object" || relations == null || relations.length === 0) {
     return data;
