@@ -1,14 +1,14 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-08-01
+lastReviewedAt: 2026-08-06
 ---
 
 # Feature: 审计日志(audit)
 
 ## 1. Background
 
-全项目写操作需要留痕:谁在何时对什么资源做了什么、改前改后、成功失败。基础设施(`core/audit/`)与接入方式见 [ADR-0009](../../adr/0009-audit-log.md);本文档描述 audit feature 的查询 API 与使用方式。
+全项目写操作需要留痕:谁在何时对什么资源做了什么、改前改后、成功失败。基础设施(`core/audit/`)与基础选型见 [ADR-0009](../../adr/0009-audit-log.md)，模板边界和发布约束见 [ADR-0010](../../adr/0010-audit-template-boundaries.md);本文档描述 audit feature 的查询 API 与使用方式。
 
 ## 2. Goals
 
@@ -139,7 +139,16 @@ sequenceDiagram
 
 ## 12. Rollout / Migration Notes
 
-- 迁移:0006 新增 `audit_logs` 表,0007 加 `actor_name_snapshot`,0008 将 `created_at` 重命名为 `occurred_at`,增加 `recorded_at/schema_version`,删除未使用的 `actor_role_snapshot` 并补 status check;迁移保留历史 occurred 时间。
+- 迁移:0006 新增 `audit_logs` 表,0007 加 `actor_name_snapshot`,0008 将 `created_at` 迁移为 `occurred_at`,增加 `recorded_at/schema_version`,删除未使用的 `actor_role_snapshot` 并补 status check。当前 0008 直接新增 `occurred_at NOT NULL`,没有在 SQL 中显式回填旧 `created_at`。
+- 0008 当前属于本 feature 分支的发布候选迁移,仓库内没有共享/生产部署记录。对已有审计数据的发布风险尚未消除:未执行时应先改为安全的 expand/backfill/contract 顺序;已执行时不得修改已应用文件,应追加 forward migration 并先完成备份、行数校验和恢复预案。
 - env:`AUDIT_LOG_RETENTION_DAYS`(默认 90,0 = 永久保留;查询时惰性过滤 + 每小时定时物理删除)
 - 埋点接入:写路由 `middleware` 数组追加 `audit({ action: actionDescriptor, resourceType/resourceRefs, before?, after: "response"|"none"|provider, metadata? })` 即可;descriptor 由所属 feature 定义,`audit()` 自动注册到 action registry。非路由事件(如认证 hook)需显式调用 `registerAuditAction`。
 - before/after 支持 `{ capture, transform? }` 业务快照配置;transform 用于业务特定字段投影,通用 password/token 等字段仍由 core `sanitize()` 处理。resource name resolver 在 `apps/backend/src/audit-resolvers.ts` 装配,调用方提供的 `resourceRefs.name` 优先。
+
+## 13. 兼容性与回滚
+
+- API v1 尚未有仓库内可核实的外部发布记录时,当前三条 endpoint 契约可作为首个发布基线;如果实际已有消费者,不得静默移除旧 DTO 字段,应保留旧响应、增加版本或设置 deprecation 窗口。
+- 已落库的 action code 不重命名、不删除;descriptor/catalog 的 label 变化不影响历史 `action`,查询展示无法解析 label 时回退原始 action code。
+- 全局详情 DTO 与资源时间线 DTO 是有意拆分的契约:global 保留 IP/UA/requestId/metadata 等取证字段,timeline 不返回这些字段。任何已发布消费者若依赖 timeline 的取证字段,必须先走兼容窗口。
+- 代码可以回滚到上一个版本,但删除 `created_at`/`actor_role_snapshot` 后不能依赖自动 down migration 恢复数据;数据库回滚必须使用备份恢复或经过验证的 forward migration。
+- 阶段 6 不启动后端服务,不重新执行前端 `gen:api`;前端生成物以 `apps/frontend/src/api/globals.d.ts` 和 backend contract test 一起作为发布前核对证据。

@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-08
+lastReviewedAt: 2026-08-06
 ---
 
 # 可观测性 Checklist
@@ -14,6 +14,8 @@ lastReviewedAt: 2026-07-08
 - [x] JSONL 每行都是合法 JSON。
 - [x] 生产日志按天轮转。
 - [x] 日志脱敏规则有测试覆盖。
+- [x] audit queue 记录 queue depth、flush、retry、drop 和 permanent failure 统计。
+- [x] audit shutdown drain 记录 active writers、in-flight flush、剩余队列和超时诊断。
 
 ## 请求追踪
 
@@ -36,3 +38,5 @@ lastReviewedAt: 2026-07-08
 - [x] `/reference` 可访问。
 - [ ] OpenAPI lint 进入 CI。
 - [x] contract test 覆盖核心接口。
+
+> 阶段 6 复查结论:OpenAPI lint/generate/validate 尚未进入 CI,trace_id/span_id 也未实现,继续保持未完成状态;当前以 OpenAPI source、contract test 和已提交前端生成物完成审计契约核对。

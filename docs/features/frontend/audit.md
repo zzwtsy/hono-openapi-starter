@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-08-01
+lastReviewedAt: 2026-08-06
 ---
 
 # 前端审计(操作日志)
@@ -80,4 +80,11 @@ features/audit/
 | `Apis.Audit.listAuditLogsByResource` | GET `/api/v1/audit-logs/by-resource`(时间线最小 DTO,含 `actionLabel`) |
 | `Apis.Audit.listAuditActions` | GET `/api/v1/audit-logs/actions` |
 
-类型经 `gen:api` 从 OpenAPI 生成(`api/globals.d.ts`);快照使用可递归的 `AuditJsonValue`(字符串/数字/布尔/null/数组/对象),`resourceRefs`/`changedFields` 等为具体类型。diff viewer 不通过 `as` 强转快照,而是在边界运行时窄化对象、数组和 `_names`;测试 `snap()` 仅保留字面量泛型推导,不绕过类型契约。
+类型经 `gen:api` 从 OpenAPI 生成(`api/globals.d.ts`);快照使用可递归的 `AuditJsonValue`(字符串/数字/布尔/null/数组/对象),`resourceRefs`/`changedFields` 等为具体类型。diff viewer 不通过 `as` 强转快照,而是在边界运行时窄化对象、数组和 `_names`;测试 `snap()` 仅保留字面量泛型推导,不绕过类型契约。阶段 5 已由用户完成 API 生成,阶段 6 只核对当前生成物与 contract test,不启动后端或重复生成。
+
+## 发布兼容性
+
+- 全局审计列表使用完整 `AuditLog`,资源时间线使用最小 `AuditTimelineLog`;时间线的 `actionLabel` 由后端返回,不依赖额外的 action catalog 请求或 `audit.read`。
+- 当前 feature 分支没有仓库内可核实的外部 API 发布记录;若实际已有 v1 消费者,不得静默依赖时间线新增/删除字段,应保留旧响应、提供版本化契约或设置 deprecation 窗口。
+- 历史 action code 保持稳定;前端展示优先使用服务端 label,无法解析时应保留原始 action code,避免历史记录变成空白。
+- 生成 API 的同步窗口必须同时具备可访问的后端 OpenAPI 来源和明确授权;阶段 6 不执行 `pnpm --filter frontend gen:api`。

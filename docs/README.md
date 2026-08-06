@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: platform
-lastReviewedAt: 2026-07-16
+lastReviewedAt: 2026-08-06
 ---
 
 # 全栈模板工程文档
@@ -54,7 +54,7 @@ lastReviewedAt: 2026-07-16
 | 改用户管理 UI | `features/frontend/iam.md`（用户管理节）、`features/backend/iam.md`（users.*） |
 | 改账户自助(个人信息) | `features/frontend/account.md`、`features/backend/iam.md`（me 自助修改节） |
 | 改系统设置 | `features/backend/system-settings.md`、`features/frontend/settings.md`、`adr/0007-runtime-config-control.md` |
-| 改审计 / 操作日志 | `features/backend/audit.md`、`features/frontend/audit.md`、`adr/0009-audit-log.md` |
+| 改审计 / 操作日志 | `features/backend/audit.md`、`features/frontend/audit.md`、`adr/0009-audit-log.md`、`adr/0010-audit-template-boundaries.md` |
 | 修改认证或权限 | `conventions/backend/auth-better-auth.md`、`conventions/backend/authorization.md`、`conventions/frontend/auth.md`、`adr/0003-keep-better-auth-native.md`、`adr/0004-authorization-layer.md`、`adr/0007-runtime-config-control.md`、`checklists/iam-completeness-checklist.md` |
 | 修改错误处理或 i18n | `conventions/backend/error-code-system.md`、`conventions/backend/api-openapi.md`、`adr/0008-error-i18n.md` |
 | 评估 / 演进 IAM 模板完成度 | `checklists/iam-completeness-checklist.md`、`conventions/backend/authorization.md`、`features/backend/iam.md` |
@@ -106,6 +106,7 @@ docs/
     0007-runtime-config-control.md
     0008-error-i18n.md
     0009-audit-log.md
+    0010-audit-template-boundaries.md
 
   diagrams/
 

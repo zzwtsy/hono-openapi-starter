@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: platform
-lastReviewedAt: 2026-07-10
+lastReviewedAt: 2026-08-06
 ---
 
 # ADR 索引
@@ -21,6 +21,7 @@ ADR 记录已经接受的长期架构决策。它说明决策背景、取舍和�
 | [ADR-0007: 运行时配置控制 via DB + Better Auth hooks](0007-runtime-config-control.md) | Accepted | 运行时可编辑配置存 DB `system_settings` 表；sign-up 永久拒绝用 BA `hooks.before`（signUp 开关已退役）；禁用用户用 `databaseHooks.session.create.before`；用户管理自建不引 admin 插件。 | [ADR-0003](0003-keep-better-auth-native.md)、[ADR-0004](0004-authorization-layer.md)、[Better Auth 集成](../conventions/backend/auth-better-auth.md) |
 | [ADR-0008: 错误处理 i18n 演进](0008-error-i18n.md) | Accepted | code/message 分离 + 通用+业务码 + i18n 自建字典(Accept-Language)+ originalMessage en 兜底。 | [ADR-0002](0002-unified-response-envelope.md)、[错误码体系](../conventions/backend/error-code-system.md) |
 | [ADR-0009: 审计日志(自建 core/audit + 中间件声明式接入)](0009-audit-log.md) | Accepted | 自建审计基础设施,fire-and-forget 队列写入,audit() 中间件声明式接入,只记写操作+认证事件,JSONB 历史快照。 | [backend audit feature 文档](../features/backend/audit.md) |
+| [ADR-0010：审计日志模板边界与发布策略](0010-audit-template-boundaries.md) | Review | 固化 core/应用装配边界、事件与 DTO 契约、队列可靠性边界以及 migration/API 兼容和回滚规则。 | [ADR-0009](0009-audit-log.md)、[backend audit feature 文档](../features/backend/audit.md)、[frontend audit feature 文档](../features/frontend/audit.md) |
 
 ## 维护规则
 

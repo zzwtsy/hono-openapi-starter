@@ -1,6 +1,8 @@
 # 后端目录结构
 
 > 本文档是当前架构事实,以 `apps/backend/src/` 实际文件为准(与 `rg`/`find` 核对过);发现漂移请随任务修正。
+>
+> 2026-08-06 复查:审计基础设施位于 `core/audit`,业务资源 resolver 和可见性策略由 `audit-resolvers.ts` 装配,`features/audit` 只负责查询 API;该边界与 ADR-0010 一致。
 
 ## 推荐目录树
 
@@ -194,6 +196,13 @@ tests/                          # apps/backend/tests/(与 src/ 平级,见 vitest
 - 业务 service
 - 业务 schema
 - feature 私有工具
+
+### 审计 core 与应用装配边界
+
+- `src/core/audit/` 只依赖通用 HTTP/日志/数据库端口和 JSON 处理,不直接导入 project、user、role、organization、setting 等业务表。
+- `src/audit-resolvers.ts` 注册资源名称解析和资源可见性策略;资源删除后,审计记录仍依赖写入时的名称快照和原始引用展示。
+- `src/features/audit/` 只装配查询路由、错误/响应 schema、分页 service、action catalog 适配层和权限入口;global 列表使用 `audit.read`,资源时间线使用业务资源 read 权限。
+- `src/db/schema/audit-schema.ts` 是数据库结构 source of truth,`src/db/migrations/` 是发布顺序 source of truth;二者都不能被 feature 文档中的手写 schema 替代。
 
 ### `src/features`
 
