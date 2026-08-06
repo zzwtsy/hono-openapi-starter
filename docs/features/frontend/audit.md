@@ -44,7 +44,7 @@ features/audit/
   lib/
     format-diff.ts               # Intl 时间(绝对+秒)/资源类型中文化/actor 名称/摘要
     audit-filters.ts             # chips 派生/hasActiveFilters/时间预设(纯函数)
-    audit-search.ts              # AuditSearch 类型(route 与 features 共用)
+    audit-search.ts              # AuditSearch 类型 + ISO datetime search 校验(route 与 features 共用)
 
 时间范围选择器在 `components/shared/date-range-picker.tsx`(shared 层,不依赖 features):
 
@@ -60,10 +60,11 @@ features/audit/
 
 - `useAuditLogs`:监听 `[page, action, actorUserId, actorKeyword, status, from, to]`,`cacheFor: 0`(实时性)
 - **URL 同步模式**(筛选/分页):route 层 `navigate({ replace: true, search: (prev) => ... })`(功能性 updater 保留其他参数,非分页变更重置 page,replace 不污染历史)
-- **actorKeyword 输入**:本地 state 即时响应 + 250ms 防抖写 URL(受控输入直接绑 search 会卡顿);URL 外部变化(返回键)回同步输入并取消 pending timer
+- **actorKeyword 输入**:本地 state 即时响应 + 250ms 防抖写 URL(受控输入直接绑 search 会卡顿);URL 外部变化(返回键)、重置、移除关键词 chip 和卸载都会取消 pending timer
+- **URL 日期**:`from/to` 在 route `validateSearch` 中分别按 `z.iso.datetime()` 校验;非法值归一为 `undefined`,不透传给后端
 - **时间范围**:`DateRangePicker` 统一出口(预设 Select / 双月日历 / 清除),选择即写 URL;action/status/pageSize Select 均传 `items` prop 使 Value 按 label 渲染(Base UI 与 Radix 差异,shadcn #9753)
 - `useResourceAuditLogs`:监听 `[resourceType, resourceId]`;加载更多/刷新用 `send(cursor)`(cursor 不进 reactive state,失败后再点重试同一页);`onSuccess` 里按请求 cursor 区分替换/append;page 状态带 `resourceKey` 派生展示,条目类型为时间线最小 DTO
-- `useAuditActions`:`listAuditActions` 配 `cacheFor: Infinity`(`$$userConfigMap` 集中配置,见 state-cache.md),组件自取,路由 loader 不预取
+- `useAuditActions`:`listAuditActions` 配 `cacheFor: Infinity`(`$$userConfigMap` 集中配置,见 state-cache.md),组件自取,路由 loader 不预取;资源时间线直接使用 `actionLabel`,不重复请求 action catalog
 - 分页器:`components/ui/pagination.tsx`(shadcn 生成物,勿手改)+ 页容量 Select(25/50/100,进 URL)
 
 ## 权限
@@ -79,4 +80,4 @@ features/audit/
 | `Apis.Audit.listAuditLogsByResource` | GET `/api/v1/audit-logs/by-resource`(时间线最小 DTO,含 `actionLabel`) |
 | `Apis.Audit.listAuditActions` | GET `/api/v1/audit-logs/actions` |
 
-类型经 `gen:api` 从 OpenAPI 生成(`api/globals.d.ts`),`resourceRefs`/`changedFields` 等为具体类型,禁止本地 `as` 强转(测试 fixture 例外,`snap()` helper 注明原因)。
+类型经 `gen:api` 从 OpenAPI 生成(`api/globals.d.ts`);快照使用可递归的 `AuditJsonValue`(字符串/数字/布尔/null/数组/对象),`resourceRefs`/`changedFields` 等为具体类型。diff viewer 不通过 `as` 强转快照,而是在边界运行时窄化对象、数组和 `_names`;测试 `snap()` 仅保留字面量泛型推导,不绕过类型契约。

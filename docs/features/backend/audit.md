@@ -46,7 +46,7 @@ lastReviewedAt: 2026-08-01
 
 **`listAuditActions`** — 返回 `[{ action, label }]` 数组,来自应用装配时注册的 action registry(当前 26 项:24 个写路由 + 登录/登出)。写路由通过 `audit({ action: descriptor })` 自动注册,认证 hook 显式注册。
 
-全局详情日志(`AuditLog`)包含:`id` / `actorUserId` / **`actorName`(写时快照)** / `actorOrgId` / `action` / `resourceRefs`(`[{type,id,name?}]`)/ `beforeState` / `afterState` / `changedFields` / `ipAddress` / `userAgent` / `requestId` / `status` / `errorCode` / `metadata` / `occurredAt` / `recordedAt`。资源时间线使用最小 DTO,额外返回 `actionLabel`,不返回 IP/UA/requestId/metadata 等取证字段。
+全局详情日志(`AuditLog`)包含:`id` / `actorUserId` / **`actorName`(写时快照)** / `actorOrgId` / `action` / `resourceRefs`(`[{type,id,name?}]`)/ `beforeState` / `afterState` / `changedFields` / `ipAddress` / `userAgent` / `requestId` / `status` / `errorCode` / `metadata` / `occurredAt` / `recordedAt`。`beforeState`/`afterState`/`metadata` 的 OpenAPI 契约使用可递归的 `AuditJsonValue`(string/number/boolean/null/array/object),避免生成客户端得到空对象或 `Record<string, undefined>`。资源时间线使用最小 DTO,额外返回 `actionLabel`,不返回 IP/UA/requestId/metadata 等取证字段。
 
 ## 6. Auth & Permissions
 
