@@ -2,6 +2,7 @@ import type { AuditSearch } from "@/features/audit/lib/audit-search";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/shared/page-header";
 import { AuditLogTable } from "@/features/audit/components/audit-log-table";
+import { parseAuditSearchDate } from "@/features/audit/lib/audit-search";
 import { requirePermission } from "@/lib/require-permission";
 
 function parsePage(value: unknown): number | undefined {
@@ -24,8 +25,8 @@ export const Route = createFileRoute("/_authenticated/audit/")({
     action: typeof search.action === "string" ? search.action : undefined,
     status: search.status === "success" || search.status === "failure" ? search.status : undefined,
     actorKeyword: typeof search.actorKeyword === "string" ? search.actorKeyword : undefined,
-    from: typeof search.from === "string" ? search.from : undefined,
-    to: typeof search.to === "string" ? search.to : undefined,
+    from: parseAuditSearchDate(search.from),
+    to: parseAuditSearchDate(search.to),
   }),
   beforeLoad: ({ context }) => {
     requirePermission(context.auth.permissions, "audit.read");

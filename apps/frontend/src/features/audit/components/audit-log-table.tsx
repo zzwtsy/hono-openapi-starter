@@ -1,7 +1,7 @@
 import type { AuditSearch } from "../lib/audit-search";
 import type { FilterKey } from "./audit-filter-chips";
 import type { AuditLog } from "@/api/globals";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AsyncListState } from "@/components/shared/async-list";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -53,21 +53,27 @@ export function AuditLogTable({ search, onSearchChange }: AuditLogTableProps) {
   // (受控输入直接绑 search 会每击键触发 router 重算导致卡顿,见 stage3 调研)
   const [keyword, setKeyword] = useState(search.actorKeyword ?? "");
   const navigateTimerRef = useRef<number | undefined>(undefined);
+  const clearKeywordDebounce = useCallback(() => {
+    if (navigateTimerRef.current !== undefined) {
+      window.clearTimeout(navigateTimerRef.current);
+      navigateTimerRef.current = undefined;
+    }
+  }, []);
 
   // URL 外部变化(返回键/分享链接):回同步输入并取消 pending 防抖,防 stale 覆盖。
   // set-state-in-effect 是受控输入与 URL 双向同步模式的必要部分,豁免规则。
   /* eslint-disable react/set-state-in-effect */
   useEffect(() => {
-    window.clearTimeout(navigateTimerRef.current);
+    clearKeywordDebounce();
     setKeyword(search.actorKeyword ?? "");
-  }, [search.actorKeyword]);
+  }, [clearKeywordDebounce, search.actorKeyword]);
   /* eslint-enable react/set-state-in-effect */
 
-  useEffect(() => () => window.clearTimeout(navigateTimerRef.current), []);
+  useEffect(() => clearKeywordDebounce, [clearKeywordDebounce]);
 
   const onKeywordChange = (value: string) => {
     setKeyword(value);
-    window.clearTimeout(navigateTimerRef.current);
+    clearKeywordDebounce();
     const trimmed = value.trim();
     navigateTimerRef.current = window.setTimeout(() => {
       onSearchChange({ actorKeyword: trimmed !== "" ? trimmed : undefined });
@@ -94,12 +100,14 @@ export function AuditLogTable({ search, onSearchChange }: AuditLogTableProps) {
   };
 
   const handleReset = () => {
+    clearKeywordDebounce();
     setKeyword("");
     onSearchChange({ action: undefined, status: undefined, actorKeyword: undefined, from: undefined, to: undefined });
   };
 
   const removeChip = (key: FilterKey) => {
     if (key === "actorKeyword") {
+      clearKeywordDebounce();
       setKeyword("");
     }
     onSearchChange({ [key]: undefined });
@@ -257,7 +265,7 @@ function PaginationBar({ page, pageSize, totalPages, onPageChange, onPageSizeCha
         value={String(pageSize)}
         onValueChange={v => onPageSizeChange(Number(v))}
       >
-        <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+        <SelectTrigger aria-label="每页条数" className="w-24"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectGroup>
             {pageSizeItems.map(item => (

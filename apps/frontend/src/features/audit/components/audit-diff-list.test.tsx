@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 
 import { AuditDiffList } from "./audit-diff-list";
 
-/** 快照字面量 -> AuditLog 快照类型(wormhole 生成的 Record<string, undefined> 不接受普通对象字面量)。 */
-function snap<T extends Record<string, unknown> | unknown[] | null>(value: T): AuditLog["beforeState"] {
-  return value as unknown as AuditLog["beforeState"];
+/** 快照测试夹具使用生成的递归 JSON 类型,避免测试绕过契约。 */
+function snap<T extends AuditLog["beforeState"]>(value: T): T {
+  return value;
 }
 
 describe("AuditDiffList", () => {
@@ -93,6 +93,19 @@ describe("AuditDiffList", () => {
     // 数组内容以 JSON 形式出现在同一行(before/after 各一次,不逐项渲染 0/1 索引)
     expect(screen.queryByText("0")).not.toBeInTheDocument();
     expect(screen.getAllByText(/projects\.read/).length).toBeGreaterThan(0);
+  });
+
+  it("嵌套 JSON 使用生成的递归类型并按单字段展示", () => {
+    render(
+      <AuditDiffList
+        before={snap({ settings: { theme: "light" } })}
+        after={snap({ settings: { theme: "dark" } })}
+        changedFields={["settings"]}
+      />,
+    );
+
+    expect(screen.getByText("{\"theme\":\"light\"}")).toBeInTheDocument();
+    expect(screen.getByText("{\"theme\":\"dark\"}")).toBeInTheDocument();
   });
 
   it("长值折叠:超 120 字符截断,可展开", () => {

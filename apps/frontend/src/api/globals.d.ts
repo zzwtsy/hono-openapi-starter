@@ -436,6 +436,13 @@ export interface ResourceRef {
    */
   name?: string | null;
 }
+export type AuditJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | AuditJsonValue[]
+  | Record<string, AuditJsonValue>;
 export interface AuditLog {
   /**
    * 日志 ID
@@ -464,11 +471,11 @@ export interface AuditLog {
   /**
    * 旧值快照(脱敏),对象或数组
    */
-  beforeState: null[] | Record<string, undefined> | null;
+  beforeState: AuditJsonValue[] | Record<string, AuditJsonValue> | null;
   /**
    * 新值快照(脱敏),对象或数组
    */
-  afterState: null[] | Record<string, undefined> | null;
+  afterState: AuditJsonValue[] | Record<string, AuditJsonValue> | null;
   /**
    * 变更字段名数组
    */
@@ -496,7 +503,7 @@ export interface AuditLog {
   /**
    * 业务自定义上下文
    */
-  metadata: Record<string, undefined> | null;
+  metadata: Record<string, AuditJsonValue> | null;
   /**
    * 业务发生时间(ISO 8601)
    */
@@ -539,11 +546,11 @@ export interface AuditTimelineLog {
   /**
    * 旧值快照(脱敏),对象或数组
    */
-  beforeState: null[] | Record<string, undefined> | null;
+  beforeState: AuditJsonValue[] | Record<string, AuditJsonValue> | null;
   /**
    * 新值快照(脱敏),对象或数组
    */
-  afterState: null[] | Record<string, undefined> | null;
+  afterState: AuditJsonValue[] | Record<string, AuditJsonValue> | null;
   /**
    * 变更字段名数组
    */
@@ -2756,15 +2763,41 @@ declare global {
        *     // 旧值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
+       *     // [params5] start
+       *     // [items] start
+       *     // [params1] start
+       *     // [cycle] $.items.[].beforeState.[]
+       *     // [params1] end
+       *     // [items] end
+       *     // [params5] end
        *     // [items] end
        *     // [params1] end
-       *     beforeState: null[] | Record<string, undefined> | null
+       *     beforeState:
+       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | Record<
+       *           string,
+       *           string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *         >
+       *       | null
        *     // 新值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
+       *     // [params5] start
+       *     // [items] start
+       *     // [params1] start
+       *     // [cycle] $.items.[].afterState.[]
+       *     // [params1] end
+       *     // [items] end
+       *     // [params5] end
        *     // [items] end
        *     // [params1] end
-       *     afterState: null[] | Record<string, undefined> | null
+       *     afterState:
+       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | Record<
+       *           string,
+       *           string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *         >
+       *       | null
        *     // 变更字段名数组
        *     // [params1] start
        *     // [items] start
@@ -2782,7 +2815,10 @@ declare global {
        *     // 失败错误码
        *     errorCode: string | null
        *     // 业务自定义上下文
-       *     metadata: Record<string, undefined> | null
+       *     metadata: Record<
+       *       string,
+       *       string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *     > | null
        *     // 业务发生时间(ISO 8601)
        *     occurredAt: string
        *     // 审计入库时间(ISO 8601)
@@ -2883,15 +2919,41 @@ declare global {
        *     // 旧值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
+       *     // [params5] start
+       *     // [items] start
+       *     // [params1] start
+       *     // [cycle] $.items.[].beforeState.[]
+       *     // [params1] end
+       *     // [items] end
+       *     // [params5] end
        *     // [items] end
        *     // [params1] end
-       *     beforeState: null[] | Record<string, undefined> | null
+       *     beforeState:
+       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | Record<
+       *           string,
+       *           string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *         >
+       *       | null
        *     // 新值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
+       *     // [params5] start
+       *     // [items] start
+       *     // [params1] start
+       *     // [cycle] $.items.[].afterState.[]
+       *     // [params1] end
+       *     // [items] end
+       *     // [params5] end
        *     // [items] end
        *     // [params1] end
-       *     afterState: null[] | Record<string, undefined> | null
+       *     afterState:
+       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | Record<
+       *           string,
+       *           string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *         >
+       *       | null
        *     // 变更字段名数组
        *     // [params1] start
        *     // [items] start

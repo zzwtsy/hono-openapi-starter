@@ -84,8 +84,8 @@ function collectObjectRows(
   after: AuditLog["afterState"],
   changedFields: string[] | null | undefined,
 ): DiffRow[] {
-  const beforeObj = before as Record<string, unknown> | null | undefined;
-  const afterObj = after as Record<string, unknown> | null | undefined;
+  const beforeObj = isRecord(before) ? before : undefined;
+  const afterObj = isRecord(after) ? after : undefined;
   const fields = collectObjectFields(beforeObj, afterObj, changedFields);
 
   const rows: DiffRow[] = [];
@@ -108,6 +108,10 @@ function collectObjectRows(
     });
   }
   return rows;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /** 字段收集:changedFields 优先(过滤 `_names` 展示辅助键),否则 before/after 键并集。 */
@@ -135,11 +139,16 @@ function kindOf(hasBefore: boolean, hasAfter: boolean): ChangeKind {
 
 /** 从快照取 `_names` 关联名称表(键 -> 中文名称)。 */
 function namesOf(snapshot: unknown): Record<string, string> | undefined {
-  if (snapshot == null || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+  if (!isRecord(snapshot) || !isRecord(snapshot._names)) {
     return undefined;
   }
-  const names = (snapshot as Record<string, unknown>)._names;
-  return names != null && typeof names === "object" ? names as Record<string, string> : undefined;
+  const names: Record<string, string> = {};
+  for (const [key, value] of Object.entries(snapshot._names)) {
+    if (typeof value === "string") {
+      names[key] = value;
+    }
+  }
+  return names;
 }
 
 /** 值渲染:_names 名称优先;对象/数组 JSON;标量 String;null -> "—"。 */
@@ -153,7 +162,7 @@ function formatValue(field: string, value: unknown, names?: Record<string, strin
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? String(value);
 }
 
 /** 长值折叠:超过阈值截断 + 展开按钮。 */

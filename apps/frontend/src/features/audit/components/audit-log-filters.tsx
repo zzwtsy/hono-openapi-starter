@@ -62,7 +62,7 @@ export function AuditLogFilters({
         value={action ?? "all"}
         onValueChange={v => onActionChange(v == null || v === "all" ? undefined : v)}
       >
-        <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+        <SelectTrigger aria-label="操作筛选" className="w-44"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectGroup>
             {actionItems.map(item => (
@@ -76,7 +76,7 @@ export function AuditLogFilters({
         value={status ?? "all"}
         onValueChange={v => onStatusChange(v == null || v === "all" ? undefined : v as "success" | "failure")}
       >
-        <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+        <SelectTrigger aria-label="结果筛选" className="w-32"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectGroup>
             {statusItems.map(item => (
@@ -92,6 +92,7 @@ export function AuditLogFilters({
         onRangeChange={onRangeChange}
       />
       <Input
+        aria-label="操作人姓名"
         placeholder="操作人姓名..."
         value={actorKeyword}
         onChange={e => onActorKeywordChange(e.target.value)}

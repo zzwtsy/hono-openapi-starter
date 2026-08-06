@@ -50,4 +50,36 @@ describe("api responded.onSuccess", () => {
 
     expect(assignSpy).toHaveBeenCalledWith(expect.stringMatching(/^\/login\?redirect=/));
   });
+
+  it("审计时间线响应保留 actionLabel 且不暴露请求级字段", async () => {
+    server.use(
+      http.get("/api/v1/audit-logs/by-resource", () =>
+        okEnvelope({
+          items: [{
+            id: "audit-1",
+            actorUserId: "user-1",
+            actorName: "张三",
+            action: "projects.update",
+            resourceRefs: [{ type: "project", id: "project-1", name: "项目 A" }],
+            beforeState: { name: "旧名" },
+            afterState: { name: "新名" },
+            changedFields: ["name"],
+            status: "success",
+            errorCode: null,
+            occurredAt: "2026-07-10T12:00:00.000Z",
+            actionLabel: "修改项目",
+          }],
+          meta: { nextCursor: null, hasMore: false },
+        })),
+    );
+
+    const data = await Apis.Audit.listAuditLogsByResource({
+      params: { resourceType: "project", resourceId: "project-1" },
+    });
+
+    expect(data.items[0]?.actionLabel).toBe("修改项目");
+    expect(data.items[0]).not.toHaveProperty("ipAddress");
+    expect(data.items[0]).not.toHaveProperty("requestId");
+    expect(data.items[0]).not.toHaveProperty("metadata");
+  });
 });

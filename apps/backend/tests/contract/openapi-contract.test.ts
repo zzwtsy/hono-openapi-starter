@@ -9,10 +9,20 @@ interface Operation {
   tags?: string[];
   responses?: Record<string, { description?: string; content?: Record<string, { schema?: unknown; example?: unknown; examples?: Record<string, { value?: unknown }> }> }>;
 }
+interface SchemaObject {
+  $ref?: string;
+  type?: string;
+  nullable?: boolean;
+  properties?: Record<string, SchemaObject>;
+  anyOf?: SchemaObject[];
+  allOf?: SchemaObject[];
+  items?: SchemaObject;
+  additionalProperties?: boolean | SchemaObject;
+}
 interface Spec {
   paths: Record<string, Record<string, Operation>>;
   components?: {
-    schemas?: Record<string, { required?: string[]; properties?: Record<string, unknown> }>;
+    schemas?: Record<string, SchemaObject & { required?: string[] }>;
     securitySchemes?: Record<string, unknown>;
   };
 }
@@ -111,5 +121,38 @@ describe("OpenAPI contract", () => {
   it("securitySchemes 已注册(Cookie + Bearer)", () => {
     expect(spec.components?.securitySchemes?.CookieAuth).toBeDefined();
     expect(spec.components?.securitySchemes?.BearerAuth).toBeDefined();
+  });
+
+  it("审计 JSON 字段使用可生成的递归 JSON component", () => {
+    const auditLog = spec.components?.schemas?.AuditLog;
+    const jsonValue = spec.components?.schemas?.AuditJsonValue;
+
+    expect(jsonValue).toBeDefined();
+    expect(jsonValue?.anyOf).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "string" }),
+      expect.objectContaining({ type: "number" }),
+      expect.objectContaining({ type: "boolean" }),
+      expect.objectContaining({ type: "array" }),
+      expect.objectContaining({ type: "object" }),
+    ]));
+    expect(JSON.stringify(jsonValue)).not.toContain("\"allOf\"");
+    const arrayBranch = jsonValue?.anyOf?.find(schema => schema.type === "array");
+    const objectBranch = jsonValue?.anyOf?.find(schema => schema.type === "object");
+    expect(JSON.stringify(arrayBranch)).not.toContain("\"nullable\":true");
+    expect(JSON.stringify(objectBranch)).not.toContain("\"nullable\":true");
+
+    for (const field of ["beforeState", "afterState", "metadata"]) {
+      const schema = auditLog?.properties?.[field];
+      expect(schema, `AuditLog.${field} 缺 schema`).toBeDefined();
+      expect(JSON.stringify(schema), `AuditLog.${field} 未引用 AuditJsonValue`).toContain("#/components/schemas/AuditJsonValue");
+    }
+  });
+
+  it("审计时间线只暴露最小 DTO", () => {
+    const timeline = spec.components?.schemas?.AuditTimelineLog;
+    const properties = Object.keys(timeline?.properties ?? {});
+
+    expect(properties).toContain("actionLabel");
+    expect(properties).not.toEqual(expect.arrayContaining(["ipAddress", "userAgent", "requestId", "metadata"]));
   });
 });

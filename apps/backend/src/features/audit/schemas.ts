@@ -14,6 +14,37 @@ export const ResourceRefSchema = z.object({
   name: z.string().nullable().optional().openapi({ description: "资源名称快照", example: "张三" }),
 }).openapi("ResourceRef");
 
+/**
+ * 审计快照和元数据使用的 JSON 值模式。
+ *
+ * 必须使用显式引用：当前 zod-openapi 生成器无法展开未命名的递归
+ * z.json()/z.lazy() 模式，否则会导致栈溢出。
+ * 显式 OpenAPI 结构同样是有意为之：递归 Zod 联合推断出可空分支时，
+ * 生成器会将递归引用包成 `allOf + nullable`，wormhole 会将其生成成 `JsonValue & null`。
+ */
+const AuditJsonValueSchema: z.ZodType<unknown> = z.lazy(() => z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.array(AuditJsonValueSchema),
+  z.record(z.string(), AuditJsonValueSchema),
+])).openapi("AuditJsonValue", {
+  anyOf: [
+    { type: "string" },
+    { type: "number" },
+    { type: "boolean" },
+    { nullable: true },
+    { type: "array", items: { $ref: "#/components/schemas/AuditJsonValue" } },
+    { type: "object", additionalProperties: { $ref: "#/components/schemas/AuditJsonValue" } },
+  ],
+});
+
+const AuditSnapshotSchema = z.union([
+  z.array(AuditJsonValueSchema),
+  z.record(z.string(), AuditJsonValueSchema),
+]).nullable();
+
 /** 审计日志条目。 */
 export const AuditLogSchema = z.object({
   id: z.string().openapi({ description: "日志 ID" }),
@@ -22,10 +53,10 @@ export const AuditLogSchema = z.object({
   actorOrgId: z.string().nullable().openapi({ description: "操作者组织 ID" }),
   action: z.string().openapi({ description: "业务动作", example: "projects.update" }),
   resourceRefs: z.array(ResourceRefSchema).openapi({ description: "资源引用数组 [{type,id,name?}]" }),
-  beforeState: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown())]).nullable().openapi({
+  beforeState: AuditSnapshotSchema.openapi({
     description: "旧值快照(脱敏),对象或数组",
   }),
-  afterState: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown())]).nullable().openapi({
+  afterState: AuditSnapshotSchema.openapi({
     description: "新值快照(脱敏),对象或数组",
   }),
   changedFields: z.array(z.string()).nullable().openapi({ description: "变更字段名数组" }),
@@ -34,7 +65,7 @@ export const AuditLogSchema = z.object({
   requestId: z.string().nullable().openapi({ description: "请求 ID" }),
   status: z.enum(["success", "failure"]).openapi({ description: "操作结果" }),
   errorCode: z.string().nullable().openapi({ description: "失败错误码" }),
-  metadata: z.record(z.string(), z.unknown()).nullable().openapi({ description: "业务自定义上下文" }),
+  metadata: z.record(z.string(), AuditJsonValueSchema).nullable().openapi({ description: "业务自定义上下文" }),
   occurredAt: z.iso.datetime().openapi({ description: "业务发生时间(ISO 8601)" }),
   recordedAt: z.iso.datetime().openapi({ description: "审计入库时间(ISO 8601)" }),
 }).openapi("AuditLog");
