@@ -46,7 +46,7 @@ lastReviewedAt: 2026-08-01
 
 **`listAuditActions`** — 返回 `[{ action, label }]` 数组,来自应用装配时注册的 action registry(当前 26 项:24 个写路由 + 登录/登出)。写路由通过 `audit({ action: descriptor })` 自动注册,认证 hook 显式注册。
 
-每条日志(`AuditLog`)包含:`id` / `actorUserId` / **`actorName`(写时快照)** / `actorOrgId` / `action` / `resourceRefs`(`[{type,id,name?}]`)/ `beforeState` / `afterState` / `changedFields` / `ipAddress` / `userAgent` / `requestId` / `status` / `errorCode` / `metadata` / `occurredAt`。
+全局详情日志(`AuditLog`)包含:`id` / `actorUserId` / **`actorName`(写时快照)** / `actorOrgId` / `action` / `resourceRefs`(`[{type,id,name?}]`)/ `beforeState` / `afterState` / `changedFields` / `ipAddress` / `userAgent` / `requestId` / `status` / `errorCode` / `metadata` / `occurredAt` / `recordedAt`。资源时间线使用最小 DTO,额外返回 `actionLabel`,不返回 IP/UA/requestId/metadata 等取证字段。
 
 ## 6. Auth & Permissions
 
@@ -58,8 +58,8 @@ by-resource 时间线**不需 `audit.read`**:`checkResourceVisibility` 按 resou
 
 | resourceType | 校验逻辑 |
 | --- | --- |
-| `project` | 复用 `ProjectService.getById`(组织归属校验,不在本组织抛 NOT_FOUND) |
-| `user` | 目标用户 orgId 在操作者管理子树内 |
+| `project` | 需 `projects.read` + 复用 `ProjectService.getById`(组织归属校验,不在本组织抛 NOT_FOUND) |
+| `user` | 需 `users.read` + 目标用户 orgId 在操作者管理子树内 |
 | `role` | 需 `roles.read`(全局资源) |
 | `org` | 需 `organizations.read`(全局资源) |
 | `setting` | 需 `settings.read`(全局资源) |
@@ -74,7 +74,6 @@ by-resource 时间线**不需 `audit.read`**:`checkResourceVisibility` 按 resou
 | `id` | text PK | UUIDv4(应用层生成) |
 | `actor_user_id` / `actor_org_id` | text 可空 | 操作者;`actor_org_id` 为 null 表示无归属事件(登录失败) |
 | `actor_name_snapshot` | text 可空 | **写时名称快照**(requireAuth 注入 `session.user.name`,改名不污染历史;查询响应 `actorName` 即此列;登录失败等无 actor 事件为 null) |
-| `actor_role_snapshot` | text | 角色快照(阶段 1 暂不填) |
 | `action` | text NOT NULL | 业务动作,如 `projects.update` |
 | `resource_refs` | jsonb NOT NULL | 资源引用数组,写入时解析名称快照 |
 | `before_state` / `after_state` | jsonb | 脱敏后旧/新值快照,含 `_names` 关联名称 |
@@ -83,7 +82,9 @@ by-resource 时间线**不需 `audit.read`**:`checkResourceVisibility` 按 resou
 | `status` | text NOT NULL | `success` / `failure` |
 | `error_code` | text 可空 | 失败错误码 |
 | `metadata` | jsonb | 业务上下文(如调岗的 `clearAllGrants`) |
-| `occurred_at` | timestamptz NOT NULL | 服务端时间 |
+| `occurred_at` | timestamptz NOT NULL | 业务事件发生时间,由 capture 阶段写入 |
+| `recorded_at` | timestamptz NOT NULL | 实际写入数据库时间,由 DB default 生成 |
+| `schema_version` | integer NOT NULL | 快照/事件结构版本,默认 1 |
 
 索引:`occurred_at`、`actor_user_id`、`action`、`actor_org_id` + GIN(`resource_refs`)(by-resource `@>` 查询)。
 
@@ -136,7 +137,7 @@ sequenceDiagram
 
 ## 12. Rollout / Migration Notes
 
-- 迁移:新增 `audit_logs` 表 + 5 索引(含 GIN),见 `db/migrations`;后续 0007 加 `actor_name_snapshot` 列(写时快照)
+- 迁移:0006 新增 `audit_logs` 表,0007 加 `actor_name_snapshot`,0008 将 `created_at` 重命名为 `occurred_at`,增加 `recorded_at/schema_version`,删除未使用的 `actor_role_snapshot` 并补 status check;迁移保留历史 occurred 时间。
 - env:`AUDIT_LOG_RETENTION_DAYS`(默认 90,0 = 永久保留;查询时惰性过滤 + 每小时定时物理删除)
 - 埋点接入:写路由 `middleware` 数组追加 `audit({ action: actionDescriptor, resourceType/resourceRefs, before?, after: "response"|"none"|provider, metadata? })` 即可;descriptor 由所属 feature 定义,`audit()` 自动注册到 action registry。非路由事件(如认证 hook)需显式调用 `registerAuditAction`。
 - before/after 支持 `{ capture, transform? }` 业务快照配置;transform 用于业务特定字段投影,通用 password/token 等字段仍由 core `sanitize()` 处理。resource name resolver 在 `apps/backend/src/audit-resolvers.ts` 装配,调用方提供的 `resourceRefs.name` 优先。

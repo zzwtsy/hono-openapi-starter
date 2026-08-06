@@ -13,7 +13,7 @@ lastReviewedAt: 2026-08-01
 ## 范围
 
 - 全局审计页:offset 分页表格、筛选(action/结果/操作人名称/时间范围)、active chips、行点击详情抽屉(**结构化 diff**)
-- `AuditTimeline` 组件:by-resource 时间线(cursor"加载更多"),成功实心点 / 失败红色点
+- `AuditTimeline` 组件:by-resource 时间线(cursor"加载更多"),成功实心点 / 失败红色点;使用最小时间线 DTO 和响应中的 `actionLabel`,不再请求需 `audit.read` 的 action catalog
 - user-detail-panel"操作历史" Tab(经 `auditTabContent` prop 注入,feature 间不直接 import)
 
 不做:角色详情页 / 项目详情页时间线 Tab(后续嵌入)、审计导出、实时刷新、表格排序(后端无 sort 参数)。
@@ -62,7 +62,7 @@ features/audit/
 - **URL 同步模式**(筛选/分页):route 层 `navigate({ replace: true, search: (prev) => ... })`(功能性 updater 保留其他参数,非分页变更重置 page,replace 不污染历史)
 - **actorKeyword 输入**:本地 state 即时响应 + 250ms 防抖写 URL(受控输入直接绑 search 会卡顿);URL 外部变化(返回键)回同步输入并取消 pending timer
 - **时间范围**:`DateRangePicker` 统一出口(预设 Select / 双月日历 / 清除),选择即写 URL;action/status/pageSize Select 均传 `items` prop 使 Value 按 label 渲染(Base UI 与 Radix 差异,shadcn #9753)
-- `useResourceAuditLogs`:监听 `[resourceType, resourceId]`;加载更多/刷新用 `send(cursor)`(cursor 不进 reactive state,失败后再点重试同一页);`onSuccess` 里按请求 cursor 区分替换/append;page 状态带 `resourceKey` 派生展示
+- `useResourceAuditLogs`:监听 `[resourceType, resourceId]`;加载更多/刷新用 `send(cursor)`(cursor 不进 reactive state,失败后再点重试同一页);`onSuccess` 里按请求 cursor 区分替换/append;page 状态带 `resourceKey` 派生展示,条目类型为时间线最小 DTO
 - `useAuditActions`:`listAuditActions` 配 `cacheFor: Infinity`(`$$userConfigMap` 集中配置,见 state-cache.md),组件自取,路由 loader 不预取
 - 分页器:`components/ui/pagination.tsx`(shadcn 生成物,勿手改)+ 页容量 Select(25/50/100,进 URL)
 
@@ -76,7 +76,7 @@ features/audit/
 | 前端调用 | 后端端点 |
 | --- | --- |
 | `Apis.Audit.listAuditLogs` | GET `/api/v1/audit-logs`(含 `actorName` 写时快照、`actorKeyword` 名称搜索) |
-| `Apis.Audit.listAuditLogsByResource` | GET `/api/v1/audit-logs/by-resource` |
+| `Apis.Audit.listAuditLogsByResource` | GET `/api/v1/audit-logs/by-resource`(时间线最小 DTO,含 `actionLabel`) |
 | `Apis.Audit.listAuditActions` | GET `/api/v1/audit-logs/actions` |
 
 类型经 `gen:api` 从 OpenAPI 生成(`api/globals.d.ts`),`resourceRefs`/`changedFields` 等为具体类型,禁止本地 `as` 强转(测试 fixture 例外,`snap()` helper 注明原因)。
