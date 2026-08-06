@@ -8,6 +8,7 @@
 src/
   index.ts                      # 启动入口(syncAuthorizationCatalog + serve)
   app.ts                        # 应用装配(权限 checker + 审计保留策略 + 路由挂载)
+  audit-resolvers.ts            # 应用层装配审计资源名称 resolver
   env.ts                        # env 校验入口(safeParseEnv)
   permissions-catalog.ts        # 全项目权限汇总(allPermissions,编译期覆盖校验)
 
@@ -73,7 +74,8 @@ src/
       middleware.ts             # audit() 路由中间件工厂(定义期校验 + c.error 失败检测)
       write-audit.ts            # 入队前组装(脱敏/名称解析/diff)
       queue.ts                  # 有界队列 + 批量 flush + 退出 flush
-      relation-resolvers.ts     # 关联名称解析注册表(org/user/role)
+      ports.ts                  # resource ref/relation/resolver port 类型
+      relation-resolvers.ts     # 通用 resolver registry(core 不依赖业务表)
       retention.ts              # 保留策略(惰性过滤 + 定时删除)
       sanitize.ts               # before/after 递归脱敏
       types.ts                  # AuditConfig/AuditEntry/AuditRecord

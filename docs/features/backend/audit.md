@@ -109,7 +109,7 @@ sequenceDiagram
 
   Note over Client,DB: 写入路径(业务写操作)
   Client->>Route: 写请求
-  Route->>Route: before 查旧值 → 执行 handler → after 读响应
+  Route->>Route: 按配置 before 捕获 → 执行 handler → after(response/none/provider)
   Route->>Queue: fire-and-forget 入队(脱敏/名称解析/diff 计算)
   Queue->>DB: 后台批量 INSERT(batch 100,失败重试 3 次)
 
@@ -127,7 +127,7 @@ sequenceDiagram
 - 队列满丢弃记录(warn)
 - flush 失败重试超限丢弃(error)
 - `audit()` 配置错误在 route 定义期抛(启动即暴露)
-- resourceRefs 解析失败降级为空引用数组(error,记录照记)
+- resource/name resolver 失败保留原始引用或快照(error,记录照记)
 
 ## 11. Test Cases
 
@@ -138,4 +138,5 @@ sequenceDiagram
 
 - 迁移:新增 `audit_logs` 表 + 5 索引(含 GIN),见 `db/migrations`;后续 0007 加 `actor_name_snapshot` 列(写时快照)
 - env:`AUDIT_LOG_RETENTION_DAYS`(默认 90,0 = 永久保留;查询时惰性过滤 + 每小时定时物理删除)
-- 埋点接入:写路由 `middleware` 数组追加 `audit({ action: actionDescriptor, resourceType/resourceRefs, before?, after?, metadata? })` 即可;descriptor 由所属 feature 定义,`audit()` 自动注册到 action registry。非路由事件(如认证 hook)需显式调用 `registerAuditAction`。
+- 埋点接入:写路由 `middleware` 数组追加 `audit({ action: actionDescriptor, resourceType/resourceRefs, before?, after: "response"|"none"|provider, metadata? })` 即可;descriptor 由所属 feature 定义,`audit()` 自动注册到 action registry。非路由事件(如认证 hook)需显式调用 `registerAuditAction`。
+- before/after 支持 `{ capture, transform? }` 业务快照配置;transform 用于业务特定字段投影,通用 password/token 等字段仍由 core `sanitize()` 处理。resource name resolver 在 `apps/backend/src/audit-resolvers.ts` 装配,调用方提供的 `resourceRefs.name` 优先。
