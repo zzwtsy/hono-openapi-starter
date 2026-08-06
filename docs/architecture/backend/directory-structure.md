@@ -49,6 +49,7 @@ src/
 
     auth/
       better-auth.ts            # Better Auth 实例(认证事件审计 hooks)
+      audit-actions.ts          # 认证事件 action descriptor 定义
       auth-audit-events.ts      # sign-in/sign-out 审计事件解析(纯函数)
       context.ts                # AuthVariables + requireOrgUser
       index.ts
@@ -66,6 +67,7 @@ src/
 
     audit/
       index.ts                  # core/audit 导出
+      action.ts                 # 通用 action descriptor + registry
       context.ts                # 审计 ALS 上下文
       audit-context-middleware.ts # 注入 ip/ua/requestId
       middleware.ts             # audit() 路由中间件工厂(定义期校验 + c.error 失败检测)
@@ -116,6 +118,7 @@ src/
       handlers.ts
       schemas.ts
       service.ts
+      audit-actions.ts          # projects action descriptor 定义
       permissions.ts
 
     iam/
@@ -124,6 +127,7 @@ src/
       handlers.ts
       schemas.ts
       service.ts
+      audit-actions.ts          # IAM action descriptor 定义
       org-tree.ts               # 管理子树(getManagedSubtree)
       permission-checker.ts     # IAM 权限 checker 实现(递归 CTE)
       permissions.ts
@@ -134,6 +138,7 @@ src/
       handlers.ts
       schemas.ts
       service.ts
+      audit-actions.ts          # me action descriptor 定义
 
     system-settings/
       index.ts
@@ -141,6 +146,7 @@ src/
       handlers.ts
       schemas.ts
       service.ts
+      audit-actions.ts          # system settings action descriptor 定义
       permissions.ts
 
     audit/
@@ -149,7 +155,7 @@ src/
       handlers.ts
       schemas.ts                # 查询参数/响应契约
       service.ts                # 分页查询 + by-resource 可见性分派
-      audit-actions.ts          # action 目录(配置即 catalog)
+      audit-actions.ts          # action catalog 查询适配层(core registry)
       permissions.ts
 
 tests/                          # apps/backend/tests/(与 src/ 平级,见 vitest projects)

@@ -44,7 +44,7 @@ lastReviewedAt: 2026-08-01
 
 **`listAuditLogsByResource`** — cursor 分页(游标 base64 编码 `{ occurredAt, id }`,按 `occurred_at DESC, id DESC` 排序),`resourceType` + `resourceId` 必填。响应 meta:`{ nextCursor, hasMore }`(多取 1 条判断)。
 
-**`listAuditActions`** — 返回 `[{ action, label }]` 数组,来自后端 `audit-actions.ts` catalog(26 项:24 个写路由 + 登录/登出)。
+**`listAuditActions`** — 返回 `[{ action, label }]` 数组,来自应用装配时注册的 action registry(当前 26 项:24 个写路由 + 登录/登出)。写路由通过 `audit({ action: descriptor })` 自动注册,认证 hook 显式注册。
 
 每条日志(`AuditLog`)包含:`id` / `actorUserId` / **`actorName`(写时快照)** / `actorOrgId` / `action` / `resourceRefs`(`[{type,id,name?}]`)/ `beforeState` / `afterState` / `changedFields` / `ipAddress` / `userAgent` / `requestId` / `status` / `errorCode` / `metadata` / `occurredAt`。
 
@@ -138,4 +138,4 @@ sequenceDiagram
 
 - 迁移:新增 `audit_logs` 表 + 5 索引(含 GIN),见 `db/migrations`;后续 0007 加 `actor_name_snapshot` 列(写时快照)
 - env:`AUDIT_LOG_RETENTION_DAYS`(默认 90,0 = 永久保留;查询时惰性过滤 + 每小时定时物理删除)
-- 埋点接入:写路由 `middleware` 数组追加 `audit({ action, label, resourceType/resourceRefs, before?, metadata? })` 即可;action/label 需与 `features/audit/audit-actions.ts` 目录一致(配置即 catalog)
+- 埋点接入:写路由 `middleware` 数组追加 `audit({ action: actionDescriptor, resourceType/resourceRefs, before?, after?, metadata? })` 即可;descriptor 由所属 feature 定义,`audit()` 自动注册到 action registry。非路由事件(如认证 hook)需显式调用 `registerAuditAction`。
