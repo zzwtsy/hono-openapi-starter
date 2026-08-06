@@ -123,17 +123,19 @@ sequenceDiagram
 
 ## 10. Logging & Audit
 
-审计链路自身的可观测性(均为 error 级结构化日志,带 requestId/action):
+审计链路自身的可观测性:
 
-- 队列满丢弃记录(warn)
-- flush 失败重试超限丢弃(error)
+- 队列满、shutdown 拒绝、flush retry/drop 日志带 `eventId`、`requestId`、`action`、`stage`(warn/error)
+- flush 失败记录批次诊断和单条 retry/drop 计数
+- shutdown drain 超时记录 queue depth、active writers、in-flight flush 和待处理 event ids
+- `getAuditQueueStats()` 暴露 queue depth、active writers、flush latency、drop/retry/failure 计数,供 metrics/health adapter 使用
 - `audit()` 配置错误在 route 定义期抛(启动即暴露)
 - resource/name resolver 失败保留原始引用或快照(error,记录照记)
 
 ## 11. Test Cases
 
-- unit:`core/audit/middleware.test.ts`(定义期校验/成功失败路径/c.error 错误码/解析失败降级/metadata)、`core/audit/write-audit.test.ts`(脱敏/diff/失败语义)、`core/audit/queue.test.ts`(批量/重试/退出 flush)、`core/audit/retention.test.ts`、`core/audit/relation-resolvers.test.ts`、`core/audit/context.test.ts`、`features/audit/service.test.ts`(分页 meta/DTO/SQL 谓词/保留策略/游标/可见性分派)、`core/auth/auth-audit-events.test.ts`(认证事件解析)
-- integration:暂无 audit 基线(留后续,覆盖真实 GIN `@>` 查询与写入)
+- unit:`core/audit/middleware.test.ts`(定义期校验/快照模式/成功失败路径/c.error 错误码/metadata)、`core/audit/write-audit.test.ts`(脱敏/diff/失败语义)、`core/audit/queue.test.ts`(批量/重试/in-flight flush/shutdown timeout/stats)、`core/audit/retention.test.ts`、`core/audit/relation-resolvers.test.ts`、`core/audit/context.test.ts`、`features/audit/service.test.ts`(分页 meta/DTO/SQL 谓词/保留策略/游标/可见性分派)、`core/auth/auth-audit-events.test.ts`(认证事件解析)
+- integration:`tests/integration/audit/audit.test.ts`(migration/GIN 查询/时间线最小 DTO/recordedAt/schemaVersion/status constraint)
 
 ## 12. Rollout / Migration Notes
 
