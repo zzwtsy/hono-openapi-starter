@@ -51,7 +51,8 @@ DOMAIN:
 | `USER_CANNOT_REVOKE_OWN_AUTH` | 403 | 不能撤销自己的授权 |
 | `ROLE_NOT_FOUND` | 404 | 角色不存在(含 source 保护) |
 | `ROLE_NAME_CONFLICT` | 409 | 角色名已存在 |
-| `PERMISSION_NOT_FOUND` | 404 | 权限不存在(支持 `{permission}` params) |
+| `PERMISSION_NOT_FOUND` | 404 | catalog/registry 中不存在权限 code(支持 `{permissionCode}` params) |
+| `PERMISSION_CODE_INVALID` | 400 | HTTP 输入的权限 code 不在 catalog enum 中 |
 | `ORG_NOT_FOUND` | 404 | 组织不存在 |
 | `ORG_CYCLE` | 409 | 组织会形成环 |
 | `ORG_HAS_CHILDREN` | 409 | 组织有子组织 |

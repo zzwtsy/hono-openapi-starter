@@ -55,7 +55,7 @@ lastReviewedAt: 2026-07-14
 | `projects.update` | 修改项目 |
 | `projects.delete` | 删除项目 |
 
-权限在 `features/projects/permissions.ts` 用 `as const satisfies` 声明权限数组,由 `permissions-catalog.ts` 汇总为 `allPermissions`(`AppPermission` 从它推导)。
+权限在 `features/projects/permissions.ts` 用 `definePermissionCatalog()` 声明，由 `permissions-catalog.ts` 汇总为 `allPermissions`（`AppPermissionCode` 从 feature registry 推导；展示元数据由 `PermissionRef` 提供）。
 
 - `requireAuth()` 校验 Better Auth session,注入 `user`
 - `requirePermission("<perm>")` 检查用户在 `user.orgId` 是否有对应权限(考虑组织树祖先继承)

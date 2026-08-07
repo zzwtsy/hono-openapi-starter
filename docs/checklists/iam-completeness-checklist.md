@@ -77,10 +77,11 @@ lastReviewedAt: 2026-07-28
 
 ### 3.1 目录机制
 
-- [x] 各 feature `permissions.ts` + declaration merging → `AppPermission`
-- [x] 组装点 `permissions-catalog` + `AllPermissionsCovered` 编译期覆盖
-- [x] 启动 `syncAuthorizationCatalog` upsert 权限与 admin 角色
-- [x] 前端 `AppPermission` 经 gen:api 与后端同源（不手写第二份名单）
+- [x] 各 feature `permissions.ts` 使用 `definePermissionCatalog()` + 完整数组 slot declaration merging → `AppPermissionCode`
+- [x] 组装点 `permissions-catalog` 执行 `AllPermissionsCovered`/`NoUnknownPermissions` 编译期覆盖与运行时唯一性校验
+- [x] 启动 `syncAuthorizationCatalog` 同步 code-only registry 与 admin 角色
+- [x] 前端 `PermissionCode` 经 `permissionCodes` OpenAPI enum 与 gen:api 同源（不手写第二份名单）
+- [x] 展示响应统一使用 `PermissionRef`，前端不维护 code/label 映射
 
 ### 3.2 粒度（模板目标态）
 

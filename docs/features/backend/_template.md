@@ -30,7 +30,7 @@ lastReviewedAt: 2026-06-03
 
 ## 6. Auth & Permissions
 
-新增权限时，在 feature 的 `permissions.ts` 中用 `as const satisfies` 声明权限数组（`<resource>.<action>` 字面量），并在 `permissions-catalog.ts` 展开到 `allPermissions` 汇入全局 `AppPermission`（漏登记编译报错）。
+新增权限时，在 feature 的 `permissions.ts` 中调用 `definePermissionCatalog()` 声明 resource/action 与 label，并在 `permissions-catalog.ts` 展开到 `allPermissions` 汇入全局 `AppPermissionCode`（漏登记或重复 code 编译/启动校验失败）。数据库只同步 code，HTTP 展示消费 `PermissionRef`。
 
 | Permission | Description |
 | --- | --- |

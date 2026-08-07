@@ -44,7 +44,7 @@ features/<feature>/
 
 ## 权限
 
-- 所需权限:`<feature>.read` / `<feature>.manage`(与后端 `AppPermission` 一致)
+- 所需权限:`<feature>.read` / `<feature>.manage`（与后端 `AppPermissionCode` 一致；展示权限对象消费 API 的 `PermissionRef`）
 - 守卫:路由 `beforeLoad` 调 `requirePermission`(见 [routing](../../conventions/frontend/routing.md))
 
 ## 与后端对应
