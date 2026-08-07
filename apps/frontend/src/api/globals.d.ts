@@ -171,9 +171,9 @@ export interface User {
 export interface Me {
   user: User;
   /**
-   * 当前组织下的有效权限名列表(空数组表示未绑定组织或无权限)
+   * 当前组织下的有效权限 code 列表(空数组表示未绑定组织或无权限)
    */
-  permissions: (
+  permissionCodes: (
     | 'projects.read'
     | 'projects.create'
     | 'projects.update'
@@ -229,27 +229,54 @@ export interface Project {
    */
   updatedAt: string;
 }
-export interface Permission {
+export interface PermissionRef {
   /**
-   * 权限名 <resource>.<action>
+   * 权限机器身份 <resourceCode>.<actionCode>
    */
-  name: string;
+  code:
+    | 'projects.read'
+    | 'projects.create'
+    | 'projects.update'
+    | 'projects.delete'
+    | 'permissions.read'
+    | 'organizations.read'
+    | 'organizations.create'
+    | 'organizations.update'
+    | 'organizations.delete'
+    | 'roles.read'
+    | 'roles.create'
+    | 'roles.update'
+    | 'roles.delete'
+    | 'roles.assign-permissions'
+    | 'roles.revoke-permissions'
+    | 'assignments.read'
+    | 'assignments.grant'
+    | 'assignments.revoke'
+    | 'users.read'
+    | 'users.create'
+    | 'users.update'
+    | 'users.reset-password'
+    | 'users.disable'
+    | 'users.enable'
+    | 'settings.read'
+    | 'settings.update'
+    | 'audit.read';
   /**
-   * 权限描述
+   * 资源机器标识
    */
-  description: string | null;
+  resourceCode: string;
   /**
-   * 资源中文 label,供管理界面分组展示
+   * 动作机器标识
+   */
+  actionCode: string;
+  /**
+   * 资源展示名称
    */
   resourceLabel: string;
   /**
-   * 创建时间(ISO 8601)
+   * 动作展示名称
    */
-  createdAt: string;
-  /**
-   * 更新时间(ISO 8601)
-   */
-  updatedAt: string;
+  label: string;
 }
 export interface UserSummary {
   /**
@@ -436,13 +463,8 @@ export interface ResourceRef {
    */
   name?: string | null;
 }
-export type AuditJsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | AuditJsonValue[]
-  | Record<string, AuditJsonValue>;
+export type AuditJsonValue = (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+  (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>);
 export interface AuditLog {
   /**
    * 日志 ID
@@ -602,20 +624,14 @@ export interface PermissionSource {
   expiresAt: string | null;
 }
 export interface EffectivePermission {
-  /**
-   * 权限名 <resource>.<action>
-   */
-  permission: string;
+  permission: PermissionRef;
   /**
    * 来源链:角色/直接/继承
    */
   sources: PermissionSource[];
 }
 export interface DeniedPermission {
-  /**
-   * 权限名 <resource>.<action>
-   */
-  permission: string;
+  permission: PermissionRef;
   /**
    * 哪些组织的 deny 扣掉了此权限(deny 是全局减法,可多 org)
    */
@@ -663,10 +679,7 @@ export interface UserRoleAssignment {
   expiresAt: string | null;
 }
 export interface UserDirectPermission {
-  /**
-   * 权限名 <resource>.<action>
-   */
-  permission: string;
+  permission: PermissionRef;
   /**
    * 允许或拒绝
    */
@@ -767,10 +780,10 @@ declare global {
        *     // 归属组织 ID,未绑定则为 null
        *     orgId: string | null
        *   }
-       *   // 当前组织下的有效权限名列表(空数组表示未绑定组织或无权限)
+       *   // 当前组织下的有效权限 code 列表(空数组表示未绑定组织或无权限)
        *   // [items] start
        *   // [items] end
-       *   permissions: (
+       *   permissionCodes: (
        *     | 'projects.read'
        *     | 'projects.create'
        *     | 'projects.update'
@@ -1132,22 +1145,49 @@ declare global {
        * **Response**
        * ```ts
        * type Response = Array<{
-       *   // 权限名 <resource>.<action>
-       *   name: string
-       *   // 权限描述
-       *   description: string | null
-       *   // 资源中文 label,供管理界面分组展示
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   code:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
+       *   // 资源机器标识
+       *   resourceCode: string
+       *   // 动作机器标识
+       *   actionCode: string
+       *   // 资源展示名称
        *   resourceLabel: string
-       *   // 创建时间(ISO 8601)
-       *   createdAt: string
-       *   // 更新时间(ISO 8601)
-       *   updatedAt: string
+       *   // 动作展示名称
+       *   label: string
        * }>
        * ```
        */
-      listPermissions<Config extends Alova2MethodConfig<Permission[]>>(
+      listPermissions<Config extends Alova2MethodConfig<PermissionRef[]>>(
         config?: Config
-      ): Alova2Method<Permission[], 'IAM.listPermissions', Config>;
+      ): Alova2Method<PermissionRef[], 'IAM.listPermissions', Config>;
       /**
        * ---
        *
@@ -1719,11 +1759,49 @@ declare global {
        *
        * **Response**
        * ```ts
-       * type Response = string[]
+       * type Response = Array<{
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   code:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
+       *   // 资源机器标识
+       *   resourceCode: string
+       *   // 动作机器标识
+       *   actionCode: string
+       *   // 资源展示名称
+       *   resourceLabel: string
+       *   // 动作展示名称
+       *   label: string
+       * }>
        * ```
        */
       listRolePermissions<
-        Config extends Alova2MethodConfig<string[]> & {
+        Config extends Alova2MethodConfig<PermissionRef[]> & {
           pathParams: {
             /**
              * 角色 ID
@@ -1733,7 +1811,7 @@ declare global {
         }
       >(
         config: Config
-      ): Alova2Method<string[], 'IAM.listRolePermissions', Config>;
+      ): Alova2Method<PermissionRef[], 'IAM.listRolePermissions', Config>;
       /**
        * ---
        *
@@ -1756,10 +1834,39 @@ declare global {
        * **RequestBody**
        * ```ts
        * type RequestBody = {
-       *   // 要授予的权限名列表(已存在的跳过)
+       *   // 要授予的权限 code 列表(已存在的跳过)
        *   // [items] start
+       *   // 权限机器身份 <resourceCode>.<actionCode>
        *   // [items] end
-       *   permissions: string[]
+       *   permissionCodes: (
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
+       *   )[]
        * }
        * ```
        *
@@ -1767,11 +1874,49 @@ declare global {
        *
        * **Response**
        * ```ts
-       * type Response = string[]
+       * type Response = Array<{
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   code:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
+       *   // 资源机器标识
+       *   resourceCode: string
+       *   // 动作机器标识
+       *   actionCode: string
+       *   // 资源展示名称
+       *   resourceLabel: string
+       *   // 动作展示名称
+       *   label: string
+       * }>
        * ```
        */
       assignRolePermissions<
-        Config extends Alova2MethodConfig<string[]> & {
+        Config extends Alova2MethodConfig<PermissionRef[]> & {
           pathParams: {
             /**
              * 角色 ID
@@ -1780,20 +1925,48 @@ declare global {
           };
           data: {
             /**
-             * 要授予的权限名列表(已存在的跳过)
+             * 要授予的权限 code 列表(已存在的跳过)
              */
-            permissions: string[];
+            permissionCodes: (
+              | 'projects.read'
+              | 'projects.create'
+              | 'projects.update'
+              | 'projects.delete'
+              | 'permissions.read'
+              | 'organizations.read'
+              | 'organizations.create'
+              | 'organizations.update'
+              | 'organizations.delete'
+              | 'roles.read'
+              | 'roles.create'
+              | 'roles.update'
+              | 'roles.delete'
+              | 'roles.assign-permissions'
+              | 'roles.revoke-permissions'
+              | 'assignments.read'
+              | 'assignments.grant'
+              | 'assignments.revoke'
+              | 'users.read'
+              | 'users.create'
+              | 'users.update'
+              | 'users.reset-password'
+              | 'users.disable'
+              | 'users.enable'
+              | 'settings.read'
+              | 'settings.update'
+              | 'audit.read'
+            )[];
           };
         }
       >(
         config: Config
-      ): Alova2Method<string[], 'IAM.assignRolePermissions', Config>;
+      ): Alova2Method<PermissionRef[], 'IAM.assignRolePermissions', Config>;
       /**
        * ---
        *
        * [DELETE] 撤角色权限
        *
-       * **path:** /api/v1/roles/{roleId}/permissions/{permission}
+       * **path:** /api/v1/roles/{roleId}/permissions/{permissionCode}
        *
        * ---
        *
@@ -1801,7 +1974,35 @@ declare global {
        * ```ts
        * type PathParameters = {
        *   roleId: string
-       *   permission: string
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   permissionCode:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
        * }
        * ```
        *
@@ -1810,24 +2011,142 @@ declare global {
        * **Response**
        * ```ts
        * type Response = {
-       *   permission: string
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   permissionCode:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
        * }
        * ```
        */
       deleteRolePermission<
         Config extends Alova2MethodConfig<{
-          permission: string;
+          /**
+           * 权限机器身份 <resourceCode>.<actionCode>
+           */
+          permissionCode:
+            | 'projects.read'
+            | 'projects.create'
+            | 'projects.update'
+            | 'projects.delete'
+            | 'permissions.read'
+            | 'organizations.read'
+            | 'organizations.create'
+            | 'organizations.update'
+            | 'organizations.delete'
+            | 'roles.read'
+            | 'roles.create'
+            | 'roles.update'
+            | 'roles.delete'
+            | 'roles.assign-permissions'
+            | 'roles.revoke-permissions'
+            | 'assignments.read'
+            | 'assignments.grant'
+            | 'assignments.revoke'
+            | 'users.read'
+            | 'users.create'
+            | 'users.update'
+            | 'users.reset-password'
+            | 'users.disable'
+            | 'users.enable'
+            | 'settings.read'
+            | 'settings.update'
+            | 'audit.read';
         }> & {
           pathParams: {
             roleId: string;
-            permission: string;
+            /**
+             * 权限机器身份 <resourceCode>.<actionCode>
+             */
+            permissionCode:
+              | 'projects.read'
+              | 'projects.create'
+              | 'projects.update'
+              | 'projects.delete'
+              | 'permissions.read'
+              | 'organizations.read'
+              | 'organizations.create'
+              | 'organizations.update'
+              | 'organizations.delete'
+              | 'roles.read'
+              | 'roles.create'
+              | 'roles.update'
+              | 'roles.delete'
+              | 'roles.assign-permissions'
+              | 'roles.revoke-permissions'
+              | 'assignments.read'
+              | 'assignments.grant'
+              | 'assignments.revoke'
+              | 'users.read'
+              | 'users.create'
+              | 'users.update'
+              | 'users.reset-password'
+              | 'users.disable'
+              | 'users.enable'
+              | 'settings.read'
+              | 'settings.update'
+              | 'audit.read';
           };
         }
       >(
         config: Config
       ): Alova2Method<
         {
-          permission: string;
+          /**
+           * 权限机器身份 <resourceCode>.<actionCode>
+           */
+          permissionCode:
+            | 'projects.read'
+            | 'projects.create'
+            | 'projects.update'
+            | 'projects.delete'
+            | 'permissions.read'
+            | 'organizations.read'
+            | 'organizations.create'
+            | 'organizations.update'
+            | 'organizations.delete'
+            | 'roles.read'
+            | 'roles.create'
+            | 'roles.update'
+            | 'roles.delete'
+            | 'roles.assign-permissions'
+            | 'roles.revoke-permissions'
+            | 'assignments.read'
+            | 'assignments.grant'
+            | 'assignments.revoke'
+            | 'users.read'
+            | 'users.create'
+            | 'users.update'
+            | 'users.reset-password'
+            | 'users.disable'
+            | 'users.enable'
+            | 'settings.read'
+            | 'settings.update'
+            | 'audit.read';
         },
         'IAM.deleteRolePermission',
         Config
@@ -2022,7 +2341,7 @@ declare global {
        *
        * [POST] 授用户权限
        *
-       * **path:** /api/v1/users/{userId}/permissions/{permission}
+       * **path:** /api/v1/users/{userId}/permissions/{permissionCode}
        *
        * ---
        *
@@ -2030,7 +2349,35 @@ declare global {
        * ```ts
        * type PathParameters = {
        *   userId: string
-       *   permission: string
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   permissionCode:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
        * }
        * ```
        *
@@ -2054,7 +2401,35 @@ declare global {
        * ```ts
        * type Response = {
        *   userId: string
-       *   permission: string
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   permissionCode:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
        *   orgId: string
        *   effect: 'allow' | 'deny'
        * }
@@ -2063,13 +2438,73 @@ declare global {
       assignUserPermission<
         Config extends Alova2MethodConfig<{
           userId: string;
-          permission: string;
+          /**
+           * 权限机器身份 <resourceCode>.<actionCode>
+           */
+          permissionCode:
+            | 'projects.read'
+            | 'projects.create'
+            | 'projects.update'
+            | 'projects.delete'
+            | 'permissions.read'
+            | 'organizations.read'
+            | 'organizations.create'
+            | 'organizations.update'
+            | 'organizations.delete'
+            | 'roles.read'
+            | 'roles.create'
+            | 'roles.update'
+            | 'roles.delete'
+            | 'roles.assign-permissions'
+            | 'roles.revoke-permissions'
+            | 'assignments.read'
+            | 'assignments.grant'
+            | 'assignments.revoke'
+            | 'users.read'
+            | 'users.create'
+            | 'users.update'
+            | 'users.reset-password'
+            | 'users.disable'
+            | 'users.enable'
+            | 'settings.read'
+            | 'settings.update'
+            | 'audit.read';
           orgId: string;
           effect: 'allow' | 'deny';
         }> & {
           pathParams: {
             userId: string;
-            permission: string;
+            /**
+             * 权限机器身份 <resourceCode>.<actionCode>
+             */
+            permissionCode:
+              | 'projects.read'
+              | 'projects.create'
+              | 'projects.update'
+              | 'projects.delete'
+              | 'permissions.read'
+              | 'organizations.read'
+              | 'organizations.create'
+              | 'organizations.update'
+              | 'organizations.delete'
+              | 'roles.read'
+              | 'roles.create'
+              | 'roles.update'
+              | 'roles.delete'
+              | 'roles.assign-permissions'
+              | 'roles.revoke-permissions'
+              | 'assignments.read'
+              | 'assignments.grant'
+              | 'assignments.revoke'
+              | 'users.read'
+              | 'users.create'
+              | 'users.update'
+              | 'users.reset-password'
+              | 'users.disable'
+              | 'users.enable'
+              | 'settings.read'
+              | 'settings.update'
+              | 'audit.read';
           };
           data: {
             /**
@@ -2091,7 +2526,37 @@ declare global {
       ): Alova2Method<
         {
           userId: string;
-          permission: string;
+          /**
+           * 权限机器身份 <resourceCode>.<actionCode>
+           */
+          permissionCode:
+            | 'projects.read'
+            | 'projects.create'
+            | 'projects.update'
+            | 'projects.delete'
+            | 'permissions.read'
+            | 'organizations.read'
+            | 'organizations.create'
+            | 'organizations.update'
+            | 'organizations.delete'
+            | 'roles.read'
+            | 'roles.create'
+            | 'roles.update'
+            | 'roles.delete'
+            | 'roles.assign-permissions'
+            | 'roles.revoke-permissions'
+            | 'assignments.read'
+            | 'assignments.grant'
+            | 'assignments.revoke'
+            | 'users.read'
+            | 'users.create'
+            | 'users.update'
+            | 'users.reset-password'
+            | 'users.disable'
+            | 'users.enable'
+            | 'settings.read'
+            | 'settings.update'
+            | 'audit.read';
           orgId: string;
           effect: 'allow' | 'deny';
         },
@@ -2103,7 +2568,7 @@ declare global {
        *
        * [DELETE] 撤用户权限
        *
-       * **path:** /api/v1/users/{userId}/permissions/{permission}
+       * **path:** /api/v1/users/{userId}/permissions/{permissionCode}
        *
        * ---
        *
@@ -2111,7 +2576,35 @@ declare global {
        * ```ts
        * type PathParameters = {
        *   userId: string
-       *   permission: string
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   permissionCode:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
        * }
        * ```
        *
@@ -2131,7 +2624,35 @@ declare global {
        * ```ts
        * type Response = {
        *   userId: string
-       *   permission: string
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   permissionCode:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
        *   orgId: string
        * }
        * ```
@@ -2139,12 +2660,72 @@ declare global {
       deleteUserPermission<
         Config extends Alova2MethodConfig<{
           userId: string;
-          permission: string;
+          /**
+           * 权限机器身份 <resourceCode>.<actionCode>
+           */
+          permissionCode:
+            | 'projects.read'
+            | 'projects.create'
+            | 'projects.update'
+            | 'projects.delete'
+            | 'permissions.read'
+            | 'organizations.read'
+            | 'organizations.create'
+            | 'organizations.update'
+            | 'organizations.delete'
+            | 'roles.read'
+            | 'roles.create'
+            | 'roles.update'
+            | 'roles.delete'
+            | 'roles.assign-permissions'
+            | 'roles.revoke-permissions'
+            | 'assignments.read'
+            | 'assignments.grant'
+            | 'assignments.revoke'
+            | 'users.read'
+            | 'users.create'
+            | 'users.update'
+            | 'users.reset-password'
+            | 'users.disable'
+            | 'users.enable'
+            | 'settings.read'
+            | 'settings.update'
+            | 'audit.read';
           orgId: string;
         }> & {
           pathParams: {
             userId: string;
-            permission: string;
+            /**
+             * 权限机器身份 <resourceCode>.<actionCode>
+             */
+            permissionCode:
+              | 'projects.read'
+              | 'projects.create'
+              | 'projects.update'
+              | 'projects.delete'
+              | 'permissions.read'
+              | 'organizations.read'
+              | 'organizations.create'
+              | 'organizations.update'
+              | 'organizations.delete'
+              | 'roles.read'
+              | 'roles.create'
+              | 'roles.update'
+              | 'roles.delete'
+              | 'roles.assign-permissions'
+              | 'roles.revoke-permissions'
+              | 'assignments.read'
+              | 'assignments.grant'
+              | 'assignments.revoke'
+              | 'users.read'
+              | 'users.create'
+              | 'users.update'
+              | 'users.reset-password'
+              | 'users.disable'
+              | 'users.enable'
+              | 'settings.read'
+              | 'settings.update'
+              | 'audit.read';
           };
           params: {
             /**
@@ -2158,7 +2739,37 @@ declare global {
       ): Alova2Method<
         {
           userId: string;
-          permission: string;
+          /**
+           * 权限机器身份 <resourceCode>.<actionCode>
+           */
+          permissionCode:
+            | 'projects.read'
+            | 'projects.create'
+            | 'projects.update'
+            | 'projects.delete'
+            | 'permissions.read'
+            | 'organizations.read'
+            | 'organizations.create'
+            | 'organizations.update'
+            | 'organizations.delete'
+            | 'roles.read'
+            | 'roles.create'
+            | 'roles.update'
+            | 'roles.delete'
+            | 'roles.assign-permissions'
+            | 'roles.revoke-permissions'
+            | 'assignments.read'
+            | 'assignments.grant'
+            | 'assignments.revoke'
+            | 'users.read'
+            | 'users.create'
+            | 'users.update'
+            | 'users.reset-password'
+            | 'users.disable'
+            | 'users.enable'
+            | 'settings.read'
+            | 'settings.update'
+            | 'audit.read';
           orgId: string;
         },
         'IAM.deleteUserPermission',
@@ -2200,8 +2811,45 @@ declare global {
        *   // [items] start
        *   // [items] end
        *   effective: Array<{
-       *     // 权限名 <resource>.<action>
-       *     permission: string
+       *     permission: {
+       *       // 权限机器身份 <resourceCode>.<actionCode>
+       *       code:
+       *         | 'projects.read'
+       *         | 'projects.create'
+       *         | 'projects.update'
+       *         | 'projects.delete'
+       *         | 'permissions.read'
+       *         | 'organizations.read'
+       *         | 'organizations.create'
+       *         | 'organizations.update'
+       *         | 'organizations.delete'
+       *         | 'roles.read'
+       *         | 'roles.create'
+       *         | 'roles.update'
+       *         | 'roles.delete'
+       *         | 'roles.assign-permissions'
+       *         | 'roles.revoke-permissions'
+       *         | 'assignments.read'
+       *         | 'assignments.grant'
+       *         | 'assignments.revoke'
+       *         | 'users.read'
+       *         | 'users.create'
+       *         | 'users.update'
+       *         | 'users.reset-password'
+       *         | 'users.disable'
+       *         | 'users.enable'
+       *         | 'settings.read'
+       *         | 'settings.update'
+       *         | 'audit.read'
+       *       // 资源机器标识
+       *       resourceCode: string
+       *       // 动作机器标识
+       *       actionCode: string
+       *       // 资源展示名称
+       *       resourceLabel: string
+       *       // 动作展示名称
+       *       label: string
+       *     }
        *     // 来源链:角色/直接/继承
        *     // [items] start
        *     // [items] end
@@ -2222,8 +2870,45 @@ declare global {
        *   // [items] start
        *   // [items] end
        *   denied: Array<{
-       *     // 权限名 <resource>.<action>
-       *     permission: string
+       *     permission: {
+       *       // 权限机器身份 <resourceCode>.<actionCode>
+       *       code:
+       *         | 'projects.read'
+       *         | 'projects.create'
+       *         | 'projects.update'
+       *         | 'projects.delete'
+       *         | 'permissions.read'
+       *         | 'organizations.read'
+       *         | 'organizations.create'
+       *         | 'organizations.update'
+       *         | 'organizations.delete'
+       *         | 'roles.read'
+       *         | 'roles.create'
+       *         | 'roles.update'
+       *         | 'roles.delete'
+       *         | 'roles.assign-permissions'
+       *         | 'roles.revoke-permissions'
+       *         | 'assignments.read'
+       *         | 'assignments.grant'
+       *         | 'assignments.revoke'
+       *         | 'users.read'
+       *         | 'users.create'
+       *         | 'users.update'
+       *         | 'users.reset-password'
+       *         | 'users.disable'
+       *         | 'users.enable'
+       *         | 'settings.read'
+       *         | 'settings.update'
+       *         | 'audit.read'
+       *       // 资源机器标识
+       *       resourceCode: string
+       *       // 动作机器标识
+       *       actionCode: string
+       *       // 资源展示名称
+       *       resourceLabel: string
+       *       // 动作展示名称
+       *       label: string
+       *     }
        *     // 哪些组织的 deny 扣掉了此权限(deny 是全局减法,可多 org)
        *     // [items] start
        *     // [items] end
@@ -2363,8 +3048,45 @@ declare global {
        * **Response**
        * ```ts
        * type Response = Array<{
-       *   // 权限名 <resource>.<action>
-       *   permission: string
+       *   permission: {
+       *     // 权限机器身份 <resourceCode>.<actionCode>
+       *     code:
+       *       | 'projects.read'
+       *       | 'projects.create'
+       *       | 'projects.update'
+       *       | 'projects.delete'
+       *       | 'permissions.read'
+       *       | 'organizations.read'
+       *       | 'organizations.create'
+       *       | 'organizations.update'
+       *       | 'organizations.delete'
+       *       | 'roles.read'
+       *       | 'roles.create'
+       *       | 'roles.update'
+       *       | 'roles.delete'
+       *       | 'roles.assign-permissions'
+       *       | 'roles.revoke-permissions'
+       *       | 'assignments.read'
+       *       | 'assignments.grant'
+       *       | 'assignments.revoke'
+       *       | 'users.read'
+       *       | 'users.create'
+       *       | 'users.update'
+       *       | 'users.reset-password'
+       *       | 'users.disable'
+       *       | 'users.enable'
+       *       | 'settings.read'
+       *       | 'settings.update'
+       *       | 'audit.read'
+       *     // 资源机器标识
+       *     resourceCode: string
+       *     // 动作机器标识
+       *     actionCode: string
+       *     // 资源展示名称
+       *     resourceLabel: string
+       *     // 动作展示名称
+       *     label: string
+       *   }
        *   // 允许或拒绝
        *   effect: 'allow' | 'deny'
        *   // 授权绑定的组织 ID
@@ -2763,6 +3485,14 @@ declare global {
        *     // 旧值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
+       *     // [params1] start
+       *     // [params5] start
+       *     // [items] start
+       *     // [cycle] $.items.[].beforeState.[]
+       *     // [items] end
+       *     // [params5] end
+       *     // [params1] end
+       *     // [params2] start
        *     // [params5] start
        *     // [items] start
        *     // [params1] start
@@ -2770,18 +3500,29 @@ declare global {
        *     // [params1] end
        *     // [items] end
        *     // [params5] end
+       *     // [params2] end
        *     // [items] end
        *     // [params1] end
        *     beforeState:
-       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | ((string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+       *           (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>))[]
        *       | Record<
        *           string,
-       *           string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *           (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+       *             (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
        *         >
        *       | null
        *     // 新值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
+       *     // [params1] start
+       *     // [params5] start
+       *     // [items] start
+       *     // [cycle] $.items.[].afterState.[]
+       *     // [items] end
+       *     // [params5] end
+       *     // [params1] end
+       *     // [params2] start
        *     // [params5] start
        *     // [items] start
        *     // [params1] start
@@ -2789,13 +3530,16 @@ declare global {
        *     // [params1] end
        *     // [items] end
        *     // [params5] end
+       *     // [params2] end
        *     // [items] end
        *     // [params1] end
        *     afterState:
-       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | ((string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+       *           (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>))[]
        *       | Record<
        *           string,
-       *           string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *           (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+       *             (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
        *         >
        *       | null
        *     // 变更字段名数组
@@ -2817,7 +3561,8 @@ declare global {
        *     // 业务自定义上下文
        *     metadata: Record<
        *       string,
-       *       string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *       (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+       *         (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
        *     > | null
        *     // 业务发生时间(ISO 8601)
        *     occurredAt: string
@@ -2919,6 +3664,14 @@ declare global {
        *     // 旧值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
+       *     // [params1] start
+       *     // [params5] start
+       *     // [items] start
+       *     // [cycle] $.items.[].beforeState.[]
+       *     // [items] end
+       *     // [params5] end
+       *     // [params1] end
+       *     // [params2] start
        *     // [params5] start
        *     // [items] start
        *     // [params1] start
@@ -2926,18 +3679,29 @@ declare global {
        *     // [params1] end
        *     // [items] end
        *     // [params5] end
+       *     // [params2] end
        *     // [items] end
        *     // [params1] end
        *     beforeState:
-       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | ((string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+       *           (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>))[]
        *       | Record<
        *           string,
-       *           string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *           (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+       *             (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
        *         >
        *       | null
        *     // 新值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
+       *     // [params1] start
+       *     // [params5] start
+       *     // [items] start
+       *     // [cycle] $.items.[].afterState.[]
+       *     // [items] end
+       *     // [params5] end
+       *     // [params1] end
+       *     // [params2] start
        *     // [params5] start
        *     // [items] start
        *     // [params1] start
@@ -2945,13 +3709,16 @@ declare global {
        *     // [params1] end
        *     // [items] end
        *     // [params5] end
+       *     // [params2] end
        *     // [items] end
        *     // [params1] end
        *     afterState:
-       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | ((string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+       *           (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>))[]
        *       | Record<
        *           string,
-       *           string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
+       *           (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
+       *             (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
        *         >
        *       | null
        *     // 变更字段名数组

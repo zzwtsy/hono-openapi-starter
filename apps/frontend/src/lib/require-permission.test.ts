@@ -21,7 +21,7 @@ describe("requirePermission", () => {
     }
   });
 
-  it("permissions 为 undefined 时抛 redirect 到 /403", () => {
+  it("permissionCodes 为 undefined 时抛 redirect 到 /403", () => {
     try {
       requirePermission(undefined, "users.read");
       expect.unreachable("应抛出 redirect");

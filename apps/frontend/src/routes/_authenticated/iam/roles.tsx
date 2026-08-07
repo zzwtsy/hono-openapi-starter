@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/iam/roles")({
     tab: typeof search.tab === "string" ? search.tab : undefined,
   }),
   beforeLoad: ({ context }) => {
-    requirePermission(context.auth.permissions, "roles.read");
+    requirePermission(context.auth.permissionCodes, "roles.read");
   },
   loader: async () => {
     await Apis.IAM.listRoles();

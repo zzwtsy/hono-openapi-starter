@@ -18,7 +18,7 @@ import { navGroups } from "./sidebar/nav-config";
 import { NavMain } from "./sidebar/nav-main";
 import { NavUser } from "./sidebar/nav-user";
 
-// 受保护区的侧边栏:导航按 permissions 显隐(前端 UX,后端 PermissionChecker 才是授权边界);
+// 受保护区的侧边栏:导航按 permissionCodes 显隐(前端 UX,后端 PermissionChecker 才是授权边界);
 // 用户区显示登录态,登出由父层(_authenticated route wrapper)通过 onLogout 传入,
 // 避免 components/layout 反向依赖 features/auth(boundaries:components 不依赖 features)。
 
@@ -32,11 +32,11 @@ export function AppSidebar({ onLogout }: { onLogout: () => void }) {
       .map(group => ({
         ...group,
         items: group.items.filter(
-          item => item.permission === undefined || hasPermission(auth?.permissions, item.permission),
+          item => item.permission === undefined || hasPermission(auth?.permissionCodes, item.permission),
         ),
       }))
       .filter(group => group.items.length > 0),
-    [auth?.permissions],
+    [auth?.permissionCodes],
   );
 
   const name = auth?.user?.name ?? "";

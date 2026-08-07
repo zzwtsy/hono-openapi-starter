@@ -1,4 +1,5 @@
-import type { Permission } from "@/api/globals";
+import type { PermissionRef } from "@/api/globals";
+import type { PermissionCode } from "@/types/permissions";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,8 +18,8 @@ import { formatPermission } from "../lib/permission-format";
 
 interface PermissionComboboxProps {
   value: string | null;
-  onChange: (name: string) => void;
-  permissions: Permission[];
+  onChange: (permissionCode: PermissionCode) => void;
+  permissions: PermissionRef[];
   placeholder?: string;
   disabled?: boolean;
 }
@@ -35,8 +36,8 @@ export function PermissionCombobox({
   disabled = false,
 }: PermissionComboboxProps) {
   const [open, setOpen] = useState(false);
-  const selected = permissions.find(p => p.name === value);
-  const groups = useMemo(() => groupByResource(permissions, p => p.name), [permissions]);
+  const selected = permissions.find(p => p.code === value);
+  const groups = useMemo(() => groupByResource(permissions, p => p.resourceCode), [permissions]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -58,15 +59,15 @@ export function PermissionCombobox({
               >
                 {perms.map(p => (
                   <CommandItem
-                    key={p.name}
+                    key={p.code}
                     value={formatPermission(p)}
                     onSelect={() => {
-                      onChange(p.name);
+                      onChange(p.code);
                       setOpen(false);
                     }}
                   >
                     {formatPermission(p)}
-                    <Check className={cn("ml-auto", value === p.name ? "opacity-100" : "opacity-0")} />
+                    <Check className={cn("ml-auto", value === p.code ? "opacity-100" : "opacity-0")} />
                   </CommandItem>
                 ))}
               </CommandGroup>

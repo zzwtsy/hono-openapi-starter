@@ -1,11 +1,12 @@
+import type { PermissionRef } from "@/api/globals";
 import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface RolePreviewCollapsibleProps {
-  previewPerms?: string[];
-  newPerms?: string[];
+  previewPerms?: PermissionRef[];
+  newPerms?: PermissionRef[];
 }
 
 /**
@@ -14,7 +15,7 @@ interface RolePreviewCollapsibleProps {
  * 从 role-assignments-tab 抽出(L98-130),吸收 JSX 条件分支降低父组件 complexity。
  */
 export function RolePreviewCollapsible({ previewPerms, newPerms }: RolePreviewCollapsibleProps) {
-  const newPermsSet = new Set(newPerms ?? []);
+  const newPermsSet = new Set(newPerms?.map(permission => permission.code) ?? []);
 
   return (
     <Collapsible className="group/collapsible">
@@ -35,11 +36,11 @@ export function RolePreviewCollapsible({ previewPerms, newPerms }: RolePreviewCo
             ? <span className="text-sm text-muted-foreground">该角色暂无权限</span>
             : previewPerms.map(p => (
                 <Badge
-                  key={p}
-                  variant={newPermsSet.has(p) ? "default" : "secondary"}
+                  key={p.code}
+                  variant={newPermsSet.has(p.code) ? "default" : "secondary"}
                   className="text-xs"
                 >
-                  {p}
+                  {`${p.label}（${p.code}）`}
                 </Badge>
               ))}
         </div>

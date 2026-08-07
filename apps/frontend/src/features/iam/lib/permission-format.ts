@@ -1,6 +1,6 @@
-import type { Permission } from "@/api/globals";
+import type { PermissionRef } from "@/api/globals";
 
-/** 权限展示文案:description 优先,附代码;无 description 回退代码。 */
-export function formatPermission(p: Pick<Permission, "name" | "description">): string {
-  return p.description != null ? `${p.description}（${p.name}）` : p.name;
+/** 权限展示文案:label 与 code 同时展示，展示元数据完全来自后端 PermissionRef。 */
+export function formatPermission(p: Pick<PermissionRef, "code" | "label">): string {
+  return `${p.label}（${p.code}）`;
 }

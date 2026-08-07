@@ -115,8 +115,8 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
               <>
                 <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto">
                   {[...groups.entries()].map(([resource, perms]) => {
-                    const allSelected = perms.every(p => working.has(p.name));
-                    const anySelected = perms.some(p => working.has(p.name));
+                    const allSelected = perms.every(p => working.has(p.code));
+                    const anySelected = perms.some(p => working.has(p.code));
                     const resourceLabel = perms[0]?.resourceLabel ?? resource;
                     return (
                       <FieldSet key={resource}>
@@ -133,16 +133,16 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
                         </div>
                         <div className="flex flex-col gap-2">
                           {perms.map((perm) => {
-                            const isAdd = working.has(perm.name) && !initial.has(perm.name);
-                            const isRemove = !working.has(perm.name) && initial.has(perm.name);
+                            const isAdd = working.has(perm.code) && !initial.has(perm.code);
+                            const isRemove = !working.has(perm.code) && initial.has(perm.code);
                             return (
-                              <Field key={perm.name} orientation="horizontal">
+                              <Field key={perm.code} orientation="horizontal">
                                 <Checkbox
-                                  id={`perm-${perm.name}`}
-                                  checked={working.has(perm.name)}
-                                  onCheckedChange={() => { toggle(perm.name); }}
+                                  id={`perm-${perm.code}`}
+                                  checked={working.has(perm.code)}
+                                  onCheckedChange={() => { toggle(perm.code); }}
                                 />
-                                <FieldLabel htmlFor={`perm-${perm.name}`} className="font-normal">
+                                <FieldLabel htmlFor={`perm-${perm.code}`} className="font-normal">
                                   <span className={cn(isRemove && "text-muted-foreground line-through", isAdd && "text-primary font-medium")}>{formatPermission(perm)}</span>
                                   {isAdd && <Badge className="text-xs">新增</Badge>}
                                   {isRemove && <Badge variant="destructive" className="text-xs">撤销</Badge>}

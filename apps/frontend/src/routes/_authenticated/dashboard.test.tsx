@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Dashboard } from "@/features/dashboard/components/dashboard";
 
-// mock @tanstack/react-router:useRouteContext 控 permissions;createFileRoute 返回空 Route。
+// mock @tanstack/react-router:useRouteContext 控 permissionCodes;createFileRoute 返回空 Route。
 const { useRouteContextMock } = vi.hoisted(() => ({
   useRouteContextMock: vi.fn(),
 }));

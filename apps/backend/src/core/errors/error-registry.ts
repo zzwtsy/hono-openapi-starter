@@ -69,7 +69,8 @@ export const errorRegistry = {
   ROLE_NOT_FOUND: { status: 404, defaultMessage: "Role not found", expose: true },
   ROLE_NAME_CONFLICT: { status: 409, defaultMessage: "Role name already exists", expose: true },
   // PERMISSION
-  PERMISSION_NOT_FOUND: { status: 404, defaultMessage: "Permission not found: {permission}", expose: true },
+  PERMISSION_CODE_INVALID: { status: 400, defaultMessage: "Invalid permission code", expose: true },
+  PERMISSION_NOT_FOUND: { status: 404, defaultMessage: "Permission not found: {permissionCode}", expose: true },
   // ORG
   ORG_NOT_FOUND: { status: 404, defaultMessage: "Organization not found", expose: true },
   ORG_CYCLE: { status: 409, defaultMessage: "Organization cycle detected", expose: true },

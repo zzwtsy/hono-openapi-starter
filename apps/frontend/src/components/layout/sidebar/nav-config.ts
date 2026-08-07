@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { FileRouteTypes } from "@/routeTree.gen";
-import type { AppPermission } from "@/types/permissions";
+import type { PermissionCode } from "@/types/permissions";
 import {
   Building2,
   FolderKanban,
@@ -15,7 +15,7 @@ interface NavItemMeta {
   title: string;
   icon: LucideIcon;
   /** 显示该导航项所需的权限;省略则任何登录用户可见。 */
-  permission?: AppPermission;
+  permission?: PermissionCode;
 }
 
 export type NavItem = { to: FileRouteTypes["to"] } & NavItemMeta;

@@ -111,7 +111,7 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
 
   const effective = result?.effective ?? [];
   const denied = result?.denied ?? [];
-  const groups = groupByResource(effective, p => p.permission);
+  const groups = groupByResource(effective, p => p.permission.resourceCode);
 
   return (
     <div className="flex flex-col gap-3">
@@ -134,8 +134,8 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
                     <span className="text-xs font-medium text-muted-foreground">{resource}</span>
                     <div className="flex flex-col gap-1.5">
                       {perms.map(p => (
-                        <div key={p.permission} className="flex flex-wrap items-center gap-1.5 text-sm">
-                          <span>{p.permission}</span>
+                        <div key={p.permission.code} className="flex flex-wrap items-center gap-1.5 text-sm">
+                          <span>{`${p.permission.label}（${p.permission.code}）`}</span>
                           {p.sources.map(s => (
                             <SourceBadge
                               key={`${s.type}-${s.roleId ?? "direct"}-${s.orgId}`}
@@ -162,8 +162,8 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
             <p className="text-xs text-muted-foreground">以下权限本会生效,但被直接 deny 扣掉。撤销对应 deny 可恢复。</p>
             <div className="flex flex-col gap-1.5">
               {denied.map(d => (
-                <div key={d.permission} className="flex flex-wrap items-center gap-1.5 text-sm">
-                  <span className="text-muted-foreground line-through">{d.permission}</span>
+                <div key={d.permission.code} className="flex flex-wrap items-center gap-1.5 text-sm">
+                  <span className="text-muted-foreground line-through">{`${d.permission.label}（${d.permission.code}）`}</span>
                   <Badge variant="destructive" className="text-xs">已被拒绝</Badge>
                   {d.suppressedSources.map(s => (
                     <SourceBadge

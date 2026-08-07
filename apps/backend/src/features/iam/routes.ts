@@ -14,6 +14,7 @@ import {
   OrganizationIdParamSchema,
   OrganizationSchema,
   OrgIdQuerySchema,
+  PermissionCodeSchema,
   PermissionSchema,
   ResetPasswordSchema,
   RoleIdParamSchema,
@@ -174,12 +175,12 @@ export const listRolePermissionsRoute = createRoute({
   tags: ["IAM"],
   operationId: "listRolePermissions",
   summary: "列出角色权限",
-  description: "返回角色已配置的权限名列表。需 roles.read。",
+  description: "返回角色已配置的权限展示引用列表。需 roles.read。",
   middleware: rolesReadMiddleware,
   security: authedSecurity,
   request: { params: RoleIdParamSchema },
   responses: {
-    200: jsonSuccessResponse(z.array(z.string()), "权限名列表"),
+    200: jsonSuccessResponse(z.array(PermissionSchema), "权限列表"),
     ...authErrorResponses,
     404: jsonErrorResponse("角色不存在", "ROLE_NOT_FOUND"),
   },
@@ -205,7 +206,8 @@ export const assignRolePermissionsRoute = createRoute({
     body: { content: { "application/json": { schema: AssignRolePermissionsSchema } } },
   },
   responses: {
-    200: jsonSuccessResponse(z.array(z.string()), "角色当前权限列表"),
+    200: jsonSuccessResponse(z.array(PermissionSchema), "角色当前权限列表"),
+    400: jsonErrorResponse("权限 code 无效", "PERMISSION_CODE_INVALID"),
     ...authErrorResponses,
     404: jsonErrorResponses("角色或权限不存在", ["ROLE_NOT_FOUND", "PERMISSION_NOT_FOUND"]),
   },
@@ -213,7 +215,7 @@ export const assignRolePermissionsRoute = createRoute({
 
 export const deleteRolePermissionRoute = createRoute({
   method: "delete",
-  path: "/roles/{roleId}/permissions/{permission}",
+  path: "/roles/{roleId}/permissions/{permissionCode}",
   tags: ["IAM"],
   operationId: "deleteRolePermission",
   summary: "撤角色权限",
@@ -226,9 +228,10 @@ export const deleteRolePermissionRoute = createRoute({
     after: "none",
   })],
   security: authedSecurity,
-  request: { params: z.object({ roleId: z.string(), permission: z.string() }) },
+  request: { params: z.object({ roleId: z.string(), permissionCode: PermissionCodeSchema }) },
   responses: {
-    200: jsonSuccessResponse(z.object({ permission: z.string() }), "已撤销"),
+    200: jsonSuccessResponse(z.object({ permissionCode: PermissionCodeSchema }), "已撤销"),
+    400: jsonErrorResponse("权限 code 无效", "PERMISSION_CODE_INVALID"),
     ...authErrorResponses,
     404: jsonErrorResponse("角色不存在", "ROLE_NOT_FOUND"),
   },
@@ -499,7 +502,7 @@ export const deleteUserRoleRoute = createRoute({
 
 export const assignUserPermissionRoute = createRoute({
   method: "post",
-  path: "/users/{userId}/permissions/{permission}",
+  path: "/users/{userId}/permissions/{permissionCode}",
   tags: ["IAM"],
   operationId: "assignUserPermission",
   summary: "授用户权限",
@@ -511,11 +514,11 @@ export const assignUserPermissionRoute = createRoute({
     before: async (c) => {
       // 路由 middleware 先于 zod validators 执行,valid() 不可用;c.req.json() 有 Hono body 缓存,后读安全。
       const body = await c.req.json<{ orgId?: string }>();
-      return IamService.getUserPermissionGrant(c.req.param("userId")!, c.req.param("permission")!, body.orgId ?? "");
+      return IamService.getUserPermissionGrant(c.req.param("userId")!, c.req.param("permissionCode")!, body.orgId ?? "");
     },
     after: async (c) => {
       const body = await c.req.json<{ orgId?: string }>();
-      return IamService.getUserPermissionGrant(c.req.param("userId")!, c.req.param("permission")!, body.orgId ?? "");
+      return IamService.getUserPermissionGrant(c.req.param("userId")!, c.req.param("permissionCode")!, body.orgId ?? "");
     },
   })],
   security: authedSecurity,
@@ -524,7 +527,8 @@ export const assignUserPermissionRoute = createRoute({
     body: { content: { "application/json": { schema: UserPermissionBodySchema } } },
   },
   responses: {
-    200: jsonSuccessResponse(z.object({ userId: z.string(), permission: z.string(), orgId: z.string(), effect: z.enum(["allow", "deny"]) }), "已授予"),
+    200: jsonSuccessResponse(z.object({ userId: z.string(), permissionCode: PermissionCodeSchema, orgId: z.string(), effect: z.enum(["allow", "deny"]) }), "已授予"),
+    400: jsonErrorResponse("权限 code 无效", "PERMISSION_CODE_INVALID"),
     ...authErrorResponses,
     404: jsonErrorResponses("权限或组织不存在", ["PERMISSION_NOT_FOUND", "ORG_NOT_FOUND"]),
   },
@@ -532,18 +536,18 @@ export const assignUserPermissionRoute = createRoute({
 
 export const deleteUserPermissionRoute = createRoute({
   method: "delete",
-  path: "/users/{userId}/permissions/{permission}",
+  path: "/users/{userId}/permissions/{permissionCode}",
   tags: ["IAM"],
   operationId: "deleteUserPermission",
   summary: "撤用户权限",
-  description: "撤销用户在指定组织的直接权限授权(需 permission + orgId 定位)。禁止撤销自己的授权。需 assignments.revoke。",
+  description: "撤销用户在指定组织的直接权限授权(需 permissionCode + orgId 定位)。禁止撤销自己的授权。需 assignments.revoke。",
   middleware: [...assignmentsRevokeMiddleware, audit({
     action: iamAuditActions.assignmentRevokePermission,
     resourceType: "user",
     resourceId: c => c.req.param("userId")!,
     before: async c => IamService.getUserPermissionGrant(
       c.req.param("userId")!,
-      c.req.param("permission")!,
+      c.req.param("permissionCode")!,
       c.req.query("orgId") ?? "",
     ),
     after: async () => null,
@@ -551,7 +555,8 @@ export const deleteUserPermissionRoute = createRoute({
   security: authedSecurity,
   request: { params: UserPermissionParamSchema, query: OrgIdQuerySchema },
   responses: {
-    200: jsonSuccessResponse(z.object({ userId: z.string(), permission: z.string(), orgId: z.string() }), "已撤销"),
+    200: jsonSuccessResponse(z.object({ userId: z.string(), permissionCode: PermissionCodeSchema, orgId: z.string() }), "已撤销"),
+    400: jsonErrorResponse("权限 code 无效", "PERMISSION_CODE_INVALID"),
     401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
     403: jsonErrorResponses("无权限或禁止撤销自己的授权", ["COMMON_FORBIDDEN", "USER_CANNOT_REVOKE_OWN_AUTH"]),
     404: jsonErrorResponse("授权不存在", "COMMON_NOT_FOUND"),

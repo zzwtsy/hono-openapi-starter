@@ -33,17 +33,17 @@ async function setup() {
 /** 建实例角色 viewer(含 projects.read)。 */
 async function createViewerRole() {
   await db.insert(roles).values({ id: "role-viewer", name: "viewer", source: "instance" });
-  await db.insert(rolePermissions).values({ roleId: "role-viewer", permission: "projects.read" });
+  await db.insert(rolePermissions).values({ roleId: "role-viewer", permissionCode: "projects.read" });
 }
 
 type PermResult = Awaited<ReturnType<typeof checker.listEffectivePermissions>>;
 
 function findEffective(perms: PermResult, permission: string) {
-  return perms.effective.find(p => p.permission === permission);
+  return perms.effective.find(p => p.permissionCode === permission);
 }
 
 function findDenied(perms: PermResult, permission: string) {
-  return perms.denied.find(p => p.permission === permission);
+  return perms.denied.find(p => p.permissionCode === permission);
 }
 
 describe("listEffectivePermissions", () => {
@@ -84,7 +84,7 @@ describe("listEffectivePermissions", () => {
     await setup();
     await createViewerRole();
     await db.insert(userRoles).values({ userId: "u-1", roleId: "role-viewer", orgId: "org-fujian" });
-    await db.insert(userPermissions).values({ userId: "u-1", permission: "projects.read", orgId: "org-fujian", effect: "deny" });
+    await db.insert(userPermissions).values({ userId: "u-1", permissionCode: "projects.read", orgId: "org-fujian", effect: "deny" });
 
     const perms = await checker.listEffectivePermissions("u-1", "org-fujian");
     expect(findEffective(perms, "projects.read")).toBeUndefined();
@@ -98,7 +98,7 @@ describe("listEffectivePermissions", () => {
   it("deny 了但无来源(无效 deny)进 denied,suppressedSources 为空", async () => {
     await setup();
     // deny 了一条根本没授予的权限
-    await db.insert(userPermissions).values({ userId: "u-1", permission: "projects.read", orgId: "org-fujian", effect: "deny" });
+    await db.insert(userPermissions).values({ userId: "u-1", permissionCode: "projects.read", orgId: "org-fujian", effect: "deny" });
 
     const perms = await checker.listEffectivePermissions("u-1", "org-fujian");
     const denied = findDenied(perms, "projects.read");
@@ -124,7 +124,7 @@ describe("listEffectivePermissions", () => {
 
   it("直接 allow 进入 effective,带 direct 来源(roleId/roleName 为 null)", async () => {
     await setup();
-    await db.insert(userPermissions).values({ userId: "u-1", permission: "permissions.read", orgId: "org-fujian", effect: "allow" });
+    await db.insert(userPermissions).values({ userId: "u-1", permissionCode: "permissions.read", orgId: "org-fujian", effect: "allow" });
 
     const perms = await checker.listEffectivePermissions("u-1", "org-fujian");
     const perm = findEffective(perms, "permissions.read");
@@ -138,7 +138,7 @@ describe("listEffectivePermissions", () => {
     await createViewerRole();
     await db.insert(userRoles).values({ userId: "u-1", roleId: "role-viewer", orgId: "org-fujian" });
     // 直接 allow 同一权限
-    await db.insert(userPermissions).values({ userId: "u-1", permission: "projects.read", orgId: "org-fujian", effect: "allow" });
+    await db.insert(userPermissions).values({ userId: "u-1", permissionCode: "projects.read", orgId: "org-fujian", effect: "allow" });
 
     const perms = await checker.listEffectivePermissions("u-1", "org-fujian");
     const perm = findEffective(perms, "projects.read");

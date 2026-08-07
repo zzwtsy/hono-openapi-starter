@@ -1,3 +1,4 @@
+import type { PermissionCode } from "@/types/permissions";
 import { actionDelegationMiddleware, useRequest, useWatcher } from "alova/client";
 import { Ban, Check, ShieldCheck } from "lucide-react";
 import { useState } from "react";
@@ -35,7 +36,7 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
     { immediate: true, middleware: actionDelegationMiddleware(IAM_ACTIONS.userDirectPerms) },
   );
 
-  const [selectedPermission, setSelectedPermission] = useState("");
+  const [selectedPermission, setSelectedPermission] = useState<PermissionCode | "">("");
   const [effect, setEffect] = useState<"allow" | "deny">("allow");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const { mutate: runWithToast, busy: assigning } = useToastMutation();
@@ -50,7 +51,7 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
     }
     const ok = await runWithToast(
       () => Apis.IAM.assignUserPermission({
-        pathParams: { userId, permission: selectedPermission },
+        pathParams: { userId, permissionCode: selectedPermission },
         data: { orgId, effect, expiresAt: expiresAt ?? undefined },
       }),
       { successMessage: `${effect === "deny" ? "已拒绝" : "已允许"} ${selectedPermission}`, errorMessage: "授权失败" },
@@ -63,9 +64,9 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
     }
   };
 
-  const revoke = async (permission: string) => {
+  const revoke = async (permissionCode: PermissionCode) => {
     const ok = await runWithToast(
-      () => Apis.IAM.deleteUserPermission({ pathParams: { userId, permission }, params: { orgId } }),
+      () => Apis.IAM.deleteUserPermission({ pathParams: { userId, permissionCode }, params: { orgId } }),
       { successMessage: "直接权限已撤销", errorMessage: "撤销失败" },
     );
     if (ok) {
@@ -90,7 +91,7 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
             : (
                 <div className="flex flex-col gap-2">
                   {directPerms.map(p => (
-                    <DirectPermissionRow key={p.permission} perm={p} onRevoke={() => { void revoke(p.permission); }} />
+                    <DirectPermissionRow key={p.permission.code} perm={p} onRevoke={() => { void revoke(p.permission.code); }} />
                   ))}
                 </div>
               )}

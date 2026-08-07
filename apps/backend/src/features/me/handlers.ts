@@ -5,7 +5,7 @@ import type { AppRouteHandler } from "@/core/http/context.js";
 import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { successResponse } from "@/core/http/response.js";
-import { toAppPermissions } from "@/permissions-catalog.js";
+import { toAppPermissionCodes } from "@/permissions-catalog.js";
 import { MeService } from "./service.js";
 
 /** 获取当前用户信息与有效权限。me 只需认证,不需 iam.* 权限(看自己)。 */
@@ -15,17 +15,17 @@ export const getMeHandler: AppRouteHandler<GetMeRoute> = async (c) => {
   if (!user) {
     throw new AppError("COMMON_UNAUTHORIZED");
   }
-  // 未绑定组织时 permissions 为空(不抛 403,me 语义是"看自己")
+  // 未绑定组织时 permissionCodes 为空(不抛 403,me 语义是"看自己")
   const orgId = user.orgId;
   const result: UserPermissionsResult = orgId != null
     ? await PermissionService.listEffectivePermissions(user.id, orgId)
     : { effective: [], denied: [] };
-  // listEffectivePermissions 现返回带来源链结构;me 只需权限名做门控,提取 effective.permission。
-  const permissions = toAppPermissions(result.effective.map(p => p.permission));
+  // listEffectivePermissions 现返回带来源链结构;me 只需 code 做门控。
+  const permissionCodes = toAppPermissionCodes(result.effective.map(p => p.permissionCode));
 
   return successResponse(c, {
     user: { id: user.id, name: user.name, email: user.email, orgId: user.orgId ?? null },
-    permissions,
+    permissionCodes,
   });
 };
 

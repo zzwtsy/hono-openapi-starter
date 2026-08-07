@@ -1,75 +1,92 @@
-/**
- * 受约束的 resource:必须是可被授予的业务实体,不能是模块名。
- *
- * 单一事实来源:`ResourceName` 从此派生,resource 中文 label 同处维护(供管理界面分组展示)。
- * 加 resource 仅在此数组追加一处,类型与 label 自动同源,前端经 `listPermissions` API 取 `resourceLabel`,
- * 无需前端维护第二份映射(避免漂移)。
- */
-export const permissionResources = [
-  { name: "permissions", label: "权限目录" },
-  { name: "roles", label: "角色" },
-  { name: "organizations", label: "组织" },
-  { name: "assignments", label: "授权" },
-  { name: "users", label: "用户" },
-  { name: "projects", label: "项目" },
-  { name: "settings", label: "设置" },
-  { name: "audit", label: "操作日志" },
-] as const satisfies readonly { name: string; label: string }[];
+/** 权限 code 的机器身份: `<resource>.<action>`。展示文案不参与授权判断。 */
+export type PermissionCode = `${string}.${string}`;
 
-export type ResourceName = (typeof permissionResources)[number]["name"];
+/** builder 与运行时校验共用的权限片段规则。 */
+export const PERMISSION_SEGMENT_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
-/** 取权限名的 resource 中文 label;未命中回退 resource 本身(防御脏数据)。 */
-export function getResourceLabel(permissionName: string): string {
-  const resource = permissionName.split(".")[0] ?? permissionName;
-  return permissionResources.find(r => r.name === resource)?.label ?? resource;
-}
-
-/** 受约束的 action 动词:细粒度 verb,不能是聚合词 manage。 */
-export type Action
-  = "read"
-    | "create"
-    | "update"
-    | "delete"
-    | "grant"
-    | "revoke"
-    | "assign-permissions"
-    | "revoke-permissions"
-    | "reset-password"
-    | "disable"
-    | "enable";
-
-/** 权限名格式:`<resource>.<action>`(如 `users.read`)。 */
-export type PermissionName = `${ResourceName}.${Action}`;
-
-/**
- * 权限定义:name + 可选 description。
- *
- * 各 feature 在自己的 `permissions.ts` 用 `as const satisfies readonly PermissionDefinition[]`
- * 声明权限数组(运行时目录,供组装点汇总传 `syncAuthorizationCatalog`);同时用 `declare module`
- * 把权限名 push 到 `AppPermissionRegistry`(类型层)。权限名只写一次,漏登记编译期报错。
- *
- * `description` 进数据库 `permissions` 表,供管理界面展示。
- */
 export interface PermissionDefinition {
-  name: PermissionName;
-  description?: string;
+  readonly code: PermissionCode;
+  readonly resourceCode: string;
+  readonly actionCode: string;
+  readonly resourceLabel: string;
+  readonly label: string;
 }
 
+/** HTTP 展示对象与 catalog 定义使用相同字段，但通过命名区分职责。 */
+export type PermissionRef = PermissionDefinition;
+
+type PermissionCatalogInput = Record<string, {
+  readonly label: string;
+  readonly actions: Record<string, string>;
+}>;
+
+type PermissionDefinitionsFor<T extends PermissionCatalogInput> = {
+  [R in keyof T & string]: {
+    [A in keyof T[R]["actions"] & string]: {
+      readonly code: `${R}.${A}`;
+      readonly resourceCode: R;
+      readonly actionCode: A;
+      readonly resourceLabel: T[R]["label"];
+      readonly label: T[R]["actions"][A];
+    };
+  }[keyof T[R]["actions"] & string];
+}[keyof T & string];
+
 /**
- * 权限注册表:各 feature 用 `declare module` 扩展(core 不 import features)。
- * 初始空,features push 权限名进来。实现"类型反转":core 持类型,features push 内容。
+ * 以 resource/action 为输入生成权限 catalog，避免手写 code、resource、action 三份值。
+ * 同一 feature 的展示元数据仍与权限定义同源，但不会进入授权核心或数据库。
  */
+export function definePermissionCatalog<const T extends PermissionCatalogInput>(
+  input: T,
+): readonly PermissionDefinitionsFor<T>[] {
+  const definitions: PermissionDefinition[] = [];
+
+  for (const [resourceCode, resource] of Object.entries(input)) {
+    assertPermissionSegment(resourceCode, "resource");
+    assertLabel(resource.label, `${resourceCode}.label`);
+
+    for (const [actionCode, label] of Object.entries(resource.actions)) {
+      assertPermissionSegment(actionCode, "action");
+      assertLabel(label, `${resourceCode}.${actionCode}.label`);
+      definitions.push({
+        code: `${resourceCode}.${actionCode}`,
+        resourceCode,
+        actionCode,
+        resourceLabel: resource.label,
+        label,
+      });
+    }
+  }
+
+  return definitions as unknown as readonly PermissionDefinitionsFor<T>[];
+}
+
+function assertPermissionSegment(value: string, kind: "resource" | "action"): void {
+  if (!PERMISSION_SEGMENT_PATTERN.test(value)) {
+    throw new Error(`Invalid permission ${kind} code: ${value}`);
+  }
+}
+
+function assertLabel(value: string, field: string): void {
+  if (value.trim() === "") {
+    throw new Error(`Permission label must not be empty: ${field}`);
+  }
+}
+
+/** feature 以数组 slot 扩展，core 不 import 具体 feature。 */
 export interface AppPermissionRegistry {}
 
-/**
- * 应用所有权限名的联合(从 `AppPermissionRegistry` 推导,被 features 扩展)。
- * 初始 `never`(空 registry);features 扩展后成 union。`requirePermission(perm: AppPermission)` 据此编译期校验。
- */
-export type AppPermission = keyof AppPermissionRegistry & PermissionName;
+type RegistryDefinitions = AppPermissionRegistry[keyof AppPermissionRegistry] extends infer T
+  ? T extends readonly PermissionDefinition[] ? T[number] : never
+  : never;
 
-/**
- * 校验权限定义数组覆盖所有 `AppPermission`(组装点用,防漏汇总某 feature)。
- * 非 distributive(包 tuple):任一 `AppPermission` 不在数组 name 中则 `never`,`const _: true = never` 编译报。
- */
+/** 当前应用所有已注册权限 code 的编译期联合。 */
+export type AppPermissionCode = RegistryDefinitions["code"] & PermissionCode;
+
+/** 组装点必须覆盖所有 feature registry 定义。 */
 export type AllPermissionsCovered<T extends readonly PermissionDefinition[]>
-  = [AppPermission] extends [T[number]["name"]] ? true : never;
+  = [AppPermissionCode] extends [T[number]["code"]] ? true : never;
+
+/** 组装点不得引入 registry 之外的权限。 */
+export type NoUnknownPermissions<T extends readonly PermissionDefinition[]>
+  = [T[number]["code"]] extends [AppPermissionCode] ? true : never;

@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 
-import { getResourceLabel } from "@/core/auth/permissions.js";
 import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
@@ -19,6 +18,7 @@ import {
   userPermissions,
   userRoles,
 } from "@/db/schema/index.js";
+import { allPermissions, getPermissionRef, toPermissionRefs } from "@/permissions-catalog.js";
 import { assertOrgInSubtree, getManagedSubtree } from "./org-tree.js";
 
 /**
@@ -70,10 +70,18 @@ async function requireExistingOrg(id: string) {
   }
 }
 
-async function requireExistingPermission(name: string) {
-  const [perm] = await db.select({ name: permissions.name }).from(permissions).where(eq(permissions.name, name));
+async function requireExistingPermission(permissionCode: string) {
+  try {
+    getPermissionRef(permissionCode);
+  } catch {
+    throw new AppError("PERMISSION_NOT_FOUND", { params: { permissionCode } });
+  }
+  const [perm] = await db
+    .select({ code: permissions.code })
+    .from(permissions)
+    .where(eq(permissions.code, permissionCode));
   if (perm == null) {
-    throw new AppError("PERMISSION_NOT_FOUND");
+    throw new AppError("PERMISSION_NOT_FOUND", { params: { permissionCode } });
   }
 }
 
@@ -112,10 +120,7 @@ async function requireUserInSubtree(actorOrgId: string, userId: string) {
 export const IamService = {
   // --- 权限目录 ---
   async listPermissions() {
-    const rows = await db.select().from(permissions).orderBy(asc(permissions.name));
-    // resourceLabel 运行时 join(不存 DB,免 migration):代码是 resource label 真相来源,
-    // 经此暴露给前端分组展示,前端零维护映射。
-    return rows.map(r => ({ ...r, resourceLabel: getResourceLabel(r.name) }));
+    return toPermissionRefs(allPermissions.map(permission => permission.code));
   },
 
   // --- 角色 ---
@@ -179,42 +184,44 @@ export const IamService = {
   async listRolePermissions(id: string) {
     await getRole(id);
     const rows = await db
-      .select({ permission: rolePermissions.permission })
+      .select({ permissionCode: rolePermissions.permissionCode })
       .from(rolePermissions)
       .where(eq(rolePermissions.roleId, id));
-    return rows.map(r => r.permission);
+    return toPermissionRefs(rows.map(r => r.permissionCode));
   },
 
-  async assignRolePermissions(id: string, permissionNames: string[]) {
+  async assignRolePermissions(id: string, permissionCodes: string[]) {
     await requireInstanceRole(id);
-    if (permissionNames.length === 0) {
+    if (permissionCodes.length === 0) {
       return;
     }
-    // 批量校验权限名存在性(对齐 assignUserPermission 的 requireExistingPermission)。
-    // role_permissions.permission 有 FK 到 permissions.name,未校验则传未注册名触发
-    // PG 23503 -> 500;契约应 404(B2 D3)。
+    // 先校验 catalog，再校验 code-only registry；不依赖 DB 展示字段。
+    for (const permissionCode of permissionCodes) {
+      await requireExistingPermission(permissionCode);
+    }
     const existing = await db
-      .select({ name: permissions.name })
+      .select({ code: permissions.code })
       .from(permissions)
-      .where(inArray(permissions.name, permissionNames));
-    if (existing.length !== permissionNames.length) {
-      const found = new Set(existing.map(e => e.name));
-      const missing = permissionNames.find(p => !found.has(p));
-      throw new AppError("PERMISSION_NOT_FOUND", { params: { permission: missing! } });
+      .where(inArray(permissions.code, permissionCodes));
+    if (existing.length !== permissionCodes.length) {
+      const found = new Set(existing.map(e => e.code));
+      const missing = permissionCodes.find(p => !found.has(p));
+      throw new AppError("PERMISSION_NOT_FOUND", { params: { permissionCode: missing! } });
     }
     await db.transaction(async (tx) => {
       await tx
         .insert(rolePermissions)
-        .values(permissionNames.map(p => ({ roleId: id, permission: p })))
+        .values(permissionCodes.map(permissionCode => ({ roleId: id, permissionCode })))
         .onConflictDoNothing();
     });
   },
 
-  async deleteRolePermission(id: string, permission: string) {
+  async deleteRolePermission(id: string, permissionCode: string) {
     await requireInstanceRole(id);
+    await requireExistingPermission(permissionCode);
     await db
       .delete(rolePermissions)
-      .where(and(eq(rolePermissions.roleId, id), eq(rolePermissions.permission, permission)));
+      .where(and(eq(rolePermissions.roleId, id), eq(rolePermissions.permissionCode, permissionCode)));
   },
 
   /** 列出操作者管理子树内,直接授予某角色的 (user, org) 记录(含过期)。角色不存在 404;code/instance 均可查。 */
@@ -559,39 +566,40 @@ export const IamService = {
   async assignUserPermission(
     actorOrgId: string,
     userId: string,
-    permission: string,
+    permissionCode: string,
     input: { orgId: string; effect: "allow" | "deny"; expiresAt?: string },
   ) {
-    await requireExistingPermission(permission);
+    await requireExistingPermission(permissionCode);
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, input.orgId);
     const expiresAt = input.expiresAt != null ? new Date(input.expiresAt) : null;
-    const insert = db.insert(userPermissions).values({ userId, permission, orgId: input.orgId, effect: input.effect, expiresAt });
+    const insert = db.insert(userPermissions).values({ userId, permissionCode, orgId: input.orgId, effect: input.effect, expiresAt });
     // 重复授:effect 总更新(必填);expiresAt 提供 -> 更新(续期),省略 -> 保留原值(仅 set effect,不清空 expiresAt)。
     if (input.expiresAt != null) {
       await insert.onConflictDoUpdate({
-        target: [userPermissions.userId, userPermissions.permission, userPermissions.orgId],
+        target: [userPermissions.userId, userPermissions.permissionCode, userPermissions.orgId],
         set: { expiresAt, effect: input.effect },
       });
     } else {
       await insert.onConflictDoUpdate({
-        target: [userPermissions.userId, userPermissions.permission, userPermissions.orgId],
+        target: [userPermissions.userId, userPermissions.permissionCode, userPermissions.orgId],
         set: { effect: input.effect },
       });
     }
   },
 
   /**
-   * 撤用户直接权限(需 permission + orgId);user 与 grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。
+   * 撤用户直接权限(需 permissionCode + orgId);user 与 grant.orgId 须在操作者管理子树内;不存在抛 NOT_FOUND。
    *  禁止撤销自己的授权 -> 403(防自我降级锁死,对齐 disableUser)。
    */
-  async deleteUserPermission(actorOrgId: string, actorUserId: string, userId: string, permission: string, orgId: string) {
+  async deleteUserPermission(actorOrgId: string, actorUserId: string, userId: string, permissionCode: string, orgId: string) {
+    await requireExistingPermission(permissionCode);
     assertNotSelf(actorUserId, userId, "USER_CANNOT_REVOKE_OWN_AUTH");
     await requireUserInSubtree(actorOrgId, userId);
     await assertOrgInSubtree(actorOrgId, orgId);
     const [row] = await db
       .delete(userPermissions)
-      .where(and(eq(userPermissions.userId, userId), eq(userPermissions.permission, permission), eq(userPermissions.orgId, orgId)))
+      .where(and(eq(userPermissions.userId, userId), eq(userPermissions.permissionCode, permissionCode), eq(userPermissions.orgId, orgId)))
       .returning();
     if (row == null) {
       throw new AppError("COMMON_NOT_FOUND");
@@ -628,14 +636,18 @@ export const IamService = {
     await assertOrgInSubtree(actorOrgId, orgId);
     return db
       .select({
-        permission: userPermissions.permission,
+        permissionCode: userPermissions.permissionCode,
         effect: userPermissions.effect,
         orgId: userPermissions.orgId,
         expiresAt: userPermissions.expiresAt,
       })
       .from(userPermissions)
       .where(and(eq(userPermissions.userId, userId), eq(userPermissions.orgId, orgId)))
-      .orderBy(asc(userPermissions.permission));
+      .orderBy(asc(userPermissions.permissionCode))
+      .then(rows => rows.map((row) => {
+        const { permissionCode, ...grant } = row;
+        return { ...grant, permission: toPermissionRefs([permissionCode])[0] };
+      }));
   },
 
   // --- 审计 before 快照(供 audit() 中间件查旧值;不校验归属,校验由 handler 做) ---
@@ -674,11 +686,11 @@ export const IamService = {
     return row;
   },
 
-  /** 审计 before 快照:用户在某组织的直接权限授权记录(userPermissions 主键 (userId, permission, orgId),单行)。 */
-  async getUserPermissionGrant(userId: string, permission: string, orgId: string) {
+  /** 审计 before 快照:用户在某组织的直接权限授权记录(userPermissions 主键 (userId, permissionCode, orgId),单行)。 */
+  async getUserPermissionGrant(userId: string, permissionCode: string, orgId: string) {
     const [row] = await db
       .select({
-        permission: userPermissions.permission,
+        permissionCode: userPermissions.permissionCode,
         effect: userPermissions.effect,
         orgId: userPermissions.orgId,
         expiresAt: userPermissions.expiresAt,
@@ -686,7 +698,7 @@ export const IamService = {
       .from(userPermissions)
       .where(and(
         eq(userPermissions.userId, userId),
-        eq(userPermissions.permission, permission),
+        eq(userPermissions.permissionCode, permissionCode),
         eq(userPermissions.orgId, orgId),
       ));
     return row;

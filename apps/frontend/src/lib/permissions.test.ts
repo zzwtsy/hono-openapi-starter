@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { hasAllPermissions, hasAnyPermission, hasPermission } from "./permissions";
 
 describe("hasPermission", () => {
-  it("permissions 为 undefined 时返回 false", () => {
+  it("permissionCodes 为 undefined 时返回 false", () => {
     expect(hasPermission(undefined, "organizations.read")).toBe(false);
   });
 
@@ -20,7 +20,7 @@ describe("hasPermission", () => {
 });
 
 describe("hasAnyPermission", () => {
-  it("permissions 为 undefined 时返回 false", () => {
+  it("permissionCodes 为 undefined 时返回 false", () => {
     expect(hasAnyPermission(undefined, ["organizations.read"])).toBe(false);
   });
 
@@ -42,7 +42,7 @@ describe("hasAnyPermission", () => {
 });
 
 describe("hasAllPermissions", () => {
-  it("permissions 为 undefined 时返回 false", () => {
+  it("permissionCodes 为 undefined 时返回 false", () => {
     expect(hasAllPermissions(undefined, ["organizations.read"])).toBe(false);
   });
 

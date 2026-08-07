@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/audit/")({
     to: parseAuditSearchDate(search.to),
   }),
   beforeLoad: ({ context }) => {
-    requirePermission(context.auth.permissions, "audit.read");
+    requirePermission(context.auth.permissionCodes, "audit.read");
   },
   component: Audit,
 });

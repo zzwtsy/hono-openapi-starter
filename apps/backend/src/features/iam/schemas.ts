@@ -1,13 +1,22 @@
 import { z } from "@hono/zod-openapi";
 
+import { allPermissionCodes } from "@/permissions-catalog.js";
+
 /** 权限目录项(代码同步的权限定义,管理 API 只读)。 */
-export const PermissionSchema = z.object({
-  name: z.string().openapi({ description: "权限名 <resource>.<action>", example: "projects.read" }),
-  description: z.string().nullable().openapi({ description: "权限描述" }),
-  resourceLabel: z.string().openapi({ description: "资源中文 label,供管理界面分组展示", example: "项目" }),
-  createdAt: z.iso.datetime().openapi({ description: "创建时间(ISO 8601)" }),
-  updatedAt: z.iso.datetime().openapi({ description: "更新时间(ISO 8601)" }),
-}).openapi("Permission");
+export const PermissionCodeSchema = z.enum(allPermissionCodes).openapi({
+  description: "权限机器身份 <resourceCode>.<actionCode>",
+  example: "projects.read",
+});
+
+export const PermissionRefSchema = z.object({
+  code: PermissionCodeSchema,
+  resourceCode: z.string().openapi({ description: "资源机器标识", example: "projects" }),
+  actionCode: z.string().openapi({ description: "动作机器标识", example: "read" }),
+  resourceLabel: z.string().openapi({ description: "资源展示名称", example: "项目" }),
+  label: z.string().openapi({ description: "动作展示名称", example: "查看项目" }),
+}).openapi("PermissionRef");
+
+export const PermissionSchema = PermissionRefSchema;
 
 /** 角色资源 schema。`source` 区分代码同步角色(code,不可改删)与管理 API 创建角色(instance)。 */
 export const RoleSchema = z.object({
@@ -33,7 +42,7 @@ export const UpdateRoleSchema = z.object({
 
 /** 给角色配权限入参。 */
 export const AssignRolePermissionsSchema = z.object({
-  permissions: z.array(z.string()).min(0).openapi({ description: "要授予的权限名列表(已存在的跳过)", example: ["projects.read"] }),
+  permissionCodes: z.array(PermissionCodeSchema).min(0).openapi({ description: "要授予的权限 code 列表(已存在的跳过)", example: ["projects.read"] }),
 });
 
 /** 角色 ID 路径参数。 */
@@ -52,10 +61,10 @@ export const UserRoleParamSchema = z.object({
   roleId: z.string(),
 });
 
-/** 用户-权限路径参数(userId + permission)。 */
+/** 用户-权限路径参数(userId + permissionCode)。 */
 export const UserPermissionParamSchema = z.object({
   userId: z.string(),
-  permission: z.string(),
+  permissionCode: PermissionCodeSchema,
 });
 
 /** 授角色入参(绑定组织 + 可选过期)。 */
@@ -149,7 +158,7 @@ export const UserRoleAssignmentSchema = z.object({
 
 /** 用户在某组织的直接授权记录(原始授权,allow/deny,非祖先继承)。 */
 export const UserDirectPermissionSchema = z.object({
-  permission: z.string().openapi({ description: "权限名 <resource>.<action>", example: "users.disable" }),
+  permission: PermissionRefSchema,
   effect: z.enum(["allow", "deny"]).openapi({ description: "允许或拒绝" }),
   orgId: z.string().openapi({ description: "授权绑定的组织 ID", example: "org-root" }),
   expiresAt: z.iso.datetime().nullable().openapi({ description: "过期时间(ISO 8601),null 表示永不过期" }),
@@ -166,13 +175,13 @@ export const PermissionSourceSchema = z.object({
 
 /** 生效权限及其来源集合(同一权限可多来源)。 */
 export const EffectivePermissionSchema = z.object({
-  permission: z.string().openapi({ description: "权限名 <resource>.<action>" }),
+  permission: PermissionRefSchema,
   sources: z.array(PermissionSourceSchema).openapi({ description: "来源链:角色/直接/继承" }),
 }).openapi("EffectivePermission");
 
 /** 被 deny 抵消的权限:本会生效但被直接 deny 扣掉。 */
 export const DeniedPermissionSchema = z.object({
-  permission: z.string().openapi({ description: "权限名 <resource>.<action>" }),
+  permission: PermissionRefSchema,
   deniedBy: z.array(z.object({
     orgId: z.string().openapi({ description: "施加 deny 的组织 ID(可能是祖先组织)" }),
     expiresAt: z.iso.datetime().nullable().openapi({ description: "deny 的过期时间,null 表示永久 deny" }),

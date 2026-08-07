@@ -16,6 +16,12 @@ export function createRouter() {
         return;
       }
 
+      const isPermissionCodeValidation = result.error.issues.some(issue =>
+        issue.path.some(segment => segment === "permissionCode" || segment === "permissionCodes"),
+      );
+      const errorCode = isPermissionCodeValidation ? "PERMISSION_CODE_INVALID" : "COMMON_VALIDATION_FAILED";
+      const statusCode = isPermissionCodeValidation ? 400 : 422;
+
       // validation 错误不走 app.onError（hook 返回 response 是 @hono/zod-openapi 的设计），
       // 需在此补一条结构化日志，保留字段级失败上下文（details），保证 requestId 全链路可检索。
       c.var.logger
@@ -28,14 +34,14 @@ export function createRouter() {
               remoteAddress: getRemoteAddress(c.req.raw),
             },
             res: {
-              statusCode: 422,
+              statusCode,
             },
-          }, { code: "COMMON_VALIDATION_FAILED", details: formatZodError(result.error), type: "validation" }),
+          }, { code: errorCode, details: formatZodError(result.error), type: "validation" }),
         )
         .withError(result.error)
         .warn("validation failed");
 
-      return errorResponse(c, "COMMON_VALIDATION_FAILED", {
+      return errorResponse(c, errorCode, {
         details: formatZodError(result.error),
         type: "validation",
       });
