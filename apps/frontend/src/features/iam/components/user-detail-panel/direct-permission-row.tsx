@@ -15,7 +15,7 @@ export function DirectPermissionRow({ perm, onRevoke }: DirectPermissionRowProps
     <div className="flex items-center justify-between gap-2 rounded-lg border p-2">
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{`${perm.permission.label}（${perm.permission.code}）`}</span>
+          <span className="text-sm font-medium">{perm.permission.label}</span>
           <Badge variant={perm.effect === "deny" ? "destructive" : "secondary"}>
             {perm.effect === "deny" ? "拒绝" : "允许"}
           </Badge>

@@ -40,6 +40,7 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
   const [effect, setEffect] = useState<"allow" | "deny">("allow");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const { mutate: runWithToast, busy: assigning } = useToastMutation();
+  const selectedPermissionLabel = catalog?.find(permission => permission.code === selectedPermission)?.label;
 
   const refresh = () => {
     refreshIam(IAM_ACTIONS.userDirectPerms, IAM_ACTIONS.userPermissions);
@@ -54,7 +55,7 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
         pathParams: { userId, permissionCode: selectedPermission },
         data: { orgId, effect, expiresAt: expiresAt ?? undefined },
       }),
-      { successMessage: `${effect === "deny" ? "已拒绝" : "已允许"} ${selectedPermission}`, errorMessage: "授权失败" },
+      { successMessage: `${effect === "deny" ? "已拒绝" : "已允许"} ${selectedPermissionLabel ?? "权限"}`, errorMessage: "授权失败" },
     );
     if (ok) {
       setSelectedPermission("");

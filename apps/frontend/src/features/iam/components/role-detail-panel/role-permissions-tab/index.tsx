@@ -11,7 +11,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
-import { formatPermission } from "../../../lib/permission-format";
 import { useRolePermissions } from "./use-role-permissions";
 
 interface RolePermissionsTabProps {
@@ -128,7 +127,7 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
                             onCheckedChange={() => { toggleAllInGroup(perms, !allSelected); }}
                           />
                           <FieldLegend variant="label" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            {`${resourceLabel}（${resource}）`}
+                            {resourceLabel}
                           </FieldLegend>
                         </div>
                         <div className="flex flex-col gap-2">
@@ -143,7 +142,7 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
                                   onCheckedChange={() => { toggle(perm.code); }}
                                 />
                                 <FieldLabel htmlFor={`perm-${perm.code}`} className="font-normal">
-                                  <span className={cn(isRemove && "text-muted-foreground line-through", isAdd && "text-primary font-medium")}>{formatPermission(perm)}</span>
+                                  <span className={cn(isRemove && "text-muted-foreground line-through", isAdd && "text-primary font-medium")}>{perm.label}</span>
                                   {isAdd && <Badge className="text-xs">新增</Badge>}
                                   {isRemove && <Badge variant="destructive" className="text-xs">撤销</Badge>}
                                 </FieldLabel>

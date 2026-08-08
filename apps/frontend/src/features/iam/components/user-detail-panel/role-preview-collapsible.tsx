@@ -40,7 +40,7 @@ export function RolePreviewCollapsible({ previewPerms, newPerms }: RolePreviewCo
                   variant={newPermsSet.has(p.code) ? "default" : "secondary"}
                   className="text-xs"
                 >
-                  {`${p.label}（${p.code}）`}
+                  {p.label}
                 </Badge>
               ))}
         </div>

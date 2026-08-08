@@ -131,11 +131,11 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
               <div className="flex flex-col gap-3">
                 {[...groups.entries()].map(([resource, perms]) => (
                   <div key={resource} className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-muted-foreground">{resource}</span>
+                    <span className="text-xs font-medium text-muted-foreground">{perms[0]?.permission.resourceLabel ?? "其他资源"}</span>
                     <div className="flex flex-col gap-1.5">
                       {perms.map(p => (
                         <div key={p.permission.code} className="flex flex-wrap items-center gap-1.5 text-sm">
-                          <span>{`${p.permission.label}（${p.permission.code}）`}</span>
+                          <span>{p.permission.label}</span>
                           {p.sources.map(s => (
                             <SourceBadge
                               key={`${s.type}-${s.roleId ?? "direct"}-${s.orgId}`}
@@ -163,7 +163,7 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
             <div className="flex flex-col gap-1.5">
               {denied.map(d => (
                 <div key={d.permission.code} className="flex flex-wrap items-center gap-1.5 text-sm">
-                  <span className="text-muted-foreground line-through">{`${d.permission.label}（${d.permission.code}）`}</span>
+                  <span className="text-muted-foreground line-through">{d.permission.label}</span>
                   <Badge variant="destructive" className="text-xs">已被拒绝</Badge>
                   {d.suppressedSources.map(s => (
                     <SourceBadge
