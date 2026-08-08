@@ -25,6 +25,7 @@ import type {
   ResetUserPasswordRoute,
   TransferUserOrganizationRoute,
   UpdateOrganizationRoute,
+  UpdateRolePermissionsRoute,
   UpdateRoleRoute,
   UpdateUserRoute,
 } from "./routes.js";
@@ -77,6 +78,13 @@ export const assignRolePermissionsHandler: AppRouteHandler<AssignRolePermissions
   const body = c.req.valid("json");
   await IamService.assignRolePermissions(roleId, body.permissionCodes);
   const current = await IamService.listRolePermissions(roleId);
+  return successResponse(c, current);
+};
+
+export const updateRolePermissionsHandler: AppRouteHandler<UpdateRolePermissionsRoute> = async (c) => {
+  const { roleId } = c.req.valid("param");
+  const body = c.req.valid("json");
+  const current = await IamService.updateRolePermissions(roleId, body.addPermissionCodes, body.removePermissionCodes);
   return successResponse(c, current);
 };
 

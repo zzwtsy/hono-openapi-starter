@@ -221,6 +221,55 @@ export const IamService = {
     });
   },
 
+  /**
+   * 原子批量更新实例角色权限差量。所有 code 和角色校验完成后才进入事务,
+   * 避免新增成功、逐项删除失败造成角色处于部分状态。
+   */
+  async updateRolePermissions(id: string, addPermissionCodes: string[], removePermissionCodes: string[]) {
+    await requireInstanceRole(id);
+    const uniqueAddPermissionCodes = [...new Set(addPermissionCodes)];
+    const uniqueRemovePermissionCodes = [...new Set(removePermissionCodes)];
+    const removeSet = new Set(uniqueRemovePermissionCodes);
+    const overlap = uniqueAddPermissionCodes.find(permissionCode => removeSet.has(permissionCode));
+    if (overlap != null) {
+      throw new AppError("COMMON_VALIDATION_FAILED", {
+        details: [{ path: ["body", "addPermissionCodes"], message: `权限不能同时新增和撤销: ${overlap}` }],
+      });
+    }
+
+    const changedPermissionCodes = [...uniqueAddPermissionCodes, ...uniqueRemovePermissionCodes];
+    for (const permissionCode of changedPermissionCodes) {
+      assertPermissionCodeInCatalog(permissionCode);
+    }
+
+    if (changedPermissionCodes.length > 0) {
+      const existing = await db
+        .select({ code: permissions.code })
+        .from(permissions)
+        .where(inArray(permissions.code, changedPermissionCodes));
+      if (existing.length !== changedPermissionCodes.length) {
+        const found = new Set(existing.map(e => e.code));
+        const missing = changedPermissionCodes.find(p => !found.has(p));
+        throw new AppError("PERMISSION_NOT_FOUND", { params: { permissionCode: missing! } });
+      }
+    }
+
+    await db.transaction(async (tx) => {
+      if (uniqueRemovePermissionCodes.length > 0) {
+        await tx.delete(rolePermissions).where(
+          and(eq(rolePermissions.roleId, id), inArray(rolePermissions.permissionCode, uniqueRemovePermissionCodes)),
+        );
+      }
+      if (uniqueAddPermissionCodes.length > 0) {
+        await tx.insert(rolePermissions).values(
+          uniqueAddPermissionCodes.map(permissionCode => ({ roleId: id, permissionCode })),
+        ).onConflictDoNothing();
+      }
+    });
+
+    return this.listRolePermissions(id);
+  },
+
   async deleteRolePermission(id: string, permissionCode: string) {
     await requireInstanceRole(id);
     await requireExistingPermission(permissionCode);

@@ -25,6 +25,7 @@ const {
   mockDeleteRole,
   mockListRolePermissions,
   mockAssignRolePermissions,
+  mockUpdateRolePermissions,
   mockDeleteRolePermission,
   mockAssignUserRole,
   mockDeleteUserRole,
@@ -55,6 +56,7 @@ const {
   mockDeleteRole: vi.fn(),
   mockListRolePermissions: vi.fn(),
   mockAssignRolePermissions: vi.fn(),
+  mockUpdateRolePermissions: vi.fn(),
   mockDeleteRolePermission: vi.fn(),
   mockAssignUserRole: vi.fn(),
   mockDeleteUserRole: vi.fn(),
@@ -91,6 +93,7 @@ vi.mock("./service.js", () => ({
     deleteRole: mockDeleteRole,
     listRolePermissions: mockListRolePermissions,
     assignRolePermissions: mockAssignRolePermissions,
+    updateRolePermissions: mockUpdateRolePermissions,
     deleteRolePermission: mockDeleteRolePermission,
     assignUserRole: mockAssignUserRole,
     deleteUserRole: mockDeleteUserRole,
@@ -148,6 +151,7 @@ function buildApp() {
   app.openapi(routes.deleteRoleRoute, handlers.deleteRoleHandler);
   app.openapi(routes.listRolePermissionsRoute, handlers.listRolePermissionsHandler);
   app.openapi(routes.assignRolePermissionsRoute, handlers.assignRolePermissionsHandler);
+  app.openapi(routes.updateRolePermissionsRoute, handlers.updateRolePermissionsHandler);
   app.openapi(routes.deleteRolePermissionRoute, handlers.deleteRolePermissionHandler);
   app.openapi(routes.assignUserRoleRoute, handlers.assignUserRoleHandler);
   app.openapi(routes.deleteUserRoleRoute, handlers.deleteUserRoleHandler);
@@ -345,6 +349,75 @@ describe("iam routes", () => {
     const body = await res.json() as { data: typeof mockPermission[] };
     expect(body.data).toEqual([mockPermission]);
     expect(mockAssignRolePermissions).toHaveBeenCalledWith("r-1", ["projects.read"]);
+  });
+
+  // --- 批量更新角色权限 ---
+  it("updateRolePermissions 新增方向无权限返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+
+    const res = await buildApp().request("/roles/r-1/permissions", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ addPermissionCodes: ["projects.read"], removePermissionCodes: [] }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("updateRolePermissions 只有撤销时只检查撤销权限", async () => {
+    authed();
+    mockUpdateRolePermissions.mockResolvedValue([mockPermission]);
+
+    const res = await buildApp().request("/roles/r-1/permissions", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ addPermissionCodes: [], removePermissionCodes: ["projects.read"] }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: typeof mockPermission[] };
+    expect(body.data).toEqual([mockPermission]);
+    expect(mockCheck).toHaveBeenCalledWith("u-1", "roles.revoke-permissions", "org-1");
+    expect(mockUpdateRolePermissions).toHaveBeenCalledWith("r-1", [], ["projects.read"]);
+  });
+
+  it("updateRolePermissions 增删混合时缺少任一写权限返回 403", async () => {
+    authed();
+    mockCheck.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    const res = await buildApp().request("/roles/r-1/permissions", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ addPermissionCodes: ["projects.read"], removePermissionCodes: ["permissions.read"] }),
+    });
+    expect(res.status).toBe(403);
+    expect(mockUpdateRolePermissions).not.toHaveBeenCalled();
+  });
+
+  it("updateRolePermissions 返回角色当前权限列表", async () => {
+    authed();
+    mockUpdateRolePermissions.mockResolvedValue([mockPermission]);
+
+    const res = await buildApp().request("/roles/r-1/permissions", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ addPermissionCodes: ["projects.read"], removePermissionCodes: ["permissions.read"] }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: typeof mockPermission[] };
+    expect(body.data).toEqual([mockPermission]);
+    expect(mockUpdateRolePermissions).toHaveBeenCalledWith("r-1", ["projects.read"], ["permissions.read"]);
+  });
+
+  it("updateRolePermissions service 抛 ROLE_NOT_FOUND 返回 404", async () => {
+    authed();
+    mockUpdateRolePermissions.mockRejectedValue(new AppError("ROLE_NOT_FOUND"));
+
+    const res = await buildApp().request("/roles/r-1/permissions", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ addPermissionCodes: ["projects.read"], removePermissionCodes: [] }),
+    });
+    expect(res.status).toBe(404);
   });
 
   // --- 撤角色权限 ---

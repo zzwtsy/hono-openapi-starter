@@ -46,6 +46,57 @@ describe("iam role management", () => {
     expect(perms.map(permission => permission.code)).toEqual(["projects.read"]);
   });
 
+  it("批量更新角色权限后同时完成新增和撤销", async () => {
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read", "permissions.read"]);
+
+    const current = await IamService.updateRolePermissions(role.id, ["users.read"], ["projects.read"]);
+
+    expect(current.map(permission => permission.code)).toEqual(expect.arrayContaining(["users.read", "permissions.read"]));
+    const persisted = await IamService.listRolePermissions(role.id);
+    expect(persisted.map(permission => permission.code)).toEqual(expect.arrayContaining(["users.read", "permissions.read"]));
+    expect(persisted.map(permission => permission.code)).not.toContain("projects.read");
+  });
+
+  it("全选撤销一次性清空角色权限", async () => {
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read", "permissions.read"]);
+
+    const current = await IamService.updateRolePermissions(role.id, [], ["projects.read", "permissions.read"]);
+
+    expect(current).toEqual([]);
+    await expect(IamService.listRolePermissions(role.id)).resolves.toEqual([]);
+  });
+
+  it("批量更新遇到不存在权限时不改变原集合", async () => {
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+
+    await expect(
+      IamService.updateRolePermissions(role.id, ["projects.read"], ["permissions.nonexistent"]),
+    ).rejects.toMatchObject({ code: "PERMISSION_NOT_FOUND" });
+
+    const persisted = await IamService.listRolePermissions(role.id);
+    expect(persisted.map(permission => permission.code)).toEqual(["projects.read"]);
+  });
+
+  it("批量更新新增和撤销重复权限时不改变原集合", async () => {
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+
+    await expect(
+      IamService.updateRolePermissions(role.id, ["projects.read"], ["projects.read"]),
+    ).rejects.toMatchObject({ code: "COMMON_VALIDATION_FAILED" });
+
+    await expect(IamService.listRolePermissions(role.id)).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "projects.read" }),
+    ]));
+  });
+
+  it("代码角色不能批量更新权限", async () => {
+    await expect(IamService.updateRolePermissions("role-admin", ["projects.read"], [])).rejects.toMatchObject({ code: "ROLE_NOT_FOUND" });
+  });
+
   it("assignRolePermissions 传不存在权限 code 抛 PERMISSION_NOT_FOUND", async () => {
     const role = await IamService.createRole({ name: "viewer" });
     // permissions.nonexistent 不在权限 catalog,应由 service 返回 PERMISSION_NOT_FOUND。

@@ -2,18 +2,23 @@ import type { Role } from "@/api/globals";
 import { actionDelegationMiddleware, useWatcher } from "alova/client";
 import { useMemo, useState } from "react";
 import Apis from "@/api";
-import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { IAM_ACTIONS, refreshIam } from "../lib/iam-actions";
+import { useIamUserCapabilities } from "./use-iam-capabilities";
 
 interface UseRoleAssignmentsArgs {
   userId: string;
   orgId: string;
   roles: Role[];
+  currentUserId: string;
 }
 
-export function useRoleAssignments({ userId, orgId, roles }: UseRoleAssignmentsArgs) {
-  const canGrant = useCan("assignments.grant");
+export function useRoleAssignments({ userId, orgId, roles, currentUserId }: UseRoleAssignmentsArgs) {
+  const {
+    canReadAssignments,
+    canGrantRoleAssignments: canGrant,
+    canRevokeAssignments: canRevoke,
+  } = useIamUserCapabilities(currentUserId, userId);
   const {
     data: assignments,
     loading,
@@ -22,13 +27,13 @@ export function useRoleAssignments({ userId, orgId, roles }: UseRoleAssignmentsA
   } = useWatcher(
     () => Apis.IAM.listUserRoles({ pathParams: { userId }, params: { orgId } }),
     [orgId],
-    { immediate: true, middleware: actionDelegationMiddleware(IAM_ACTIONS.userRoles) },
+    { immediate: canReadAssignments, middleware: actionDelegationMiddleware(IAM_ACTIONS.userRoles) },
   );
   // 当前有效权限(与 EffectivePermissionsPanel 同 key,alova 自动共享缓存),用于授予预览
   const { data: effectiveResult } = useWatcher(
     () => Apis.IAM.listUserPermissions({ pathParams: { userId }, params: { orgId } }),
     [orgId],
-    { immediate: true, middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
+    { immediate: canReadAssignments, middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
   );
 
   const [selectedRoleId, setSelectedRoleId] = useState("");
@@ -90,6 +95,7 @@ export function useRoleAssignments({ userId, orgId, roles }: UseRoleAssignmentsA
 
   return {
     canGrant,
+    canRevoke,
     assignments,
     loading,
     error,

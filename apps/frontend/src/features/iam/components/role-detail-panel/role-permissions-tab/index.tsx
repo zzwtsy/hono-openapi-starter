@@ -1,4 +1,5 @@
-import type { Role } from "@/api/globals";
+import type { PermissionRef, Role } from "@/api/globals";
+import type { PermissionCode } from "@/types/permissions";
 import { KeyRound, Search } from "lucide-react";
 import { AsyncListState } from "@/components/shared/async-list";
 import { Badge } from "@/components/ui/badge";
@@ -28,9 +29,73 @@ const PERMISSIONS_LOADING_FALLBACK = (
   </div>
 );
 
+interface PermissionGroupProps {
+  resource: string;
+  perms: PermissionRef[];
+  initial: Set<PermissionCode>;
+  working: Set<PermissionCode>;
+  canChange: (permissionCode: PermissionCode, target: boolean) => boolean;
+  toggle: (permissionCode: PermissionCode) => void;
+  toggleAllInGroup: (perms: PermissionRef[], select: boolean) => void;
+}
+
+function PermissionGroup({
+  resource,
+  perms,
+  initial,
+  working,
+  canChange,
+  toggle,
+  toggleAllInGroup,
+}: PermissionGroupProps) {
+  const allSelected = perms.every(p => working.has(p.code));
+  const anySelected = perms.some(p => working.has(p.code));
+  const resourceLabel = perms[0]?.resourceLabel ?? resource;
+
+  return (
+    <FieldSet>
+      <div className="flex items-center gap-2">
+        <Checkbox
+          checked={allSelected}
+          indeterminate={anySelected && !allSelected}
+          disabled={!perms.some(p => canChange(p.code, !allSelected))}
+          aria-label={`全选当前结果 ${resourceLabel}`}
+          onCheckedChange={() => { toggleAllInGroup(perms, !allSelected); }}
+        />
+        <FieldLegend variant="label" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {resourceLabel}
+        </FieldLegend>
+      </div>
+      <div className="flex flex-col gap-2">
+        {perms.map((perm) => {
+          const isAdd = working.has(perm.code) && !initial.has(perm.code);
+          const isRemove = !working.has(perm.code) && initial.has(perm.code);
+          return (
+            <Field key={perm.code} orientation="horizontal">
+              <Checkbox
+                id={`perm-${perm.code}`}
+                checked={working.has(perm.code)}
+                disabled={!canChange(perm.code, !working.has(perm.code))}
+                onCheckedChange={() => { toggle(perm.code); }}
+              />
+              <FieldLabel htmlFor={`perm-${perm.code}`} className="font-normal">
+                <span className={cn(isRemove && "text-muted-foreground line-through", isAdd && "text-primary font-medium")}>{perm.label}</span>
+                {isAdd && <Badge className="text-xs">新增</Badge>}
+                {isRemove && <Badge variant="destructive" className="text-xs">撤销</Badge>}
+              </FieldLabel>
+            </Field>
+          );
+        })}
+      </div>
+    </FieldSet>
+  );
+}
+
 export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
   const {
-    canConfig,
+    canRead,
+    canEdit,
+    canChange,
     allPerms,
     loading,
     error,
@@ -51,13 +116,13 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
     submitting,
   } = useRolePermissions(role);
 
-  if (!canConfig) {
+  if (!canRead) {
     return (
       <Empty>
         <EmptyMedia variant="icon"><KeyRound /></EmptyMedia>
         <EmptyHeader>
           <EmptyTitle>无权限</EmptyTitle>
-          <EmptyDescription>你没有分配角色权限的权限。</EmptyDescription>
+          <EmptyDescription>需要 roles.read 和 permissions.read 才能查看角色权限。</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
@@ -69,6 +134,7 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
         <div className="relative min-w-40 flex-1">
           <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            aria-label="搜索权限"
             placeholder="搜索权限..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -88,6 +154,11 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
           <ToggleGroupItem value="selected">仅已选</ToggleGroupItem>
           <ToggleGroupItem value="diff">仅差异</ToggleGroupItem>
         </ToggleGroup>
+        {!canEdit && (
+          <Badge variant="secondary">
+            {role.source === "code" ? "代码角色只读" : "当前账号无角色权限写权限"}
+          </Badge>
+        )}
       </div>
 
       <AsyncListState
@@ -113,46 +184,18 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
           : (
               <>
                 <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto">
-                  {[...groups.entries()].map(([resource, perms]) => {
-                    const allSelected = perms.every(p => working.has(p.code));
-                    const anySelected = perms.some(p => working.has(p.code));
-                    const resourceLabel = perms[0]?.resourceLabel ?? resource;
-                    return (
-                      <FieldSet key={resource}>
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            checked={allSelected}
-                            indeterminate={anySelected && !allSelected}
-                            aria-label={`全选 ${resourceLabel}`}
-                            onCheckedChange={() => { toggleAllInGroup(perms, !allSelected); }}
-                          />
-                          <FieldLegend variant="label" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            {resourceLabel}
-                          </FieldLegend>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          {perms.map((perm) => {
-                            const isAdd = working.has(perm.code) && !initial.has(perm.code);
-                            const isRemove = !working.has(perm.code) && initial.has(perm.code);
-                            return (
-                              <Field key={perm.code} orientation="horizontal">
-                                <Checkbox
-                                  id={`perm-${perm.code}`}
-                                  checked={working.has(perm.code)}
-                                  onCheckedChange={() => { toggle(perm.code); }}
-                                />
-                                <FieldLabel htmlFor={`perm-${perm.code}`} className="font-normal">
-                                  <span className={cn(isRemove && "text-muted-foreground line-through", isAdd && "text-primary font-medium")}>{perm.label}</span>
-                                  {isAdd && <Badge className="text-xs">新增</Badge>}
-                                  {isRemove && <Badge variant="destructive" className="text-xs">撤销</Badge>}
-                                </FieldLabel>
-                              </Field>
-                            );
-                          })}
-                        </div>
-                      </FieldSet>
-                    );
-                  })}
+                  {[...groups.entries()].map(([resource, perms]) => (
+                    <PermissionGroup
+                      key={resource}
+                      resource={resource}
+                      perms={perms}
+                      initial={initial}
+                      working={working}
+                      canChange={canChange}
+                      toggle={toggle}
+                      toggleAllInGroup={toggleAllInGroup}
+                    />
+                  ))}
                 </div>
                 {hasChanges && (
                   <div className="flex shrink-0 items-center justify-between gap-2 border-t pt-3">

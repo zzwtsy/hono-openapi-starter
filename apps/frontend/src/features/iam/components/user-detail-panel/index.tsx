@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
+import { useIamUserCapabilities } from "../../hooks/use-iam-capabilities";
 import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
 import { DirectPermissionsTab } from "./direct-permissions-tab";
 import { EffectivePermissionsPanel } from "./effective-permissions-panel";
@@ -31,10 +32,120 @@ interface UserDetailPanelProps {
   roles: Role[];
   tab: string;
   onTabChange: (tab: string) => void;
-  onNavigateRole: (roleId: string) => void;
+  onNavigateRole: (roleId: string, orgId?: string) => void;
   onTransferred?: (newOrgId: string) => void;
   /** 操作历史 Tab 内容(由 routes 层传入,避免 features 间依赖)。 */
   auditTabContent?: ReactNode;
+}
+
+interface UserDetailTabsProps {
+  user: UserSummary;
+  orgId: string;
+  currentUserId: string;
+  getOrgPath: (orgId: string) => string;
+  canReadAssignments: boolean;
+  canUpdate: boolean;
+  canReset: boolean;
+  canDisable: boolean;
+  canEnable: boolean;
+  disabled: boolean;
+  isSelf: boolean;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  roles: Role[];
+  onNavigateRole: (roleId: string, orgId?: string) => void;
+  onEdit: () => void;
+  onReset: () => void;
+  onDisable: () => void;
+  onEnable: () => void;
+  onTransfer: () => void;
+  onOrgIdChange: (orgId: string) => void;
+  auditTabContent?: ReactNode;
+}
+
+function UserDetailTabs({
+  user,
+  orgId,
+  currentUserId,
+  getOrgPath,
+  canReadAssignments,
+  canUpdate,
+  canReset,
+  canDisable,
+  canEnable,
+  disabled,
+  isSelf,
+  activeTab,
+  onTabChange,
+  roles,
+  onNavigateRole,
+  onEdit,
+  onReset,
+  onDisable,
+  onEnable,
+  onTransfer,
+  onOrgIdChange,
+  auditTabContent,
+}: UserDetailTabsProps) {
+  return (
+    <Tabs value={activeTab} onValueChange={onTabChange} className="flex min-h-0 flex-1 flex-col">
+      <TabsList>
+        <TabsTrigger value="info">信息</TabsTrigger>
+        {canReadAssignments && (
+          <>
+            <TabsTrigger value="roles">角色授权</TabsTrigger>
+            <TabsTrigger value="direct">直接授权</TabsTrigger>
+            <TabsTrigger value="effective">有效权限</TabsTrigger>
+          </>
+        )}
+        <TabsTrigger value="audit">操作历史</TabsTrigger>
+      </TabsList>
+      <TabsContent value="info" className="min-h-0 flex-1 overflow-y-auto">
+        <UserInfoTab
+          user={user}
+          canUpdate={canUpdate}
+          canReset={canReset}
+          canDisable={canDisable}
+          canEnable={canEnable}
+          disabled={disabled}
+          isSelf={isSelf}
+          onEdit={onEdit}
+          onReset={onReset}
+          onDisable={onDisable}
+          onEnable={onEnable}
+          onTransfer={onTransfer}
+        />
+      </TabsContent>
+      {canReadAssignments && (
+        <>
+          <TabsContent value="roles" className="min-h-0 flex-1 overflow-y-auto">
+            <RoleAssignmentsTab
+              userId={user.id}
+              orgId={orgId}
+              roles={roles}
+              currentUserId={currentUserId}
+              onNavigateRole={onNavigateRole}
+            />
+          </TabsContent>
+          <TabsContent value="direct" className="min-h-0 flex-1 overflow-y-auto">
+            <DirectPermissionsTab userId={user.id} orgId={orgId} currentUserId={currentUserId} />
+          </TabsContent>
+          <TabsContent value="effective" className="min-h-0 flex-1 overflow-y-auto">
+            <EffectivePermissionsPanel
+              userId={user.id}
+              orgId={orgId}
+              getOrgPath={getOrgPath}
+              onNavigateRole={onNavigateRole}
+              onOrgIdChange={onOrgIdChange}
+            />
+          </TabsContent>
+        </>
+      )}
+      <TabsContent value="audit" className="min-h-0 flex-1 overflow-y-auto">
+        {auditTabContent}
+      </TabsContent>
+    </Tabs>
+  );
 }
 
 export function UserDetailPanel({
@@ -55,6 +166,7 @@ export function UserDetailPanel({
   const canReset = useCan("users.reset-password");
   const canDisable = useCan("users.disable");
   const canEnable = useCan("users.enable");
+  const { canReadAssignments } = useIamUserCapabilities(currentUserId, user.id);
 
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -74,6 +186,7 @@ export function UserDetailPanel({
 
   const disabled = user.disabled === true;
   const isSelf = user.id === currentUserId;
+  const activeTab = !canReadAssignments && ["roles", "direct", "effective"].includes(tab) ? "info" : tab;
 
   return (
     <Card className="flex h-full flex-col">
@@ -120,54 +233,30 @@ export function UserDetailPanel({
           </Select>
         </Field>
 
-        <Tabs value={tab} onValueChange={onTabChange} className="flex min-h-0 flex-1 flex-col">
-          <TabsList>
-            <TabsTrigger value="info">信息</TabsTrigger>
-            <TabsTrigger value="roles">角色授权</TabsTrigger>
-            <TabsTrigger value="direct">直接授权</TabsTrigger>
-            <TabsTrigger value="effective">有效权限</TabsTrigger>
-            <TabsTrigger value="audit">操作历史</TabsTrigger>
-          </TabsList>
-          <TabsContent value="info" className="min-h-0 flex-1 overflow-y-auto">
-            <UserInfoTab
-              user={user}
-              canUpdate={canUpdate}
-              canReset={canReset}
-              canDisable={canDisable}
-              canEnable={canEnable}
-              disabled={disabled}
-              isSelf={isSelf}
-              onEdit={() => { setEditing(true); }}
-              onReset={() => { setResetting(true); }}
-              onDisable={() => { setDisabling(true); }}
-              onEnable={() => { void enableUser(); }}
-              onTransfer={() => { setTransferring(true); }}
-            />
-          </TabsContent>
-          <TabsContent value="roles" className="min-h-0 flex-1 overflow-y-auto">
-            <RoleAssignmentsTab
-              userId={user.id}
-              orgId={orgId}
-              roles={roles}
-              onNavigateRole={onNavigateRole}
-            />
-          </TabsContent>
-          <TabsContent value="direct" className="min-h-0 flex-1 overflow-y-auto">
-            <DirectPermissionsTab userId={user.id} orgId={orgId} />
-          </TabsContent>
-          <TabsContent value="effective" className="min-h-0 flex-1 overflow-y-auto">
-            <EffectivePermissionsPanel
-              userId={user.id}
-              orgId={orgId}
-              getOrgPath={getOrgPath}
-              onNavigateRole={onNavigateRole}
-              onOrgIdChange={onOrgIdChange}
-            />
-          </TabsContent>
-          <TabsContent value="audit" className="min-h-0 flex-1 overflow-y-auto">
-            {auditTabContent}
-          </TabsContent>
-        </Tabs>
+        <UserDetailTabs
+          user={user}
+          orgId={orgId}
+          currentUserId={currentUserId}
+          getOrgPath={getOrgPath}
+          canReadAssignments={canReadAssignments}
+          canUpdate={canUpdate}
+          canReset={canReset}
+          canDisable={canDisable}
+          canEnable={canEnable}
+          disabled={disabled}
+          isSelf={isSelf}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          roles={roles}
+          onNavigateRole={onNavigateRole}
+          onEdit={() => { setEditing(true); }}
+          onReset={() => { setResetting(true); }}
+          onDisable={() => { setDisabling(true); }}
+          onEnable={() => { void enableUser(); }}
+          onTransfer={() => { setTransferring(true); }}
+          onOrgIdChange={onOrgIdChange}
+          auditTabContent={auditTabContent}
+        />
       </CardContent>
 
       <UserDialogs

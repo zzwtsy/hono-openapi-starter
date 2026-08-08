@@ -414,6 +414,72 @@ export interface UpdateRole {
   name?: string;
   description?: string | null;
 }
+export interface UpdateRolePermissions {
+  /**
+   * 要新增的权限 code 列表
+   */
+  addPermissionCodes: (
+    | 'projects.read'
+    | 'projects.create'
+    | 'projects.update'
+    | 'projects.delete'
+    | 'permissions.read'
+    | 'organizations.read'
+    | 'organizations.create'
+    | 'organizations.update'
+    | 'organizations.delete'
+    | 'roles.read'
+    | 'roles.create'
+    | 'roles.update'
+    | 'roles.delete'
+    | 'roles.assign-permissions'
+    | 'roles.revoke-permissions'
+    | 'assignments.read'
+    | 'assignments.grant'
+    | 'assignments.revoke'
+    | 'users.read'
+    | 'users.create'
+    | 'users.update'
+    | 'users.reset-password'
+    | 'users.disable'
+    | 'users.enable'
+    | 'settings.read'
+    | 'settings.update'
+    | 'audit.read'
+  )[];
+  /**
+   * 要撤销的权限 code 列表
+   */
+  removePermissionCodes: (
+    | 'projects.read'
+    | 'projects.create'
+    | 'projects.update'
+    | 'projects.delete'
+    | 'permissions.read'
+    | 'organizations.read'
+    | 'organizations.create'
+    | 'organizations.update'
+    | 'organizations.delete'
+    | 'roles.read'
+    | 'roles.create'
+    | 'roles.update'
+    | 'roles.delete'
+    | 'roles.assign-permissions'
+    | 'roles.revoke-permissions'
+    | 'assignments.read'
+    | 'assignments.grant'
+    | 'assignments.revoke'
+    | 'users.read'
+    | 'users.create'
+    | 'users.update'
+    | 'users.reset-password'
+    | 'users.disable'
+    | 'users.enable'
+    | 'settings.read'
+    | 'settings.update'
+    | 'audit.read'
+  )[];
+}
 export interface UpdateOrganization {
   name?: string;
   /**
@@ -1961,6 +2027,155 @@ declare global {
       >(
         config: Config
       ): Alova2Method<PermissionRef[], 'IAM.assignRolePermissions', Config>;
+      /**
+       * ---
+       *
+       * [PATCH] 批量更新角色权限
+       *
+       * **path:** /api/v1/roles/{roleId}/permissions
+       *
+       * ---
+       *
+       * **Path Parameters**
+       * ```ts
+       * type PathParameters = {
+       *   // 角色 ID
+       *   roleId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **RequestBody**
+       * ```ts
+       * type RequestBody = {
+       *   // 要新增的权限 code 列表
+       *   // [items] start
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   // [items] end
+       *   addPermissionCodes: (
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
+       *   )[]
+       *   // 要撤销的权限 code 列表
+       *   // [items] start
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   // [items] end
+       *   removePermissionCodes: (
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
+       *   )[]
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = Array<{
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   code:
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
+       *   // 资源机器标识
+       *   resourceCode: string
+       *   // 动作机器标识
+       *   actionCode: string
+       *   // 资源展示名称
+       *   resourceLabel: string
+       *   // 动作展示名称
+       *   label: string
+       * }>
+       * ```
+       */
+      updateRolePermissions<
+        Config extends Alova2MethodConfig<PermissionRef[]> & {
+          pathParams: {
+            /**
+             * 角色 ID
+             */
+            roleId: string;
+          };
+          data: UpdateRolePermissions;
+        }
+      >(
+        config: Config
+      ): Alova2Method<PermissionRef[], 'IAM.updateRolePermissions', Config>;
       /**
        * ---
        *

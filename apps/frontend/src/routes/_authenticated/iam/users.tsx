@@ -82,8 +82,8 @@ function UsersPage() {
     void navigate({ search: { user: selectedUserId, org: orgParam, tab: newTab } });
   };
 
-  const handleNavigateRole = (roleId: string) => {
-    void routerNavigate({ to: "/iam/roles", search: { role: roleId } });
+  const handleNavigateRole = (roleId: string, orgId?: string) => {
+    void routerNavigate({ to: "/iam/roles", search: { role: roleId, org: orgId } });
   };
 
   const handleTransferred = (newOrgId: string) => {

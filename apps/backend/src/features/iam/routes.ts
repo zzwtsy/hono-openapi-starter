@@ -1,8 +1,14 @@
+import type { AppPermissionCode } from "@/core/auth/permissions.js";
+import type { AppBindings } from "@/core/http/context.js";
 import { createRoute, z } from "@hono/zod-openapi";
+import { createMiddleware } from "hono/factory";
 
 import { audit } from "@/core/audit/index.js";
+import { requireOrgUser } from "@/core/auth/context.js";
 import { requireAuth } from "@/core/auth/require-auth.js";
 import { requirePermission } from "@/core/auth/require-permission.js";
+import { PermissionService } from "@/core/authorization/index.js";
+import { AppError } from "@/core/errors/app-error.js";
 import { jsonErrorResponse, jsonErrorResponses, jsonSuccessResponse } from "@/core/http/openapi/helpers.js";
 import { authedSecurity } from "@/core/http/openapi/security.js";
 import { iamAuditActions } from "./audit-actions.js";
@@ -22,6 +28,7 @@ import {
   RoleUserAssignmentSchema,
   TransferUserOrgSchema,
   UpdateOrganizationSchema,
+  UpdateRolePermissionsSchema,
   UpdateRoleSchema,
   UpdateUserSchema,
   UserDirectPermissionSchema,
@@ -50,6 +57,34 @@ const rolesUpdateMiddleware = [requireAuth(), requirePermission("roles.update")]
 const rolesDeleteMiddleware = [requireAuth(), requirePermission("roles.delete")];
 const rolesAssignPermissionsMiddleware = [requireAuth(), requirePermission("roles.assign-permissions")];
 const rolesRevokePermissionsMiddleware = [requireAuth(), requirePermission("roles.revoke-permissions")];
+const rolePermissionsUpdateMiddleware = [
+  requireAuth(),
+  createMiddleware<AppBindings>(async (c, next) => {
+    const { id, orgId } = requireOrgUser(c);
+    // 该中间件位于 OpenAPI validator 之前，使用 clone 读取请求体，避免消费原始 body；
+    // 正式字段校验仍由 route schema 负责。
+    const body = await c.req.raw.clone().json().catch(() => ({})) as {
+      addPermissionCodes: AppPermissionCode[];
+      removePermissionCodes: AppPermissionCode[];
+    };
+    const addPermissionCodes = body.addPermissionCodes ?? [];
+    const removePermissionCodes = body.removePermissionCodes ?? [];
+    const requiredPermissions: AppPermissionCode[] = [];
+    if (addPermissionCodes.length > 0) {
+      requiredPermissions.push("roles.assign-permissions");
+    }
+    if (removePermissionCodes.length > 0) {
+      requiredPermissions.push("roles.revoke-permissions");
+    }
+    const allowed = await Promise.all(
+      requiredPermissions.map(async permissionCode => PermissionService.check(id, permissionCode, orgId)),
+    );
+    if (allowed.some(value => !value)) {
+      throw new AppError("COMMON_FORBIDDEN");
+    }
+    await next();
+  }),
+];
 const assignmentsGrantMiddleware = [requireAuth(), requirePermission("assignments.grant")];
 const assignmentsRevokeMiddleware = [requireAuth(), requirePermission("assignments.revoke")];
 const usersCreateMiddleware = [requireAuth(), requirePermission("users.create")];
@@ -208,6 +243,34 @@ export const assignRolePermissionsRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.array(PermissionSchema), "角色当前权限列表"),
     400: jsonErrorResponse("权限 code 无效", "PERMISSION_CODE_INVALID"),
+    ...authErrorResponses,
+    404: jsonErrorResponses("角色或权限不存在", ["ROLE_NOT_FOUND", "PERMISSION_NOT_FOUND"]),
+  },
+});
+
+export const updateRolePermissionsRoute = createRoute({
+  method: "patch",
+  path: "/roles/{roleId}/permissions",
+  tags: ["IAM"],
+  operationId: "updateRolePermissions",
+  summary: "批量更新角色权限",
+  description: "原子批量新增和撤销实例角色权限。code 角色不可修改。权限按变更方向分别校验。",
+  middleware: [...rolePermissionsUpdateMiddleware, audit({
+    action: iamAuditActions.roleUpdatePermissions,
+    resourceType: "role",
+    resourceId: c => c.req.param("roleId")!,
+    before: async c => IamService.listRolePermissions(c.req.param("roleId")!),
+    after: "response",
+  })],
+  security: authedSecurity,
+  request: {
+    params: RoleIdParamSchema,
+    body: { content: { "application/json": { schema: UpdateRolePermissionsSchema } } },
+  },
+  responses: {
+    200: jsonSuccessResponse(z.array(PermissionSchema), "角色当前权限列表"),
+    400: jsonErrorResponse("权限 code 无效", "PERMISSION_CODE_INVALID"),
+    422: jsonErrorResponse("新增和撤销权限不能重复", "COMMON_VALIDATION_FAILED"),
     ...authErrorResponses,
     404: jsonErrorResponses("角色或权限不存在", ["ROLE_NOT_FOUND", "PERMISSION_NOT_FOUND"]),
   },
@@ -737,6 +800,7 @@ export type UpdateRoleRoute = typeof updateRoleRoute;
 export type DeleteRoleRoute = typeof deleteRoleRoute;
 export type ListRolePermissionsRoute = typeof listRolePermissionsRoute;
 export type AssignRolePermissionsRoute = typeof assignRolePermissionsRoute;
+export type UpdateRolePermissionsRoute = typeof updateRolePermissionsRoute;
 export type DeleteRolePermissionRoute = typeof deleteRolePermissionRoute;
 export type ListRoleUsersRoute = typeof listRoleUsersRoute;
 export type AssignUserRoleRoute = typeof assignUserRoleRoute;

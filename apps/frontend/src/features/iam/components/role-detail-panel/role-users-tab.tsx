@@ -12,7 +12,7 @@ import { IAM_ACTIONS } from "../../lib/iam-actions";
 
 interface RoleUsersTabProps {
   role: Role;
-  onNavigateUser: (userId: string) => void;
+  onNavigateUser: (userId: string, orgId: string) => void;
   getOrgPath: (orgId: string) => string;
 }
 
@@ -70,7 +70,7 @@ export function RoleUsersTab({ role, onNavigateUser, getOrgPath }: RoleUsersTabP
                       <button
                         type="button"
                         className="text-left text-sm font-medium hover:underline"
-                        onClick={() => { onNavigateUser(u.userId); }}
+                        onClick={() => { onNavigateUser(u.userId, u.orgId); }}
                       >
                         {u.userName}
                       </button>

@@ -23,8 +23,9 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { requirePermission } from "@/lib/require-permission";
 
 export const Route = createFileRoute("/_authenticated/iam/roles")({
-  validateSearch: (search: Record<string, unknown>): { role?: string; tab?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { role?: string; org?: string; tab?: string } => ({
     role: typeof search.role === "string" ? search.role : undefined,
+    org: typeof search.org === "string" ? search.org : undefined,
     tab: typeof search.tab === "string" ? search.tab : undefined,
   }),
   beforeLoad: ({ context }) => {
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/_authenticated/iam/roles")({
 });
 
 function RolesPage() {
-  const { role: selectedRoleId, tab } = Route.useSearch();
+  const { role: selectedRoleId, org: orgParam, tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const routerNavigate = useNavigate();
   const isNarrowScreen = useMediaQuery("(max-width: 1023px)");
@@ -48,7 +49,7 @@ function RolesPage() {
     () => Apis.IAM.listRoles(),
     { middleware: actionDelegationMiddleware(IAM_ACTIONS.rolesList) },
   );
-  const { getOrgPath } = useUserPageState("");
+  const { getOrgPath } = useUserPageState(orgParam ?? "");
   const { selectedRole, activeTab } = useRoleSelection({ selectedRoleId, roles, tab });
 
   const handleSelect = (role: Role) => {
@@ -59,11 +60,11 @@ function RolesPage() {
   };
 
   const handleTabChange = (newTab: string) => {
-    void navigate({ search: { role: selectedRoleId, tab: newTab } });
+    void navigate({ search: { role: selectedRoleId, org: orgParam, tab: newTab } });
   };
 
-  const handleNavigateUser = (userId: string) => {
-    void routerNavigate({ to: "/iam/users", search: { user: userId } });
+  const handleNavigateUser = (userId: string, orgId: string) => {
+    void routerNavigate({ to: "/iam/users", search: { user: userId, org: orgId, tab: "roles" } });
   };
 
   const detailPanel = selectedRole !== undefined

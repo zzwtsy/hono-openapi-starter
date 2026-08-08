@@ -45,6 +45,12 @@ export const AssignRolePermissionsSchema = z.object({
   permissionCodes: z.array(PermissionCodeSchema).min(0).max(allPermissionCodes.length).openapi({ description: "要授予的权限 code 列表(已存在的跳过)", example: ["projects.read"] }),
 });
 
+/** 批量更新角色权限入参(新增/撤销差量由 service 在同一事务内应用)。 */
+export const UpdateRolePermissionsSchema = z.object({
+  addPermissionCodes: z.array(PermissionCodeSchema).max(allPermissionCodes.length).openapi({ description: "要新增的权限 code 列表", example: ["projects.read"] }),
+  removePermissionCodes: z.array(PermissionCodeSchema).max(allPermissionCodes.length).openapi({ description: "要撤销的权限 code 列表", example: ["projects.delete"] }),
+}).openapi("UpdateRolePermissions");
+
 /** 角色 ID 路径参数。 */
 export const RoleIdParamSchema = z.object({
   roleId: z.string().openapi({ description: "角色 ID", example: "role-viewer" }),

@@ -16,17 +16,20 @@ interface RoleAssignmentsTabProps {
   userId: string;
   orgId: string;
   roles: Role[];
-  onNavigateRole: (roleId: string) => void;
+  currentUserId: string;
+  onNavigateRole: (roleId: string, orgId?: string) => void;
 }
 
 export function RoleAssignmentsTab({
   userId,
   orgId,
   roles,
+  currentUserId,
   onNavigateRole,
 }: RoleAssignmentsTabProps) {
   const {
     canGrant,
+    canRevoke,
     assignments,
     loading,
     error,
@@ -41,7 +44,7 @@ export function RoleAssignmentsTab({
     roleItems,
     assignRole,
     revoke,
-  } = useRoleAssignments({ userId, orgId, roles });
+  } = useRoleAssignments({ userId, orgId, roles, currentUserId });
 
   return (
     <div className="flex flex-col gap-4">
@@ -60,57 +63,68 @@ export function RoleAssignmentsTab({
             : (
                 <div className="flex flex-col gap-2">
                   {assignments.map(a => (
-                    <RoleAssignmentRow key={a.roleId} assignment={a} onRevoke={() => { void revoke(a.roleId); }} onNavigateRole={onNavigateRole} />
+                    <RoleAssignmentRow
+                      key={a.roleId}
+                      assignment={a}
+                      canRevoke={canRevoke}
+                      busy={assigning}
+                      onRevoke={() => { void revoke(a.roleId); }}
+                      onNavigateRole={onNavigateRole}
+                    />
                   ))}
                 </div>
               )}
         </AsyncListState>
       </div>
 
-      <Separator />
-      <div className="flex flex-col gap-2">
-        <h4 className="text-sm font-medium">授予角色</h4>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="role-select">选择角色</FieldLabel>
-            <Select
-              items={roleItems}
-              value={selectedRoleId === "" ? null : selectedRoleId}
-              onValueChange={(val) => {
-                setSelectedRoleId(val ?? "");
-              }}
-            >
-              <SelectTrigger id="role-select" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {roleItems.map(item => (
-                    <SelectItem key={item.value ?? "none"} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          {selectedRoleId !== "" && (
-            <RolePreviewCollapsible previewPerms={previewPerms} newPerms={newPerms} />
-          )}
-          <Field>
-            <FieldLabel htmlFor="role-expires">过期时间(可选)</FieldLabel>
-            <DatePicker id="role-expires" value={expiresAt} onChange={setExpiresAt} />
-            <p className="text-xs text-muted-foreground">留空=永不过期(新授)/保留原值(续期);暂不支持从有限期改回永不过期。</p>
-          </Field>
-        </FieldGroup>
-        <div className="flex justify-end">
-          <Button disabled={!canGrant || selectedRoleId === "" || assigning} onClick={() => { void assignRole(); }}>
-            {assigning && <Spinner data-icon="inline-start" />}
-            <ShieldCheck />
-            授予
-          </Button>
-        </div>
-      </div>
+      {canGrant && (
+        <>
+          <Separator />
+          <div className="flex flex-col gap-2">
+            <h4 className="text-sm font-medium">授予角色</h4>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="role-select">选择角色</FieldLabel>
+                <Select
+                  items={roleItems}
+                  value={selectedRoleId === "" ? null : selectedRoleId}
+                  onValueChange={(val) => {
+                    setSelectedRoleId(val ?? "");
+                  }}
+                >
+                  <SelectTrigger id="role-select" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {roleItems.map(item => (
+                        <SelectItem key={item.value ?? "none"} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              {selectedRoleId !== "" && (
+                <RolePreviewCollapsible previewPerms={previewPerms} newPerms={newPerms} />
+              )}
+              <Field>
+                <FieldLabel htmlFor="role-expires">过期时间(可选)</FieldLabel>
+                <DatePicker id="role-expires" value={expiresAt} onChange={setExpiresAt} />
+                <p className="text-xs text-muted-foreground">留空=永不过期(新授)/保留原值(续期);暂不支持从有限期改回永不过期。</p>
+              </Field>
+            </FieldGroup>
+            <div className="flex justify-end">
+              <Button disabled={selectedRoleId === "" || assigning} onClick={() => { void assignRole(); }}>
+                {assigning && <Spinner data-icon="inline-start" />}
+                <ShieldCheck />
+                授予
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

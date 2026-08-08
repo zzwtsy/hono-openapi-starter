@@ -1,8 +1,10 @@
 import type { Organization } from "@/api/globals";
 import { useForm } from "@tanstack/react-form";
+import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import Apis from "@/api";
+import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -16,11 +18,74 @@ const organizationSchema = z.object({
   parentId: z.string(),
 });
 
+type OrganizationFormValues = z.infer<typeof organizationSchema>;
+
 interface OrganizationFormProps {
   organizations: Organization[];
   organization?: Organization;
   defaultParentId?: string;
   onSuccess: (organization: Organization) => void | Promise<void>;
+}
+
+interface ReparentConfirmDialogProps {
+  open: boolean;
+  busy: boolean;
+  parentLabel: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}
+
+interface OrganizationReparentDialogProps extends Omit<ReparentConfirmDialogProps, "onConfirm"> {
+  values?: OrganizationFormValues;
+  save: (values: OrganizationFormValues) => Promise<boolean>;
+  onConfirmed: () => void;
+  onBusyChange: (busy: boolean) => void;
+}
+
+function ReparentConfirmDialog({
+  open,
+  busy,
+  parentLabel,
+  onConfirm,
+  onClose,
+}: ReparentConfirmDialogProps) {
+  return (
+    <ConfirmDeleteDialog
+      open={open}
+      busy={busy}
+      title="确认变更父组织"
+      description={`变更父组织会改变该组织及其用户的继承权限路径。确认移动到“${parentLabel}”吗？`}
+      confirmLabel="确认变更"
+      onConfirm={onConfirm}
+      onClose={onClose}
+    />
+  );
+}
+
+function OrganizationReparentDialog({
+  values,
+  save,
+  onConfirmed,
+  onBusyChange,
+  ...dialogProps
+}: OrganizationReparentDialogProps) {
+  return (
+    <ReparentConfirmDialog
+      {...dialogProps}
+      onConfirm={() => {
+        if (values == null) {
+          return;
+        }
+        onBusyChange(true);
+        void save(values).then((ok) => {
+          onBusyChange(false);
+          if (ok) {
+            onConfirmed();
+          }
+        });
+      }}
+    />
+  );
 }
 
 export function OrganizationForm({
@@ -29,6 +94,35 @@ export function OrganizationForm({
   defaultParentId,
   onSuccess,
 }: OrganizationFormProps) {
+  const organizationTree = buildOrganizationTree(organizations);
+  const [pendingValues, setPendingValues] = useState<OrganizationFormValues>();
+  const [reparentConfirming, setReparentConfirming] = useState(false);
+  const [reparentBusy, setReparentBusy] = useState(false);
+
+  const saveOrganization = async (value: OrganizationFormValues): Promise<boolean> => {
+    try {
+      const parentId = value.parentId === "" ? undefined : value.parentId;
+      let savedOrganization: Organization;
+      if (organization) {
+        savedOrganization = await Apis.IAM.updateOrganization({
+          pathParams: { orgId: organization.id },
+          data: { name: value.name, parentId: parentId ?? null },
+        });
+        toast.success("组织已更新");
+      } else {
+        savedOrganization = await Apis.IAM.createOrganization({
+          data: { name: value.name, parentId },
+        });
+        toast.success("组织已创建");
+      }
+      await onSuccess(savedOrganization);
+      return true;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "操作失败");
+      return false;
+    }
+  };
+
   const form = useForm({
     defaultValues: {
       name: organization?.name ?? "",
@@ -38,29 +132,22 @@ export function OrganizationForm({
       onChange: organizationSchema,
     },
     onSubmit: async ({ value }) => {
-      try {
-        const parentId = value.parentId === "" ? undefined : value.parentId;
-        let savedOrganization: Organization;
-        if (organization) {
-          savedOrganization = await Apis.IAM.updateOrganization({
-            pathParams: { orgId: organization.id },
-            data: { name: value.name, parentId: parentId ?? null },
-          });
-          toast.success("组织已更新");
-        } else {
-          savedOrganization = await Apis.IAM.createOrganization({
-            data: { name: value.name, parentId },
-          });
-          toast.success("组织已创建");
-        }
-        await onSuccess(savedOrganization);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "操作失败");
+      const nextParentId = value.parentId === "" ? null : value.parentId;
+      const currentParentId = organization?.parentId ?? null;
+      if (organization && nextParentId !== currentParentId) {
+        setPendingValues(value);
+        setReparentConfirming(true);
+        return;
       }
+      await saveOrganization(value);
     },
   });
 
-  const parentItems = buildOrganizationTree(organizations).getParentOptions(organization?.id);
+  const parentItems = organizationTree.getParentOptions(organization?.id);
+  let pendingParentLabel = "根组织";
+  if (pendingValues?.parentId != null && pendingValues.parentId !== "") {
+    pendingParentLabel = organizationTree.getDisplayPath(pendingValues.parentId);
+  }
 
   return (
     <>
@@ -132,6 +219,22 @@ export function OrganizationForm({
           </form.Subscribe>
         </DialogFooter>
       </form>
+      <OrganizationReparentDialog
+        open={reparentConfirming}
+        busy={reparentBusy}
+        parentLabel={pendingParentLabel}
+        values={pendingValues}
+        save={saveOrganization}
+        onBusyChange={setReparentBusy}
+        onConfirmed={() => {
+          setPendingValues(undefined);
+          setReparentConfirming(false);
+        }}
+        onClose={() => {
+          setPendingValues(undefined);
+          setReparentConfirming(false);
+        }}
+      />
     </>
   );
 }

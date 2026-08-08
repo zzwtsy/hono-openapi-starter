@@ -19,7 +19,7 @@ interface RoleDetailPanelProps {
   role: Role;
   tab: string;
   onTabChange: (tab: string) => void;
-  onNavigateUser: (userId: string) => void;
+  onNavigateUser: (userId: string, orgId: string) => void;
   getOrgPath: (orgId: string) => string;
 }
 

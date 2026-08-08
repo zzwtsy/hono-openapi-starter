@@ -6,6 +6,7 @@ export const iamAuditActions = {
   roleUpdate: defineAuditAction("iam.role.update", "修改角色"),
   roleDelete: defineAuditAction("iam.role.delete", "删除角色"),
   roleAssignPermissions: defineAuditAction("iam.role.assign_permissions", "给角色配权限"),
+  roleUpdatePermissions: defineAuditAction("iam.role.update_permissions", "批量更新角色权限"),
   roleRevokePermission: defineAuditAction("iam.role.revoke_permission", "撤角色权限"),
   userCreate: defineAuditAction("iam.user.create", "创建用户"),
   userUpdate: defineAuditAction("iam.user.update", "修改用户资料"),

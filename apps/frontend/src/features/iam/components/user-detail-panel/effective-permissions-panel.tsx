@@ -2,6 +2,7 @@ import type { PermissionSource } from "@/api/globals";
 import { actionDelegationMiddleware, useWatcher } from "alova/client";
 import { format } from "date-fns";
 import { CalendarClock, CircleAlert, KeyRound } from "lucide-react";
+import { useState } from "react";
 import Apis from "@/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -10,17 +11,21 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCan } from "@/hooks/use-permissions";
 import { groupByResource } from "../../lib/group-by-resource";
 import { IAM_ACTIONS } from "../../lib/iam-actions";
 
-function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange }: {
+function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange, canReadRole, canReadOrg }: {
   source: PermissionSource;
   getOrgPath: (orgId: string) => string;
-  onNavigateRole: (roleId: string) => void;
+  onNavigateRole: (roleId: string, orgId?: string) => void;
   onOrgIdChange: (orgId: string) => void;
+  canReadRole: boolean;
+  canReadOrg: boolean;
 }) {
+  const [now] = useState(() => Date.now());
   const roleId = source.roleId;
-  const roleBadge = source.type === "role" && roleId !== null
+  const roleBadge = source.type === "role" && roleId !== null && canReadRole
     ? (
         <Tooltip>
           <TooltipTrigger render={
@@ -30,7 +35,7 @@ function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange }: {
             <button
               type="button"
               className="cursor-pointer"
-              onClick={() => { onNavigateRole(roleId); }}
+              onClick={() => { onNavigateRole(roleId, source.orgId); }}
             >
               {source.roleName}
             </button>
@@ -38,31 +43,40 @@ function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange }: {
           <TooltipContent>查看角色详情</TooltipContent>
         </Tooltip>
       )
-    : <Badge variant="secondary" className="text-xs">直接</Badge>;
+    : <Badge variant="secondary" className="text-xs">{source.type === "role" ? source.roleName : "直接"}</Badge>;
 
   return (
     <span className="inline-flex items-center gap-0.5">
       {roleBadge}
-      <Tooltip>
-        <TooltipTrigger render={
-          <Badge variant="outline" className="text-xs text-muted-foreground hover:bg-accent" />
-        }
-        >
-          <button
-            type="button"
-            className="cursor-pointer"
-            onClick={() => { onOrgIdChange(source.orgId); }}
-          >
-            @
-            {getOrgPath(source.orgId)}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>切到此组织视角</TooltipContent>
-      </Tooltip>
+      {canReadOrg
+        ? (
+            <Tooltip>
+              <TooltipTrigger render={
+                <Badge variant="outline" className="text-xs text-muted-foreground hover:bg-accent" />
+              }
+              >
+                <button
+                  type="button"
+                  className="cursor-pointer"
+                  onClick={() => { onOrgIdChange(source.orgId); }}
+                >
+                  @
+                  {getOrgPath(source.orgId)}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>切到此组织视角</TooltipContent>
+            </Tooltip>
+          )
+        : (
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              @
+              {getOrgPath(source.orgId)}
+            </Badge>
+          )}
       {source.expiresAt != null && (
         <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
           <CalendarClock className="size-3" />
-          {format(new Date(source.expiresAt), "yyyy-MM-dd")}
+          {new Date(source.expiresAt).getTime() <= now ? "已过期" : format(new Date(source.expiresAt), "yyyy-MM-dd")}
         </span>
       )}
     </span>
@@ -73,7 +87,7 @@ interface EffectivePermissionsPanelProps {
   userId: string;
   orgId: string;
   getOrgPath: (orgId: string) => string;
-  onNavigateRole: (roleId: string) => void;
+  onNavigateRole: (roleId: string, orgId?: string) => void;
   onOrgIdChange: (orgId: string) => void;
 }
 
@@ -82,6 +96,9 @@ interface EffectivePermissionsPanelProps {
  * (effective + denied),无需前端 N+1 拼。来源 badge 可点击跳转。
  */
 export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigateRole, onOrgIdChange }: EffectivePermissionsPanelProps) {
+  const canReadAssignments = useCan("assignments.read");
+  const canReadRoles = useCan("roles.read");
+  const canReadOrgs = useCan("organizations.read");
   const {
     data: result,
     loading,
@@ -90,8 +107,20 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
   } = useWatcher(
     () => Apis.IAM.listUserPermissions({ pathParams: { userId }, params: { orgId } }),
     [orgId],
-    { immediate: true, middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
+    { immediate: canReadAssignments, middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
   );
+
+  if (!canReadAssignments) {
+    return (
+      <Empty>
+        <EmptyMedia variant="icon"><KeyRound /></EmptyMedia>
+        <EmptyHeader>
+          <EmptyTitle>无权限</EmptyTitle>
+          <EmptyDescription>你需要 assignments.read 权限查看有效权限。</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
 
   if (error !== null && result === undefined) {
     return (
@@ -143,6 +172,8 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
                               getOrgPath={getOrgPath}
                               onNavigateRole={onNavigateRole}
                               onOrgIdChange={onOrgIdChange}
+                              canReadRole={canReadRoles}
+                              canReadOrg={canReadOrgs}
                             />
                           ))}
                         </div>
@@ -172,6 +203,8 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
                       getOrgPath={getOrgPath}
                       onNavigateRole={onNavigateRole}
                       onOrgIdChange={onOrgIdChange}
+                      canReadRole={canReadRoles}
+                      canReadOrg={canReadOrgs}
                     />
                   ))}
                   <span className="text-xs text-muted-foreground">

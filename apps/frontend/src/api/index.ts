@@ -70,6 +70,7 @@ export const $$userConfigMap = withConfigType({
       "IAM.assignUserPermission",
       "IAM.deleteUserPermission",
       "IAM.assignRolePermissions",
+      "IAM.updateRolePermissions",
       "IAM.deleteRolePermission",
       "Me.updateMe",
     ],
@@ -80,7 +81,7 @@ export const $$userConfigMap = withConfigType({
   },
   "IAM.listPermissions": { cacheFor: 10 * 60_000 },
   "IAM.listRolePermissions": {
-    hitSource: ["IAM.assignRolePermissions", "IAM.deleteRolePermission"],
+    hitSource: ["IAM.assignRolePermissions", "IAM.updateRolePermissions", "IAM.deleteRolePermission"],
   },
   "IAM.listOrganizations": {
     cacheFor: 60_000,
@@ -92,7 +93,7 @@ export const $$userConfigMap = withConfigType({
     hitSource: ["IAM.createUser", "IAM.updateUser", "IAM.disableUser", "IAM.enableUser", "Me.updateMe"],
   },
   // 用户授权:撤销/授予后有效权限全集需自动失效(此前靠手动 send)。
-  // 角色权限变更(assignRolePermissions/deleteRolePermission)也影响用户有效权限
+  // 角色权限变更(assignRolePermissions/updateRolePermissions/deleteRolePermission)也影响用户有效权限
   // (角色->权限->用户链路),故一并纳入 hitSource(B5 D3,对齐 listRolePermissions)。
   "IAM.listUserPermissions": {
     cacheFor: 60_000,
@@ -102,6 +103,7 @@ export const $$userConfigMap = withConfigType({
       "IAM.assignUserPermission",
       "IAM.deleteUserPermission",
       "IAM.assignRolePermissions",
+      "IAM.updateRolePermissions",
       "IAM.deleteRolePermission",
     ],
   },
@@ -129,6 +131,7 @@ export const $$userConfigMap = withConfigType({
   "IAM.updateRole": { name: "IAM.updateRole" },
   "IAM.deleteRole": { name: "IAM.deleteRole" },
   "IAM.assignRolePermissions": { name: "IAM.assignRolePermissions" },
+  "IAM.updateRolePermissions": { name: "IAM.updateRolePermissions" },
   "IAM.deleteRolePermission": { name: "IAM.deleteRolePermission" },
   "IAM.createOrganization": { name: "IAM.createOrganization" },
   "IAM.updateOrganization": { name: "IAM.updateOrganization" },

@@ -1,6 +1,7 @@
 import type { OrganizationTreeIndex } from "../lib/organization-tree";
 import type { Organization } from "@/api/globals";
 import { Building2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { useId } from "react";
 import { Can } from "@/components/shared/can";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +41,8 @@ export function OrganizationDetails({
   onEdit,
   onSelect,
 }: OrganizationDetailsProps) {
+  const childOrganizationsTitleId = useId();
+
   if (organization === undefined) {
     return (
       <Card className="h-full">
@@ -132,9 +135,9 @@ export function OrganizationDetails({
 
         <Separator />
 
-        <section aria-labelledby="child-organizations-title" className="flex flex-col gap-3">
+        <section aria-labelledby={childOrganizationsTitleId} className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 id="child-organizations-title" className="font-medium">子组织</h2>
+            <h2 id={childOrganizationsTitleId} className="font-medium">子组织</h2>
             <span className="text-xs text-muted-foreground tabular-nums">
               {children.length}
               {" "}

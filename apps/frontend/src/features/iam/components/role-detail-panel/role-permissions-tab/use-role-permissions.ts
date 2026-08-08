@@ -3,7 +3,7 @@ import type { PermissionCode } from "@/types/permissions";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
 import { useMemo, useState } from "react";
 import Apis from "@/api";
-import { useCanAll } from "@/hooks/use-permissions";
+import { useCan, useCanAll } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { groupByResource } from "../../../lib/group-by-resource";
 import { IAM_ACTIONS, refreshIam } from "../../../lib/iam-actions";
@@ -16,13 +16,11 @@ import { IAM_ACTIONS, refreshIam } from "../../../lib/iam-actions";
  * (role 切换由容器 key={role.id} remount 处理),React 官方 adjusting-state 模式。
  */
 export function useRolePermissions(role: Role) {
-  const canConfig = useCanAll([
-    "roles.assign-permissions",
-    "roles.revoke-permissions",
-    "permissions.read",
-    "roles.read",
-  ]);
-  const { data: allPerms, loading: permsLoading, error: permsError, send: sendPerms } = useRequest(() => Apis.IAM.listPermissions(), { immediate: canConfig });
+  const canRead = useCanAll(["permissions.read", "roles.read"]);
+  const canAssign = useCan("roles.assign-permissions");
+  const canRevoke = useCan("roles.revoke-permissions");
+  const canEdit = role.source === "instance" && (canAssign || canRevoke);
+  const { data: allPerms, loading: permsLoading, error: permsError, send: sendPerms } = useRequest(() => Apis.IAM.listPermissions(), { immediate: canRead });
   const {
     data: granted,
     loading: grantedLoading,
@@ -30,7 +28,7 @@ export function useRolePermissions(role: Role) {
     send: sendGranted,
   } = useRequest(
     () => Apis.IAM.listRolePermissions({ pathParams: { roleId: role.id } }),
-    { immediate: canConfig, middleware: actionDelegationMiddleware(IAM_ACTIONS.rolePerms) },
+    { immediate: canRead, middleware: actionDelegationMiddleware(IAM_ACTIONS.rolePerms) },
   );
   const loading = permsLoading || grantedLoading;
   const error = permsError ?? grantedError;
@@ -48,6 +46,13 @@ export function useRolePermissions(role: Role) {
   const toAdd = useMemo(() => [...working].filter(p => !initial.has(p)), [working, initial]);
   const toRemove = useMemo(() => [...initial].filter(p => !working.has(p)), [working, initial]);
   const hasChanges = toAdd.length > 0 || toRemove.length > 0;
+  const canChange = (permissionCode: PermissionCode, target: boolean): boolean => {
+    if (!canEdit) {
+      return false;
+    }
+    const baseline = initial.has(permissionCode);
+    return target === baseline || (target ? canAssign : canRevoke);
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -69,10 +74,14 @@ export function useRolePermissions(role: Role) {
   const toggle = (permissionCode: PermissionCode) => {
     setWorking((prev) => {
       const next = new Set(prev);
-      if (next.has(permissionCode)) {
-        next.delete(permissionCode);
-      } else {
+      const target = !next.has(permissionCode);
+      if (!canChange(permissionCode, target)) {
+        return prev;
+      }
+      if (target) {
         next.add(permissionCode);
+      } else {
+        next.delete(permissionCode);
       }
       return next;
     });
@@ -80,8 +89,14 @@ export function useRolePermissions(role: Role) {
 
   const toggleAllInGroup = (perms: PermissionRef[], select: boolean) => {
     setWorking((prev) => {
+      if (!canEdit) {
+        return prev;
+      }
       const next = new Set(prev);
       for (const p of perms) {
+        if (!canChange(p.code, select)) {
+          continue;
+        }
         if (select) {
           next.add(p.code);
         } else {
@@ -99,20 +114,15 @@ export function useRolePermissions(role: Role) {
 
   const { mutate: runWithToast, busy: submitting } = useToastMutation();
   const submit = async () => {
-    if (!hasChanges || submitting) {
+    if (!canEdit || !hasChanges || submitting) {
       return;
     }
     const ok = await runWithToast(
       async () => {
-        if (toAdd.length > 0) {
-          await Apis.IAM.assignRolePermissions({
-            pathParams: { roleId: role.id },
-            data: { permissionCodes: toAdd },
-          });
-        }
-        for (const p of toRemove) {
-          await Apis.IAM.deleteRolePermission({ pathParams: { roleId: role.id, permissionCode: p } });
-        }
+        await Apis.IAM.updateRolePermissions({
+          pathParams: { roleId: role.id },
+          data: { addPermissionCodes: toAdd, removePermissionCodes: toRemove },
+        });
       },
       { successMessage: `已更新:授予 ${toAdd.length},撤销 ${toRemove.length}`, errorMessage: "操作失败" },
     );
@@ -122,7 +132,11 @@ export function useRolePermissions(role: Role) {
   };
 
   return {
-    canConfig,
+    canRead,
+    canEdit,
+    canAssign,
+    canRevoke,
+    canChange,
     allPerms,
     loading,
     error,

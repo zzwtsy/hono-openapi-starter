@@ -1,7 +1,7 @@
 import type { UserSummary } from "@/api/globals";
 import { useMemo } from "react";
 
-const TAB_VALUES = ["info", "roles", "direct", "effective"] as const;
+const TAB_VALUES = ["info", "roles", "direct", "effective", "audit"] as const;
 
 interface UseUserSelectionArgs {
   selectedUserId?: string;

@@ -11,8 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
+import { useIamUserCapabilities } from "../../hooks/use-iam-capabilities";
 import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
 import { PermissionCombobox } from "../permission-combobox";
 import { DirectPermissionRow } from "./direct-permission-row";
@@ -20,11 +20,12 @@ import { DirectPermissionRow } from "./direct-permission-row";
 interface DirectPermissionsTabProps {
   userId: string;
   orgId: string;
+  currentUserId: string;
 }
 
-export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProps) {
-  const canGrant = useCan("assignments.grant");
-  const { data: catalog } = useRequest(() => Apis.IAM.listPermissions());
+export function DirectPermissionsTab({ userId, orgId, currentUserId }: DirectPermissionsTabProps) {
+  const { canReadAssignments, canGrantDirectPermissions: canGrant, canRevokeAssignments: canRevoke } = useIamUserCapabilities(currentUserId, userId);
+  const { data: catalog } = useRequest(() => Apis.IAM.listPermissions(), { immediate: canGrant });
   const {
     data: directPerms,
     loading,
@@ -33,7 +34,7 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
   } = useWatcher(
     () => Apis.IAM.listUserDirectPermissions({ pathParams: { userId }, params: { orgId } }),
     [orgId],
-    { immediate: true, middleware: actionDelegationMiddleware(IAM_ACTIONS.userDirectPerms) },
+    { immediate: canReadAssignments, middleware: actionDelegationMiddleware(IAM_ACTIONS.userDirectPerms) },
   );
 
   const [selectedPermission, setSelectedPermission] = useState<PermissionCode | "">("");
@@ -92,59 +93,69 @@ export function DirectPermissionsTab({ userId, orgId }: DirectPermissionsTabProp
             : (
                 <div className="flex flex-col gap-2">
                   {directPerms.map(p => (
-                    <DirectPermissionRow key={p.permission.code} perm={p} onRevoke={() => { void revoke(p.permission.code); }} />
+                    <DirectPermissionRow
+                      key={p.permission.code}
+                      perm={p}
+                      canRevoke={canRevoke}
+                      busy={assigning}
+                      onRevoke={() => { void revoke(p.permission.code); }}
+                    />
                   ))}
                 </div>
               )}
         </AsyncListState>
       </div>
 
-      <Separator />
-      <div className="flex flex-col gap-2">
-        <h4 className="text-sm font-medium">授予直接权限</h4>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="perm-select">选择权限</FieldLabel>
-            <PermissionCombobox
-              value={selectedPermission === "" ? null : selectedPermission}
-              onChange={setSelectedPermission}
-              permissions={catalog ?? []}
-            />
-          </Field>
-          <Field>
-            <FieldLabel>效果</FieldLabel>
-            <ToggleGroup
-              value={[effect]}
-              onValueChange={(val) => {
-                const next = val[val.length - 1];
-                if (next != null) {
-                  setEffect(next as "allow" | "deny");
-                }
-              }}
-            >
-              <ToggleGroupItem value="allow">
-                <Check className="size-3.5" />
-                允许
-              </ToggleGroupItem>
-              <ToggleGroupItem value="deny">
-                <Ban className="size-3.5" />
-                拒绝
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="perm-expires">过期时间(可选)</FieldLabel>
-            <DatePicker id="perm-expires" value={expiresAt} onChange={setExpiresAt} />
-          </Field>
-        </FieldGroup>
-        <div className="flex justify-end">
-          <Button disabled={!canGrant || selectedPermission === "" || assigning} onClick={() => { void assignPermission(); }}>
-            {assigning && <Spinner data-icon="inline-start" />}
-            <ShieldCheck />
-            授予
-          </Button>
-        </div>
-      </div>
+      {canGrant && (
+        <>
+          <Separator />
+          <div className="flex flex-col gap-2">
+            <h4 className="text-sm font-medium">授予直接权限</h4>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="perm-select">选择权限</FieldLabel>
+                <PermissionCombobox
+                  value={selectedPermission === "" ? null : selectedPermission}
+                  onChange={setSelectedPermission}
+                  permissions={catalog ?? []}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>效果</FieldLabel>
+                <ToggleGroup
+                  value={[effect]}
+                  onValueChange={(val) => {
+                    const next = val[val.length - 1];
+                    if (next != null) {
+                      setEffect(next as "allow" | "deny");
+                    }
+                  }}
+                >
+                  <ToggleGroupItem value="allow">
+                    <Check className="size-3.5" />
+                    允许
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="deny">
+                    <Ban className="size-3.5" />
+                    拒绝
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="perm-expires">过期时间(可选)</FieldLabel>
+                <DatePicker id="perm-expires" value={expiresAt} onChange={setExpiresAt} />
+              </Field>
+            </FieldGroup>
+            <div className="flex justify-end">
+              <Button disabled={selectedPermission === "" || assigning} onClick={() => { void assignPermission(); }}>
+                {assigning && <Spinner data-icon="inline-start" />}
+                <ShieldCheck />
+                授予
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
