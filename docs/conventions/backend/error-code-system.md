@@ -96,7 +96,7 @@ export class AppError extends Error {
 
 ```ts
 throw new AppError("USER_NOT_FOUND");
-throw new AppError("PERMISSION_NOT_FOUND", { params: { permission: missing } });
+throw new AppError("PERMISSION_NOT_FOUND", { params: { permissionCode: missing } });
 ```
 
 ## i18n(多语言)
