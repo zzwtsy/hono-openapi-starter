@@ -45,6 +45,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | DELETE | `/api/v1/roles/{roleId}` | `deleteRole` | roles.delete | 删实例角色（cascade） |
 | GET | `/api/v1/roles/{roleId}/permissions` | `listRolePermissions` | roles.read | 角色含的权限 |
 | POST | `/api/v1/roles/{roleId}/permissions` | `assignRolePermissions` | roles.assign-permissions | 给角色配权限 |
+| PATCH | `/api/v1/roles/{roleId}/permissions` | `updateRolePermissions` | 按新增/撤销差量分别校验 `roles.assign-permissions` / `roles.revoke-permissions` | 原子批量新增和撤销角色权限 |
 | DELETE | `/api/v1/roles/{roleId}/permissions/{permissionCode}` | `deleteRolePermission` | roles.revoke-permissions | 撤角色权限 |
 | GET | `/api/v1/roles/{roleId}/users` | `listRoleUsers` | assignments.read | 角色已授用户（管理子树内，含 orgId/expiresAt） |
 | GET | `/api/v1/users` | `listUsers` | users.read | 列出管理子树(自身+子孙)下的用户 |
@@ -71,7 +72,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 统一 envelope（`success` / `code` / `data` / `error` / `meta.requestId`）。列表不分页（第一版全量返回，按 name/createdAt 确定性排序）。`DELETE` 撤销类用 query `orgId` 定位（user_roles/user_permissions PK 含 orgId）。
 
-权限契约统一使用机器 code：字符串身份字段命名为 `permissionCode`，字符串数组命名为 `permissionCodes`，批量角色授权 body 为 `{ permissionCodes }`。`GET /api/v1/permissions`、角色权限列表返回 `PermissionRef[]`；有效权限、deny 和直接授权记录使用 `permission: PermissionRef`。`/api/v1/me` 只返回 `permissionCodes`，不把展示 label 混入授权身份。已知权限输入由 catalog 派生的 OpenAPI enum 约束，HTTP 未知 code 返回 `400/PERMISSION_CODE_INVALID`，service 或同步阶段发现内部未知 code 则使用 `PERMISSION_NOT_FOUND` 或启动失败。
+权限契约统一使用机器 code：字符串身份字段命名为 `permissionCode`，字符串数组命名为 `permissionCodes`，批量角色授权 body 为 `{ permissionCodes }`；角色权限差量更新 body 为 `{ addPermissionCodes, removePermissionCodes }`，两个数组不可交叉。`GET /api/v1/permissions`、角色权限列表返回 `PermissionRef[]`；有效权限、deny 和直接授权记录使用 `permission: PermissionRef`。`/api/v1/me` 只返回 `permissionCodes`，不把展示 label 混入授权身份。已知权限输入由 catalog 派生的 OpenAPI enum 约束，HTTP 未知 code 返回 `400/PERMISSION_CODE_INVALID`，service 或同步阶段发现内部未知 code 则使用 `PERMISSION_NOT_FOUND` 或启动失败。角色权限差量更新在同一事务中完成，失败不留下部分新增或撤销。
 
 `listUserRoles` / `listUserDirectPermissions` 返回**原始授权记录**（`orgId` 直接相等，非祖先继承），供管理端撤销用；`listUserPermissions` 返回**有效权限全集 + 来源链**（含祖先继承 + deny 减法 + 过期过滤，CTE 计算；每条权限带来源 `{type, roleId, roleName, orgId, expiresAt}`，被 deny 抵消的单独列 `denied` 带 `suppressedSources` + `deniedBy`）。`listRoleUsers` 返回管理子树内授了某角色的 `(user, org)` 记录（供角色详情展示影响面）。撤销看原始授权记录，展示"用户最终能干什么 + 从哪来"看有效权限全集，看"改角色影响谁"看 `listRoleUsers`。三者查无记录返回空数组/空对象，不抛 404。
 

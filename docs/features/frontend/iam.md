@@ -50,7 +50,7 @@ features/iam/
         index.tsx
         use-role-permissions.ts
       role-users-tab.tsx
-    user-detail-panel/                  # 用户详情(目录):组织选择器 + 信息 / 角色授权 / 直接授权 / 有效权限
+    user-detail-panel/                  # 用户详情(目录):组织选择器 + 信息 / 角色授权 / 直接授权 / 有效权限 / 审计
       index.tsx                         # 容器:组织选择器 + Tabs + 编辑/重置/禁用对话框
       user-info-tab.tsx
       effective-permissions-panel.tsx   # 含 SourceBadge
@@ -62,6 +62,7 @@ features/iam/
     reset-password-dialog.tsx           # 重置密码弹窗
   hooks/                                # 业务 hook
     use-user-page-state.ts              # orgOptions/getOrgPath 派生(从 route 下放)
+    use-iam-capabilities.ts             # 用户授权读/授予/撤销能力矩阵
   lib/                                  # feature 内工具
     organization-tree.ts                # 树索引、祖先/后代、路径与父节点候选
     iam-actions.ts                      # action delegation(cache 刷新)
@@ -73,15 +74,17 @@ features/iam/
 
 ## 用户授权
 
-`UserDetailPanel` 顶部「授权视角组织」选择器（操作者管理子树内 org，带路径）+ 四 Tab 管理某用户在选中组织的授权。`org`/`tab` 进 URL，支持深链接。切换视角组织或调岗后，三个授权 Tab（角色/直接/有效权限）用 `useWatcher` 监听 `orgId` 自动重拉数据。调岗成功后 URL `org` 参数同步设为新 org，防止视角卡在旧 org。
+`UserDetailPanel` 顶部「授权视角组织」选择器（操作者管理子树内 org，带路径）+ 信息、角色、直接、有效权限、操作历史 Tab 管理某用户。`org`/`tab` 进 URL，支持深链接；非法或无 `assignments.read` 的授权 Tab 回退到信息且不发起授权请求。切换视角组织或调岗后，三个授权 Tab（角色/直接/有效权限）用 `useWatcher` 监听 `orgId` 自动重拉数据。调岗成功后 URL `org` 参数同步设为新 org，防止视角卡在旧 org。
 
-- **有效权限**：后端 `IAM.listUserPermissions` 直接返回带来源链的结构（`effective` + `denied`），无需前端 N+1 拼。每条权限展示来源 badge（角色名可点击跳转角色详情，组织可点击切到该 org 视角），祖先继承的权限来源 orgId 即祖先组织。被 deny 抵消的权限单独成区，标注本会来自的来源（`suppressedSources`）与哪些 org deny（`deniedBy`）。
-- **角色授权**：列出已授角色（`listUserRoles`，含过期，角色名可点击跳转） + 逐条撤销（`deleteUserRole`） + 授角色表单（角色 Select + 过期 DatePicker + `assignUserRole`）。选中角色后内联预览其权限，并对比当前有效权限高亮「授予后将新增」的权限，消除盲选。
-- **直接授权**：列出已授直接权限（`listUserDirectPermissions`，含 effect/过期） + 逐条撤销（`deleteUserPermission`） + 授直接权限表单（权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`）。deny = 阻止部分权限。
+- **有效权限**：后端 `IAM.listUserPermissions` 直接返回带来源链的结构（`effective` + `denied`），无需前端 N+1 拼。每条权限展示来源 badge；有对应读权限时角色名可跳转角色详情、组织可切到该 org 视角，否则显示纯文本。祖先继承的权限来源 orgId 即祖先组织。被 deny 抵消的权限单独成区，标注本会来自的来源（`suppressedSources`）与哪些 org deny（`deniedBy`）。
+- **角色授权**：列出已授角色（`listUserRoles`，含过期，角色名可点击跳转） + 确认后逐条撤销（`deleteUserRole`） + 授角色表单（角色 Select + 过期 DatePicker + `assignUserRole`）。选中角色后内联预览其权限，并对比当前有效权限高亮「授予后将新增」的权限，消除盲选；本人授权不显示撤销。
+- **直接授权**：列出已授直接权限（`listUserDirectPermissions`，含 effect/过期） + 确认后逐条撤销（`deleteUserPermission`） + 授直接权限表单（权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`）。deny = 阻止部分权限；权限目录只在具备 `permissions.read` 时加载。
 
 **组织选择器**解决「祖先 org 授的授权在 home org 视角不可见不可撤销」：`listUserRoles`/`listUserDirectPermissions` 用 `eq(orgId)` 只返回该 org 直接授权，有效权限走祖先继承 CTE；切换组织选择器可逐个 org 查看直接授权与生效全集，来源 badge 的组织点击可快速跳到祖先 org 视角。
 
-过期用 DatePicker（react-day-picker v10 + Base UI Popover 薄包装），日期粒度。授予/撤销后 alova `hitSource` 自动失效对应 GET。**需 `assignments.read` + `roles.read` + `permissions.read` 且至少持 `assignments.grant` 或 `assignments.revoke` 才显示授权入口**，且对自己的行隐藏；「授予」按钮受 `assignments.grant` 控制、「撤销」按钮受 `assignments.revoke` 控制（无权限则隐藏）；后端 `deleteUserRole`/`deleteUserPermission` 禁止对自己操作，防自我降级锁死。
+过期用 DatePicker（react-day-picker v10 + Base UI Popover 薄包装），日期粒度；已过期记录明确标记。授予/撤销后 alova `hitSource` 自动失效对应 GET。查看授权需 `assignments.read`；角色授予还需 `roles.read`，直接权限授予还需 `permissions.read`；无对应写权限的控件不显示，且对自己的行隐藏撤销。后端 `deleteUserRole`/`deleteUserPermission` 禁止对自己操作，防自我降级锁死。资源操作历史使用 by-resource API 的资源读权限，不额外要求 `audit.read`。
+
+角色权限配置保留本地勾选草稿：多项新增、当前结果全选和全选撤销均在一次点击「保存」时调用一次 `PATCH /api/v1/roles/{roleId}/permissions`，body 为新增/撤销差量；成功后以服务端返回值更新基线，失败时保留草稿并可重试。代码角色始终只读。只有新增或只有撤销时分别使用对应方向权限，混合变更需同时具备两种角色权限写权限。
 
 > 续期语义：重复授角色/权限时，提供 `expiresAt` 则更新（续期），省略则保留原过期时间（不清空）；UI 标注「暂不支持从有限期改回永不过期」（后端 `onConflictDoUpdate` 不支持显式清空，留后续）。
 
@@ -110,6 +113,7 @@ features/iam/
 - 父组织缺失的节点提升到根层，避免数据静默消失。
 - 遍历使用 visited 集合并防御性断开脏数据环；后端 PATCH 防环仍是最终一致性边界。
 - 编辑父组织时排除自身及全部后代；Select 显示“总部 / 产品中心”形式的完整路径。
+- 提交父组织变更前明确提示继承权限路径会变化，确认后才调用更新 API。
 - 同步数据源更新后调用 Headless Tree `scheduleRebuildTree()`，让 alova 刷新结果进入可见树。
 
 ## 交互与响应式

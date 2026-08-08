@@ -153,6 +153,8 @@ lastReviewedAt: 2026-07-28
 - [x] 实例角色 CRUD；`source=code|instance`；code 角色不可改删
 - [x] admin 代码角色同步全部权限
 - [x] 角色权限挂载 API + UI
+- [x] 角色权限多项勾选统一保存、全选撤销使用单次原子差量请求
+- [x] 代码角色权限只读；用户本人角色/直接权限撤销入口隐藏且后端拒绝
 - [x] 权限从代码移除后的 registry 清理策略：catalog 外且无 `role_permissions`/`user_permissions` 引用的 code 行由 sync 清理；仍被引用时启动失败，先显式处理授权关系后再同步（权限外键为 `ON DELETE RESTRICT`）
 - [x] 与细粒度角色权限对齐（见 §3.2）--角色写操作拆为 `roles.create/update/delete/assign-permissions/revoke-permissions`、读操作 `roles.read`，已对齐
 
