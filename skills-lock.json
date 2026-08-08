@@ -17,7 +17,7 @@
       "source": "better-auth/skills",
       "sourceType": "github",
       "skillPath": "better-auth/best-practices/SKILL.md",
-      "computedHash": "a4c830509e85557b59339d8d93a4e243e9e59c686e7678854d39230e12c2a6dc"
+      "computedHash": "61ba0ef64ed2e7c424401cc848ca33dd6d790a720c44727717dc0c5cba5fc122"
     },
     "migrate-radix-to-base": {
       "source": "shadcn/ui",
@@ -29,7 +29,7 @@
       "source": "shadcn/ui",
       "sourceType": "github",
       "skillPath": "skills/shadcn/SKILL.md",
-      "computedHash": "d81caa0f86aabab65b25e302d454f23a3328760386ed9078345584c0d5c8058e"
+      "computedHash": "c1a68ee06a668aced9ab2b5fbdea5f989864123794eb2e056b339a072dbb7f10"
     },
     "vercel-composition-patterns": {
       "source": "vercel-labs/agent-skills",
@@ -59,7 +59,7 @@
       "source": "alovajs/skills",
       "sourceType": "github",
       "skillPath": "skills/worma-guidelines/SKILL.md",
-      "computedHash": "8b62c9826237a9934befbd9b844c463642793435859ef11c79971dbc30835c18"
+      "computedHash": "050cd2fa3e6ff9774c5edc151fe6dbe7d0301a90fccdb24b969c2158c7f96ec8"
     }
   }
 }
