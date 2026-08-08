@@ -45,7 +45,7 @@ beforeLoad: ({ context }) => {
 }
 ```
 
-权限 code 与后端 `AppPermissionCode` 一致(如 `roles.read`、`assignments.grant`、`projects.read`)；展示权限对象统一消费 API 返回的 `PermissionRef`。
+权限 code 与后端 `AppPermissionCode` 一致(如 `roles.read`、`assignments.grant`、`projects.read`)；展示权限对象统一消费 API 返回的 `PermissionRef`，UI 只展示 `label`/`resourceLabel`，code 仅用于权限判断、请求参数和稳定 key。
 
 ## router context
 
