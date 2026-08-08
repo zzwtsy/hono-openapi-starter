@@ -1,7 +1,7 @@
 import type { PermissionDefinition } from "../auth/permissions.js";
 import { sql } from "drizzle-orm";
 import { db } from "../../db/client.js";
-import { permissions, rolePermissions, roles } from "../../db/schema/authorization-schema.js";
+import { permissions, rolePermissions, roles, userPermissions } from "../../db/schema/authorization-schema.js";
 import { logger } from "../logger/index.js";
 
 /**
@@ -13,14 +13,14 @@ export const ADMIN_ROLE = { id: "role-admin", name: "admin", source: "code" } as
 
 /**
  * 从代码同步权限层目录到数据库:
- * - `permissions` 表:upsert 传入的权限定义(各 feature 声明,组装点汇总传入)
+ * - `permissions` 表:upsert 传入的权限 code(各 feature 声明,组装点汇总传入)
  * - 标准 `admin` 角色 + `role_permissions`(admin × 全部权限)
  *
  * 代码是权限的真相来源(各 feature `permissions.ts` 声明,组装点 `index.ts` 汇总),DB 表是运行时镜像。
  * 接收 `defs` 参数(反转依赖:core 不 import features,组装点传权限定义)。app 启动时自动跑,幂等 upsert。
  *
  * 单事务:三个 upsert 原子完成,中途失败不留半套状态。
- * Upsert-only:从代码移除权限不会自动删库行,需手动清理 `role_permissions` + `permissions`。
+ * code-only registry:从代码移除且仍有授权引用时同步失败;无引用的孤立 registry 行允许清理。
  */
 export async function syncAuthorizationCatalog(defs: readonly PermissionDefinition[]) {
   if (defs.length === 0) {
@@ -29,15 +29,34 @@ export async function syncAuthorizationCatalog(defs: readonly PermissionDefiniti
   }
 
   await db.transaction(async (tx) => {
-    // 权限目录(含 description):onConflictDoUpdate 更新 description + updatedAt,
-    // 代码改权限描述后启动同步生效(此前 DoNothing 导致描述改了不更新)。
+    const codes = defs.map(({ code }) => code);
+    // 先检查 catalog 外的 code 是否仍被授权引用,禁止静默删除授权关系。
+    const stale = await tx
+      .select({ code: permissions.code })
+      .from(permissions)
+      .where(sql`${permissions.code} NOT IN (${sql.join(codes.map(code => sql`${code}`), sql`, `)})`);
+    for (const row of stale) {
+      const [roleGrant] = await tx
+        .select({ roleId: rolePermissions.roleId })
+        .from(rolePermissions)
+        .where(sql`${rolePermissions.permissionCode} = ${row.code}`)
+        .limit(1);
+      const [userGrant] = await tx
+        .select({ userId: userPermissions.userId })
+        .from(userPermissions)
+        .where(sql`${userPermissions.permissionCode} = ${row.code}`)
+        .limit(1);
+      if (roleGrant != null || userGrant != null) {
+        throw new Error(`Stale permission code is still referenced: ${row.code}`);
+      }
+      await tx.delete(permissions).where(sql`${permissions.code} = ${row.code}`);
+    }
+
+    // 权限目录只保存 code; label 等展示元数据来自代码 catalog presenter。
     await tx
       .insert(permissions)
-      .values([...defs])
-      .onConflictDoUpdate({
-        target: permissions.name,
-        set: { description: sql`EXCLUDED.description`, updatedAt: new Date() },
-      });
+      .values(codes.map(code => ({ code })))
+      .onConflictDoNothing();
     // 标准 admin 角色(onConflictDoUpdate 强制 source='code':migration 加列后旧库 admin 行可能被 default 'instance' 覆盖,sync 修正)
     await tx.insert(roles)
       .values(ADMIN_ROLE)
@@ -45,7 +64,7 @@ export async function syncAuthorizationCatalog(defs: readonly PermissionDefiniti
     // admin 授全部权限
     await tx
       .insert(rolePermissions)
-      .values(defs.map(({ name }) => ({ roleId: ADMIN_ROLE.id, permission: name })))
+      .values(codes.map(code => ({ roleId: ADMIN_ROLE.id, permissionCode: code })))
       .onConflictDoNothing();
   });
 

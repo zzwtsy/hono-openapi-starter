@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-06-03
+lastReviewedAt: 2026-08-07
 ---
 
 # Better Auth 集成规范
@@ -110,38 +110,43 @@ betterAuth({
 
 强制规范：
 
-- `requirePermission` 允许直接传 `<resource>.<action>` 字符串。
-- `requirePermission` 的参数类型必须是 `AppPermission` 字面量 union，不能放宽成 `string` 或仅使用 `` `${string}.${string}` ``。
-- 权限字符串格式必须是 `<resource>.<action>`。
-- `core/auth` 只提供权限类型和 `requirePermission` 中间件，检查逻辑在 `core/authorization/`，不硬编码业务权限。
-- 各 feature 在自己的 `permissions.ts` 中用 `as const satisfies` 声明权限数组，并用 `declare module` 把权限名 push 到 `core/auth/permissions.ts` 的 `AppPermissionRegistry`（module augmentation）；`AppPermission` 是 `keyof AppPermissionRegistry & PermissionName` 的联合，类型层与运行时数组同源，漏登记编译报错。
+- `requirePermission` 的参数类型是 `AppPermissionCode` 字面量 union，不能放宽成 `string` 或仅使用 `` `${string}.${string}` ``。
+- 权限 code 格式为 `<resourceCode>.<actionCode>`，由 `definePermissionCatalog()` builder 校验并自动生成。
+- `core/auth` 只提供通用 `PermissionCode`/`PermissionDefinition`/`PermissionRef` 类型、catalog builder 和 `requirePermission` 中间件，检查逻辑在 `core/authorization/`，不硬编码业务资源和中文 label。
+- 各 feature 以完整权限数组作为一个 registry slot 做 module augmentation；`permissions-catalog.ts` 汇总后执行唯一性、格式和覆盖校验，漏登记编译报错。
 
 `core/auth/permissions.ts` 示例：
 
 ```ts
-export type PermissionName = `${string}.${string}`;
+export type PermissionCode = `${string}.${string}`;
 
-/** 权限定义:name + 可选 description(进 DB permissions 表,供管理界面展示)。 */
 export interface PermissionDefinition {
-  name: PermissionName;
-  description?: string;
+  code: PermissionCode;
+  resourceCode: string;
+  actionCode: string;
+  resourceLabel: string;
+  label: string;
 }
+
+export type PermissionRef = PermissionDefinition;
 ```
 
 `features/projects/permissions.ts` 示例：
 
 ```ts
-import type { PermissionDefinition } from "@/core/auth/permissions";
+import { definePermissionCatalog } from "@/core/auth/permissions";
 
-/** `as const` 保字面量类型,`satisfies` 校验结构合法(不拓宽类型)。 */
-export const projectPermissions = [
-  { name: "projects.read", description: "查看项目" },
-] as const satisfies readonly PermissionDefinition[];
+export const projectPermissions = definePermissionCatalog({
+  projects: {
+    label: "项目",
+    actions: { read: "查看项目" },
+  },
+});
 
-export type ProjectPermission = (typeof projectPermissions)[number]["name"];
+export type ProjectPermission = (typeof projectPermissions)[number]["code"];
 ```
 
-`permissions-catalog.ts` 汇总所有 feature 的权限数组为 `allPermissions`（运行时目录，供 `syncAuthorizationCatalog` 同步进 DB）。类型层的 `AppPermission` union 从 `core/auth/permissions.ts` 的 `AppPermissionRegistry` 推导（各 feature 用 `declare module` 扩展）。新增 feature 时在 catalog 追加 import + 展开到数组——漏登记会导致 `AppPermission` 缺该权限，`requirePermission("x")` 编译报错。
+`permissions-catalog.ts` 汇总所有 feature 的权限数组为 `allPermissions`（运行时目录，供 `syncAuthorizationCatalog` 同步 code-only registry）。类型层的 `AppPermissionCode` union 从 `AppPermissionRegistry` 推导（各 feature 用 `declare module` 扩展一个数组 slot）。HTTP presenter 从 catalog 把 code 映射成 `PermissionRef`；前端不自行拆分 code 或维护 label 映射。
 
 `core/auth/require-permission.ts` 示例：
 
@@ -149,9 +154,9 @@ export type ProjectPermission = (typeof projectPermissions)[number]["name"];
 import { createMiddleware } from "hono/factory";
 import { PermissionService } from "@/core/authorization";
 import { AppError } from "@/core/errors/app-error";
-import type { AppPermission } from "@/core/auth/permissions";
+import type { AppPermissionCode } from "@/core/auth/permissions";
 
-export const requirePermission = (permission: AppPermission, options?: { orgId?: string }) =>
+export const requirePermission = (permissionCode: AppPermissionCode, options?: { orgId?: string }) =>
   createMiddleware(async (c, next) => {
     const user = c.get("user");
     if (!user) throw new AppError("COMMON_UNAUTHORIZED");
@@ -160,7 +165,7 @@ export const requirePermission = (permission: AppPermission, options?: { orgId?:
     if (!orgId) throw new AppError("COMMON_FORBIDDEN");
 
     // PermissionService 直接用全局 db(core 基础设施不传 db/tx)
-    const allowed = await PermissionService.check(user.id, permission, orgId);
+    const allowed = await PermissionService.check(user.id, permissionCode, orgId);
     if (!allowed) throw new AppError("COMMON_FORBIDDEN");
 
     await next();
@@ -176,9 +181,9 @@ middleware: [requireAuth(), requirePermission("users.read")] as const,
 禁止：
 
 ```ts
-const permission: string = "users.read";
+const permissionCode: string = "users.read";
 
-middleware: [requireAuth(), requirePermission(permission)] as const,
+middleware: [requireAuth(), requirePermission(permissionCode)] as const,
 ```
 
 权限名建议格式：

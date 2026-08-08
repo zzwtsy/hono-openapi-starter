@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { AppPermission } from "@/types/permissions";
+import type { PermissionCode } from "@/types/permissions";
 import { usePermissions } from "@/hooks/use-permissions";
 import { hasAllPermissions, hasAnyPermission, hasPermission } from "@/lib/permissions";
 
@@ -8,9 +8,9 @@ type CanProps = {
   /** 无权限时渲染,默认隐藏(null);仅 children 为元素时生效。 */
   fallback?: ReactNode;
 } & (
-  | { permission: AppPermission; anyOf?: never; allOf?: never }
-  | { anyOf: readonly AppPermission[]; permission?: never; allOf?: never }
-  | { allOf: readonly AppPermission[]; permission?: never; anyOf?: never }
+  | { permission: PermissionCode; anyOf?: never; allOf?: never }
+  | { anyOf: readonly PermissionCode[]; permission?: never; allOf?: never }
+  | { allOf: readonly PermissionCode[]; permission?: never; anyOf?: never }
 );
 
 /**

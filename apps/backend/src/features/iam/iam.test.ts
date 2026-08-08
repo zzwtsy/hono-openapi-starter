@@ -110,11 +110,11 @@ vi.mock("./service.js", () => ({
 const mockUser = { id: "u-1", orgId: "org-1", email: "a@b.c", name: "a" };
 const mockSession = { id: "s-1", userId: "u-1", token: "t" };
 const mockPermission = {
-  name: "projects.read",
-  description: "查看项目",
+  code: "projects.read",
+  resourceCode: "projects",
+  actionCode: "read",
   resourceLabel: "项目",
-  createdAt: new Date("2026-07-07T00:00:00.000Z"),
-  updatedAt: new Date("2026-07-07T00:00:00.000Z"),
+  label: "查看项目",
 };
 const mockRole = {
   id: "r-1",
@@ -193,8 +193,8 @@ describe("iam routes", () => {
 
     const res = await buildApp().request("/permissions");
     expect(res.status).toBe(200);
-    const body = await res.json() as { data: { name: string }[] };
-    expect(body.data[0].name).toBe("projects.read");
+    const body = await res.json() as { data: { code: string }[] };
+    expect(body.data[0].code).toBe("projects.read");
   });
 
   // --- 角色列表 ---
@@ -301,12 +301,12 @@ describe("iam routes", () => {
 
   it("listRolePermissions 有 roles.read 调 service 返回 200", async () => {
     authed();
-    mockListRolePermissions.mockResolvedValue(["projects.read"]);
+    mockListRolePermissions.mockResolvedValue([mockPermission]);
 
     const res = await buildApp().request("/roles/r-1/permissions");
     expect(res.status).toBe(200);
-    const body = await res.json() as { data: string[] };
-    expect(body.data).toEqual(["projects.read"]);
+    const body = await res.json() as { data: typeof mockPermission[] };
+    expect(body.data).toEqual([mockPermission]);
     expect(mockListRolePermissions).toHaveBeenCalledWith("r-1");
   });
 
@@ -326,7 +326,7 @@ describe("iam routes", () => {
     const res = await buildApp().request("/roles/r-1/permissions", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ permissions: ["projects.read"] }),
+      body: JSON.stringify({ permissionCodes: ["projects.read"] }),
     });
     expect(res.status).toBe(403);
   });
@@ -334,16 +334,16 @@ describe("iam routes", () => {
   it("assignRolePermissions 返回角色当前权限列表", async () => {
     authed();
     mockAssignRolePermissions.mockResolvedValue(undefined);
-    mockListRolePermissions.mockResolvedValue(["projects.read"]);
+    mockListRolePermissions.mockResolvedValue([mockPermission]);
 
     const res = await buildApp().request("/roles/r-1/permissions", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ permissions: ["projects.read"] }),
+      body: JSON.stringify({ permissionCodes: ["projects.read"] }),
     });
     expect(res.status).toBe(200);
-    const body = await res.json() as { data: string[] };
-    expect(body.data).toEqual(["projects.read"]);
+    const body = await res.json() as { data: typeof mockPermission[] };
+    expect(body.data).toEqual([mockPermission]);
     expect(mockAssignRolePermissions).toHaveBeenCalledWith("r-1", ["projects.read"]);
   });
 
@@ -362,8 +362,8 @@ describe("iam routes", () => {
 
     const res = await buildApp().request("/roles/r-1/permissions/projects.read", { method: "DELETE" });
     expect(res.status).toBe(200);
-    const body = await res.json() as { data: { permission: string } };
-    expect(body.data.permission).toBe("projects.read");
+    const body = await res.json() as { data: { permissionCode: string } };
+    expect(body.data.permissionCode).toBe("projects.read");
     expect(mockDeleteRolePermission).toHaveBeenCalledWith("r-1", "projects.read");
   });
 
@@ -711,8 +711,8 @@ describe("iam routes", () => {
       body: JSON.stringify({ orgId: "org-1", effect: "deny" }),
     });
     expect(res.status).toBe(200);
-    const body = await res.json() as { data: { userId: string; permission: string; orgId: string; effect: string } };
-    expect(body.data).toEqual({ userId: "u-2", permission: "projects.read", orgId: "org-1", effect: "deny" });
+    const body = await res.json() as { data: { userId: string; permissionCode: string; orgId: string; effect: string } };
+    expect(body.data).toEqual({ userId: "u-2", permissionCode: "projects.read", orgId: "org-1", effect: "deny" });
     expect(mockAssignUserPermission).toHaveBeenCalledWith("org-1", "u-2", "projects.read", {
       orgId: "org-1",
       effect: "deny",
@@ -746,8 +746,8 @@ describe("iam routes", () => {
 
     const res = await buildApp().request("/users/u-2/permissions/projects.read?orgId=org-1", { method: "DELETE" });
     expect(res.status).toBe(200);
-    const body = await res.json() as { data: { userId: string; permission: string; orgId: string } };
-    expect(body.data).toEqual({ userId: "u-2", permission: "projects.read", orgId: "org-1" });
+    const body = await res.json() as { data: { userId: string; permissionCode: string; orgId: string } };
+    expect(body.data).toEqual({ userId: "u-2", permissionCode: "projects.read", orgId: "org-1" });
     expect(mockDeleteUserPermission).toHaveBeenCalledWith("org-1", "u-1", "u-2", "projects.read", "org-1");
   });
 
@@ -778,12 +778,18 @@ describe("iam routes", () => {
 
   it("listUserPermissions 有 assignments.read 调 service 返回 200", async () => {
     authed();
-    mockListUserEffectivePermissions.mockResolvedValue(["projects.read", "assignments.read"]);
+    mockListUserEffectivePermissions.mockResolvedValue({
+      effective: [
+        { permissionCode: "projects.read", sources: [] },
+        { permissionCode: "assignments.read", sources: [] },
+      ],
+      denied: [],
+    });
 
     const res = await buildApp().request("/users/u-2/permissions?orgId=org-1");
     expect(res.status).toBe(200);
-    const body = await res.json() as { data: string[] };
-    expect(body.data).toEqual(["projects.read", "assignments.read"]);
+    const body = await res.json() as { data: { effective: { permission: { code: string } }[] } };
+    expect(body.data.effective.map(item => item.permission.code)).toEqual(["projects.read", "assignments.read"]);
     expect(mockListUserEffectivePermissions).toHaveBeenCalledWith("org-1", "u-2", "org-1");
   });
 
@@ -825,7 +831,7 @@ describe("iam routes", () => {
   it("listUserDirectPermissions 有 assignments.read 调 service 返回 200", async () => {
     authed();
     const direct = {
-      permission: "projects.read",
+      permission: mockPermission,
       effect: "deny" as const,
       orgId: "org-1",
       expiresAt: null,
@@ -834,8 +840,8 @@ describe("iam routes", () => {
 
     const res = await buildApp().request("/users/u-2/direct-permissions?orgId=org-1");
     expect(res.status).toBe(200);
-    const body = await res.json() as { data: { permission: string; effect: string }[] };
-    expect(body.data[0]).toEqual({ permission: "projects.read", effect: "deny", orgId: "org-1", expiresAt: null });
+    const body = await res.json() as { data: { permission: typeof mockPermission; effect: string }[] };
+    expect(body.data[0]).toEqual({ permission: mockPermission, effect: "deny", orgId: "org-1", expiresAt: null });
     expect(mockListUserDirectPermissions).toHaveBeenCalledWith("org-1", "u-2", "org-1");
   });
 
@@ -1045,7 +1051,7 @@ describe("iam routes", () => {
     ["patch", "/roles/r-1", "{}"],
     ["delete", "/roles/r-1", ""],
     ["get", "/roles/r-1/permissions", ""],
-    ["post", "/roles/r-1/permissions", "{\"permissions\":[]}"],
+    ["post", "/roles/r-1/permissions", "{\"permissionCodes\":[]}"],
     ["delete", "/roles/r-1/permissions/projects.read", ""],
     ["get", "/users", ""],
     ["post", "/users", "{}"],

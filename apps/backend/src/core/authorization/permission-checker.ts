@@ -1,3 +1,5 @@
+import type { PermissionCode } from "../auth/permissions.js";
+
 /**
  * 权限检查 Port(接口 + holder)。
  *
@@ -18,13 +20,13 @@ export interface PermissionSource {
 
 /** 生效权限及其来源集合(同一权限可多来源)。 */
 export interface EffectivePermission {
-  permission: string;
+  permissionCode: PermissionCode;
   sources: PermissionSource[];
 }
 
 /** 被 deny 抵消的权限:本会生效(suppressedSources)但被直接 deny 扣掉(deniedBy,可多 org)。 */
 export interface DeniedPermission {
-  permission: string;
+  permissionCode: PermissionCode;
   deniedBy: { orgId: string; expiresAt: Date | null }[];
   suppressedSources: PermissionSource[];
 }
@@ -37,7 +39,7 @@ export interface UserPermissionsResult {
 
 export interface PermissionChecker {
   /** 检查用户在某组织是否有某权限(递归 CTE 算法由 Adapter 实现)。 */
-  check: (userId: string, permission: string, orgId: string) => Promise<boolean>;
+  check: (userId: string, permissionCode: PermissionCode, orgId: string) => Promise<boolean>;
   /** 列出用户在某组织的有效权限全集(带来源链:角色/直接/继承,含被 deny 抵消的)。 */
   listEffectivePermissions: (userId: string, orgId: string) => Promise<UserPermissionsResult>;
 }

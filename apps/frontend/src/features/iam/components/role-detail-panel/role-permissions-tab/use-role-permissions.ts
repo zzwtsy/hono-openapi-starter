@@ -1,4 +1,5 @@
-import type { Permission, Role } from "@/api/globals";
+import type { PermissionRef, Role } from "@/api/globals";
+import type { PermissionCode } from "@/types/permissions";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
 import { useMemo, useState } from "react";
 import Apis from "@/api";
@@ -33,9 +34,9 @@ export function useRolePermissions(role: Role) {
   );
   const loading = permsLoading || grantedLoading;
   const error = permsError ?? grantedError;
-  const initial = useMemo(() => new Set(granted ?? []), [granted]);
+  const initial = useMemo(() => new Set(granted?.map(permission => permission.code) ?? []), [granted]);
 
-  const [working, setWorking] = useState<Set<string>>(() => new Set(initial));
+  const [working, setWorking] = useState<Set<PermissionCode>>(() => new Set(initial));
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"all" | "selected" | "diff">("all");
   const [prevInitial, setPrevInitial] = useState(initial);
@@ -53,38 +54,38 @@ export function useRolePermissions(role: Role) {
     let list = allPerms ?? [];
     if (q !== "") {
       list = list.filter(
-        p => p.name.toLowerCase().includes(q) || (p.description ?? "").toLowerCase().includes(q),
+        p => p.code.toLowerCase().includes(q) || p.label.toLowerCase().includes(q) || p.resourceLabel.toLowerCase().includes(q),
       );
     }
     if (viewMode === "selected") {
-      list = list.filter(p => working.has(p.name));
+      list = list.filter(p => working.has(p.code));
     } else if (viewMode === "diff") {
-      list = list.filter(p => working.has(p.name) !== initial.has(p.name));
+      list = list.filter(p => working.has(p.code) !== initial.has(p.code));
     }
     return list;
   }, [allPerms, search, viewMode, working, initial]);
-  const groups = useMemo(() => groupByResource(filtered, p => p.name), [filtered]);
+  const groups = useMemo(() => groupByResource(filtered, p => p.resourceCode), [filtered]);
 
-  const toggle = (name: string) => {
+  const toggle = (permissionCode: PermissionCode) => {
     setWorking((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
+      if (next.has(permissionCode)) {
+        next.delete(permissionCode);
       } else {
-        next.add(name);
+        next.add(permissionCode);
       }
       return next;
     });
   };
 
-  const toggleAllInGroup = (perms: Permission[], select: boolean) => {
+  const toggleAllInGroup = (perms: PermissionRef[], select: boolean) => {
     setWorking((prev) => {
       const next = new Set(prev);
       for (const p of perms) {
         if (select) {
-          next.add(p.name);
+          next.add(p.code);
         } else {
-          next.delete(p.name);
+          next.delete(p.code);
         }
       }
       return next;
@@ -106,11 +107,11 @@ export function useRolePermissions(role: Role) {
         if (toAdd.length > 0) {
           await Apis.IAM.assignRolePermissions({
             pathParams: { roleId: role.id },
-            data: { permissions: toAdd },
+            data: { permissionCodes: toAdd },
           });
         }
         for (const p of toRemove) {
-          await Apis.IAM.deleteRolePermission({ pathParams: { roleId: role.id, permission: p } });
+          await Apis.IAM.deleteRolePermission({ pathParams: { roleId: role.id, permissionCode: p } });
         }
       },
       { successMessage: `已更新:授予 ${toAdd.length},撤销 ${toRemove.length}`, errorMessage: "操作失败" },

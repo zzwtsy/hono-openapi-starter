@@ -32,6 +32,7 @@ import type {
 import type { AppRouteHandler } from "@/core/http/context.js";
 import { requireOrgUser } from "@/core/auth/context.js";
 import { successResponse } from "@/core/http/response.js";
+import { toPermissionRefs } from "@/permissions-catalog.js";
 import { IamService } from "./service.js";
 
 // --- 权限目录 ---
@@ -74,15 +75,15 @@ export const listRolePermissionsHandler: AppRouteHandler<ListRolePermissionsRout
 export const assignRolePermissionsHandler: AppRouteHandler<AssignRolePermissionsRoute> = async (c) => {
   const { roleId } = c.req.valid("param");
   const body = c.req.valid("json");
-  await IamService.assignRolePermissions(roleId, body.permissions);
+  await IamService.assignRolePermissions(roleId, body.permissionCodes);
   const current = await IamService.listRolePermissions(roleId);
   return successResponse(c, current);
 };
 
 export const deleteRolePermissionHandler: AppRouteHandler<DeleteRolePermissionRoute> = async (c) => {
-  const { roleId, permission } = c.req.valid("param");
-  await IamService.deleteRolePermission(roleId, permission);
-  return successResponse(c, { permission });
+  const { roleId, permissionCode } = c.req.valid("param");
+  await IamService.deleteRolePermission(roleId, permissionCode);
+  return successResponse(c, { permissionCode });
 };
 
 export const listRoleUsersHandler: AppRouteHandler<ListRoleUsersRoute> = async (c) => {
@@ -164,26 +165,36 @@ export const deleteUserRoleHandler: AppRouteHandler<DeleteUserRoleRoute> = async
 
 export const assignUserPermissionHandler: AppRouteHandler<AssignUserPermissionRoute> = async (c) => {
   const { orgId: actorOrgId } = requireOrgUser(c);
-  const { userId, permission } = c.req.valid("param");
+  const { userId, permissionCode } = c.req.valid("param");
   const body = c.req.valid("json");
-  await IamService.assignUserPermission(actorOrgId, userId, permission, body);
-  return successResponse(c, { userId, permission, orgId: body.orgId, effect: body.effect });
+  await IamService.assignUserPermission(actorOrgId, userId, permissionCode, body);
+  return successResponse(c, { userId, permissionCode, orgId: body.orgId, effect: body.effect });
 };
 
 export const deleteUserPermissionHandler: AppRouteHandler<DeleteUserPermissionRoute> = async (c) => {
   const { id, orgId: actorOrgId } = requireOrgUser(c);
-  const { userId, permission } = c.req.valid("param");
+  const { userId, permissionCode } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
-  await IamService.deleteUserPermission(actorOrgId, id, userId, permission, orgId);
-  return successResponse(c, { userId, permission, orgId });
+  await IamService.deleteUserPermission(actorOrgId, id, userId, permissionCode, orgId);
+  return successResponse(c, { userId, permissionCode, orgId });
 };
 
 export const listUserPermissionsHandler: AppRouteHandler<ListUserPermissionsRoute> = async (c) => {
   const { orgId: actorOrgId } = requireOrgUser(c);
   const { userId } = c.req.valid("param");
   const { orgId } = c.req.valid("query");
-  const perms = await IamService.listUserEffectivePermissions(actorOrgId, userId, orgId);
-  return successResponse(c, perms);
+  const result = await IamService.listUserEffectivePermissions(actorOrgId, userId, orgId);
+  return successResponse(c, {
+    effective: result.effective.map(item => ({
+      permission: toPermissionRefs([item.permissionCode])[0],
+      sources: item.sources,
+    })),
+    denied: result.denied.map(item => ({
+      permission: toPermissionRefs([item.permissionCode])[0],
+      deniedBy: item.deniedBy,
+      suppressedSources: item.suppressedSources,
+    })),
+  });
 };
 
 export const listUserRolesHandler: AppRouteHandler<ListUserRolesRoute> = async (c) => {

@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/iam/organizations")({
     org: typeof search.org === "string" ? search.org : undefined,
   }),
   beforeLoad: ({ context }) => {
-    requirePermission(context.auth.permissions, "organizations.read");
+    requirePermission(context.auth.permissionCodes, "organizations.read");
   },
   loader: async () => {
     await Apis.IAM.listOrganizations();

@@ -67,14 +67,14 @@ describe("PermissionService.check", () => {
 describe("PermissionService.listEffectivePermissions", () => {
   it("返回 holder 实现的结果", async () => {
     mockListEffective.mockResolvedValue({
-      effective: [{ permission: "projects.read", sources: [] }],
+      effective: [{ permissionCode: "projects.read", sources: [] }],
       denied: [],
     });
 
     const perms = await PermissionService.listEffectivePermissions("u-1", "org-1");
 
     expect(perms).toEqual({
-      effective: [{ permission: "projects.read", sources: [] }],
+      effective: [{ permissionCode: "projects.read", sources: [] }],
       denied: [],
     });
     expect(mockListEffective).toHaveBeenCalledWith("u-1", "org-1");
@@ -82,7 +82,7 @@ describe("PermissionService.listEffectivePermissions", () => {
 
   it("有 ALS 时同 key 只调一次 holder", async () => {
     mockListEffective.mockResolvedValue({
-      effective: [{ permission: "projects.read", sources: [] }],
+      effective: [{ permissionCode: "projects.read", sources: [] }],
       denied: [],
     });
 

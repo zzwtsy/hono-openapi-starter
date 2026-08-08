@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/iam/users")({
     tab: typeof search.tab === "string" ? search.tab : undefined,
   }),
   beforeLoad: ({ context }) => {
-    requirePermission(context.auth.permissions, "users.read");
+    requirePermission(context.auth.permissionCodes, "users.read");
   },
   loader: async () => {
     await Apis.IAM.listUsers();

@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-10
+lastReviewedAt: 2026-08-07
 ---
 
 # 前端认证规范(Better Auth client)
@@ -46,11 +46,11 @@ return <RouterProvider router={router} context={{ auth: { session } }} />;
 
 - session 来自 `useSession`(React-land),通过 `<RouterProvider context>` 注入。
 - 等 `isPending` 结束再渲染,避免 beforeLoad 拿到未 resolve 的 session。
-- 登录后 `router.navigate` 到回跳目标(触发 `_authenticated` 重取 permissions);登出后 `router.invalidate()` 重走守卫。详见 [routing](./routing.md)。
+- 登录后 `router.navigate` 到回跳目标(触发 `_authenticated` 重取 permissionCodes);登出后 `router.invalidate()` 重走守卫。详见 [routing](./routing.md)。
 
 ## permissions
 
-permissions 不在 Better Auth session,来自业务 `/api/v1/me`(`{ user, permissions }`)。在 `_authenticated` beforeLoad 调 `Apis.Me.getMe()` 取,放 context.auth.permissions(见 [routing](./routing.md))。
+权限不在 Better Auth session，来自业务 `/api/v1/me`（`{ user, permissionCodes }`）。在 `_authenticated` beforeLoad 调 `Apis.Me.getMe()` 取，放入 `context.auth.permissionCodes`（见 [routing](./routing.md)）。前端权限类型由生成的 OpenAPI `Me.permissionCodes` 派生，不维护第二份权限名单或展示 label 映射。
 
 ## CSRF
 

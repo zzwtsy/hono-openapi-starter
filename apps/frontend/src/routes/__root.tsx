@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 // router context:session 来自 Better Auth useSession(React-land 注入);
-// user/permissions 在 _authenticated beforeLoad 由 getMe 填充,下钻给子路由。
+// user/permissionCodes 在 _authenticated beforeLoad 由 getMe 填充,下钻给子路由。
 // AuthState 类型下沉到 types/auth(避免 layout 反向依赖 routes)。
 export const Route = createRootRouteWithContext<{ auth: AuthState }>()({
   component: RootComponent,

@@ -47,8 +47,8 @@ export function useRoleAssignments({ userId, orgId, roles }: UseRoleAssignmentsA
     if (previewPerms === undefined || effectiveResult === undefined) {
       return undefined;
     }
-    const have = new Set(effectiveResult.effective.map(p => p.permission));
-    return previewPerms.filter(p => !have.has(p));
+    const have = new Set(effectiveResult.effective.map(p => p.permission.code));
+    return previewPerms.filter(p => !have.has(p.code));
   }, [previewPerms, effectiveResult]);
 
   const roleItems = useMemo(() => [

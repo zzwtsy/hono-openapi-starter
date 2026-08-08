@@ -17,7 +17,7 @@ apps/frontend/src/
   app.tsx               # App 组件(useSession + RouterProvider,isPending 时 null)
   routes/               # TanStack 文件路由(薄:route 定义 + beforeLoad + loader + component)
     __root.tsx          # createRootRouteWithContext<{ auth }>
-    _authenticated.tsx  # 登录守卫 layout + getMe 取 permissions + wrapper 取 useLogout
+    _authenticated.tsx  # 登录守卫 layout + getMe 取 permissionCodes + wrapper 取 useLogout
     index.tsx           # / -> redirect /dashboard
     login.tsx 403.tsx
     _authenticated/
@@ -30,7 +30,7 @@ apps/frontend/src/
                         #   error-boundary/list-skeleton/page-header/resource-actions/theme-toggle)
     layout/             # 全局 layout(authenticated-layout/app-sidebar/auth-layout)
   hooks/                # 通用 hook(use-auth/use-media-query/use-mobile/use-permissions/use-toast-mutation)
-  types/                # 通用类型(AuthState/AppPermission)
+  types/                # 通用类型(AuthState/PermissionCode/PermissionRef)
   lib/                  # 工具函数 + auth-client + env(utils/permissions/require-permission/safe-redirect)
   api/                  # @alova/wormhole 生成(index.ts 可编辑,其余生成勿改,eslint ignore)
   features/             # 业务能力(垂直切片,feature 间不直接 import)

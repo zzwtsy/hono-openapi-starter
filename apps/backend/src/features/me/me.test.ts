@@ -61,30 +61,30 @@ describe("me routes", () => {
     authed();
     mockListEffective.mockResolvedValue({
       effective: [
-        { permission: "projects.read", sources: [] },
-        { permission: "organizations.read", sources: [] },
+        { permissionCode: "projects.read", sources: [] },
+        { permissionCode: "organizations.read", sources: [] },
       ],
       denied: [],
     });
 
     const res = await buildApp().request("/me");
     expect(res.status).toBe(200);
-    const body = await res.json() as { success: boolean; data: { user: { id: string; orgId: string }; permissions: string[] } };
+    const body = await res.json() as { success: boolean; data: { user: { id: string; orgId: string }; permissionCodes: string[] } };
     expect(body.success).toBe(true);
     expect(body.data.user.id).toBe("u-1");
     expect(body.data.user.orgId).toBe("org-1");
-    expect(body.data.permissions).toEqual(["projects.read", "organizations.read"]);
+    expect(body.data.permissionCodes).toEqual(["projects.read", "organizations.read"]);
     expect(mockListEffective).toHaveBeenCalledWith("u-1", "org-1");
   });
 
-  it("未绑定组织时 permissions 为空,不查权限", async () => {
+  it("未绑定组织时 permissionCodes 为空,不查权限", async () => {
     authed({ ...mockUser, orgId: null });
 
     const res = await buildApp().request("/me");
     expect(res.status).toBe(200);
-    const body = await res.json() as { success: boolean; data: { user: { orgId: string | null }; permissions: string[] } };
+    const body = await res.json() as { success: boolean; data: { user: { orgId: string | null }; permissionCodes: string[] } };
     expect(body.data.user.orgId).toBe(null);
-    expect(body.data.permissions).toEqual([]);
+    expect(body.data.permissionCodes).toEqual([]);
     expect(mockListEffective).not.toHaveBeenCalled();
   });
 

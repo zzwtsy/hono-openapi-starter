@@ -4,7 +4,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { usePermissions } from "@/hooks/use-permissions";
 
 // 概览页:新用户(无业务权限)显示空状态提示,引导联系管理员授权;有权限显示占位(待实现)。
-// permissions 来自 _authenticated beforeLoad 的 me.permissions(相对 home org 的有效权限全集)。
+// permissionCodes 来自 _authenticated beforeLoad 的 me.permissionCodes(相对 home org 的有效权限全集)。
 export function Dashboard() {
   const permissions = usePermissions() ?? [];
   if (permissions.length === 0) {

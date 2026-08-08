@@ -320,7 +320,7 @@ describe("iam user transfer (调岗 + grant 清理)", () => {
 
     // 新 home = org-north,祖先集={org-north, org-root},org-root 上的 admin 仍生效
     const result = await IamService.listUserEffectivePermissions("org-root", created.id, "org-north");
-    const permNames = result.effective.map(p => p.permission);
+    const permNames = result.effective.map(p => p.permissionCode);
     expect(permNames).toContain("users.read");
   });
 
@@ -387,7 +387,7 @@ describe("iam user transfer (调岗 + grant 清理)", () => {
     ]);
     await db.insert(userPermissions).values({
       userId: created.id,
-      permission: "users.read",
+      permissionCode: "users.read",
       orgId: "org-south",
       effect: "allow",
     });

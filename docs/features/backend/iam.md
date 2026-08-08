@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-28
+lastReviewedAt: 2026-08-07
 ---
 
 # Feature: iam（权限管理 + 用户身份）
@@ -35,7 +35,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 | Method | Path | OperationId | Auth | Description |
 | --- | --- | --- | --- | --- |
-| GET | `/api/v1/me` | `getMe` | 认证 | 当前用户 + 有效权限全集 |
+| GET | `/api/v1/me` | `getMe` | 认证 | 当前用户 + 有效 `permissionCodes` |
 | PATCH | `/api/v1/me` | `updateMe` | 认证 | 自助修改显示名(不改 email/orgId/disabled) |
 | POST | `/api/v1/me/password` | `changeMyPassword` | 认证 | 自助改密码(验当前密码 → 删全部 session,强制重登) |
 | GET | `/api/v1/permissions` | `listPermissions` | permissions.read | 权限目录（只读） |
@@ -45,7 +45,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | DELETE | `/api/v1/roles/{roleId}` | `deleteRole` | roles.delete | 删实例角色（cascade） |
 | GET | `/api/v1/roles/{roleId}/permissions` | `listRolePermissions` | roles.read | 角色含的权限 |
 | POST | `/api/v1/roles/{roleId}/permissions` | `assignRolePermissions` | roles.assign-permissions | 给角色配权限 |
-| DELETE | `/api/v1/roles/{roleId}/permissions/{permission}` | `deleteRolePermission` | roles.revoke-permissions | 撤角色权限 |
+| DELETE | `/api/v1/roles/{roleId}/permissions/{permissionCode}` | `deleteRolePermission` | roles.revoke-permissions | 撤角色权限 |
 | GET | `/api/v1/roles/{roleId}/users` | `listRoleUsers` | assignments.read | 角色已授用户（管理子树内，含 orgId/expiresAt） |
 | GET | `/api/v1/users` | `listUsers` | users.read | 列出管理子树(自身+子孙)下的用户 |
 | POST | `/api/v1/users` | `createUser` | users.create | 管理员代创建用户（email+password+name+orgId，目标 org 须在管理子树内） |
@@ -56,8 +56,8 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | POST | `/api/v1/users/{userId}/enable` | `enableUser` | users.enable | 启用用户（清 disabled） |
 | POST | `/api/v1/users/{userId}/roles/{roleId}` | `assignUserRole` | assignments.grant | 授用户角色 |
 | DELETE | `/api/v1/users/{userId}/roles/{roleId}` | `deleteUserRole` | assignments.revoke | 撤用户角色（query orgId） |
-| POST | `/api/v1/users/{userId}/permissions/{permission}` | `assignUserPermission` | assignments.grant | 直接授权 allow/deny |
-| DELETE | `/api/v1/users/{userId}/permissions/{permission}` | `deleteUserPermission` | assignments.revoke | 撤直接权限（query orgId） |
+| POST | `/api/v1/users/{userId}/permissions/{permissionCode}` | `assignUserPermission` | assignments.grant | 直接授权 allow/deny |
+| DELETE | `/api/v1/users/{userId}/permissions/{permissionCode}` | `deleteUserPermission` | assignments.revoke | 撤直接权限（query orgId） |
 | GET | `/api/v1/users/{userId}/permissions` | `listUserPermissions` | assignments.read | 用户有效权限全集（query orgId，含祖先继承 + deny 减法，带来源链，CTE 计算） |
 | GET | `/api/v1/users/{userId}/roles` | `listUserRoles` | assignments.read | 用户在某组织已授的角色记录（query orgId，原始授权非继承，含 expiresAt，撤销用） |
 | GET | `/api/v1/users/{userId}/direct-permissions` | `listUserDirectPermissions` | assignments.read | 用户在某组织的直接授权记录（query orgId，原始授权非继承，含 effect/expiresAt，撤销用） |
@@ -71,11 +71,13 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 统一 envelope（`success` / `code` / `data` / `error` / `meta.requestId`）。列表不分页（第一版全量返回，按 name/createdAt 确定性排序）。`DELETE` 撤销类用 query `orgId` 定位（user_roles/user_permissions PK 含 orgId）。
 
+权限契约统一使用机器 code：字符串身份字段命名为 `permissionCode`，字符串数组命名为 `permissionCodes`，批量角色授权 body 为 `{ permissionCodes }`。`GET /api/v1/permissions`、角色权限列表返回 `PermissionRef[]`；有效权限、deny 和直接授权记录使用 `permission: PermissionRef`。`/api/v1/me` 只返回 `permissionCodes`，不把展示 label 混入授权身份。已知权限输入由 catalog 派生的 OpenAPI enum 约束，HTTP 未知 code 返回 `400/PERMISSION_CODE_INVALID`，service 或同步阶段发现内部未知 code 则使用 `PERMISSION_NOT_FOUND` 或启动失败。
+
 `listUserRoles` / `listUserDirectPermissions` 返回**原始授权记录**（`orgId` 直接相等，非祖先继承），供管理端撤销用；`listUserPermissions` 返回**有效权限全集 + 来源链**（含祖先继承 + deny 减法 + 过期过滤，CTE 计算；每条权限带来源 `{type, roleId, roleName, orgId, expiresAt}`，被 deny 抵消的单独列 `denied` 带 `suppressedSources` + `deniedBy`）。`listRoleUsers` 返回管理子树内授了某角色的 `(user, org)` 记录（供角色详情展示影响面）。撤销看原始授权记录，展示"用户最终能干什么 + 从哪来"看有效权限全集，看"改角色影响谁"看 `listRoleUsers`。三者查无记录返回空数组/空对象，不抛 404。
 
 ## 6. Auth & Permissions
 
-`features/iam/permissions.ts` 声明权限目录、组织、角色、授权与用户身份生命周期的细粒度权限（对齐 projects.* 范式），展开到 `permissions-catalog.ts` 的 `allPermissions`。admin 角色（代码同步）含全部权限。
+`features/iam/permissions.ts` 使用 `definePermissionCatalog()` 声明权限目录、组织、角色、授权与用户身份管理的细粒度权限，展开到 `permissions-catalog.ts` 的 `allPermissions`。admin 角色（代码同步）含全部权限；label 只属于 catalog/presenter，不属于授权检查或 DB。
 
 | Permission | Description |
 | --- | --- |
@@ -117,19 +119,21 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 ## 7. Data Model
 
 - `roles`：加 `source` 列（`code` | `instance`，default `instance`）。`code` = 代码同步（admin），`instance` = 管理 API 创建。
-- `role_permissions` / `user_roles` / `user_permissions`：授权关联，均带 orgId + 可选 expiresAt；外键 cascade。
+- `permissions`：code-only registry，只有 `code` 主键；`role_permissions.permission_code` 和 `user_permissions.permission_code` 外键使用 `ON DELETE RESTRICT`。
+- `role_permissions` / `user_roles` / `user_permissions`：授权关联，均带 orgId + 可选 expiresAt；角色/组织/用户关系仍按原有语义 cascade，权限 code 不级联删除。
 - `organizations`：树形（parentId 自引用，CYCLE 兜底）。
-- `permissions`：代码同步目录，管理 API 只读。
 - `IamPermissionChecker`（`features/iam/permission-checker.ts`）：`PermissionChecker` 的本地 Adapter（PDP），实现 check（单点 EXISTS CTE）/ listEffectivePermissions（带来源链的递归 CTE：grant_sources UNION deny_set，JOIN roles 拿 role_name，祖先集 + 过期过滤）；不含 memoize（由 core `PermissionService` 装饰，me 与 listUserPermissions 路由共享缓存）。可整体替换为外部 PDP（见 [authorization.md 边界划分](../../conventions/backend/authorization.md)）。
 - `user.disabled`：Better Auth additionalField（经 `auth:generate` 写入 auth-schema），`databaseHooks.session.create.before` 检查 disabled 阻止 session 创建（同时阻止登录和续期），禁用时主动删 session 立即下线（未开 cookieCache，删行即失效）。见 ADR-0007。`disableUser`/`resetPassword` 的 update 标记/密码 + delete session 在同一 `db.transaction` 内，保证原子（任一失败回滚，避免"disabled=true 但旧 session 仍有效"的安全语义破坏，B2 D1）。
 
 ## 8. Error Codes
 
-第一版复用 `COMMON_*`，不引入 `IAM_*` 专用码。
+权限输入与不存在错误使用通用权限业务码，其余 IAM 业务错误继续复用已有错误码。
 
 | Code | HTTP Status | Description |
 | --- | --- | --- |
-| `COMMON_NOT_FOUND` | 404 | 角色/组织/权限/授权不存在,或对 code 角色改删 |
+| `PERMISSION_NOT_FOUND` | 404 | catalog/registry 中不存在指定权限 code |
+| `PERMISSION_CODE_INVALID` | 400 | HTTP 输入不属于 catalog enum |
+| `COMMON_NOT_FOUND` | 404 | 角色/组织/授权不存在,或对 code 角色改删 |
 | `COMMON_CONFLICT` | 409 | 角色名重复;组织形成环;删有子组织或有用户的组织;用户邮箱重复 |
 | `COMMON_FORBIDDEN` | 403 | 无对应权限;禁止禁用自己 |
 | `AUTH_ACCOUNT_DISABLED` | 403 | 用户已禁用(`databaseHooks.session.create.before` 检查 disabled,阻止 session 创建) |
@@ -168,13 +172,14 @@ sequenceDiagram
 
 ## 11. Test Cases
 
-- unit：`features/iam/iam.test.ts`（路由全覆盖鉴权 403 + handler→service 接线 + 错误码 404/409 映射，含 users.* 用户管理）、`features/me/me.test.ts`
-- integration：`tests/integration/authorization/iam-roles.test.ts`（source 保护、cascade、listRoleUsers 子树过滤）、`iam-assignments.test.ts`（授角色/deny/祖先/过期/撤销全语义）、`iam-organizations.test.ts`（建树/防环/删除约束）、`list-effective.test.ts`（全集算法 + 来源链 + deny 抵消 + 多来源聚合）、`iam-users.test.ts`（代创建 409、reset 后旧密码失效、disable 拦登录 + enable 恢复、自禁用 403）
+- unit：`core/auth/permissions.test.ts`（builder 字段、格式与 label 校验）、`permissions-catalog.test.ts`（唯一性与 registry 覆盖）、`core/app/create-router.test.ts`（未知 code 400）、`features/iam/iam.test.ts`（路由鉴权 + 新字段接线）、`features/me/me.test.ts`
+- integration：`tests/integration/authorization/sync.test.ts`（code-only registry、stale code 清理/有引用失败、admin 同步）、`iam-roles.test.ts`（source 保护、cascade、listRoleUsers 子树过滤）、`iam-assignments.test.ts`（授角色/deny/祖先/过期/撤销全语义）、`iam-organizations.test.ts`（建树/防环/删除约束）、`list-effective.test.ts`（全集算法 + 来源链 + deny 抵消 + 多来源聚合）、`iam-users.test.ts`（代创建 409、reset 后旧密码失效、disable 拦登录 + enable 恢复、自禁用 403）
 
 ## 12. Rollout / Migration Notes
 
 - migration `0003`：`roles` 加 `source` 列（default `instance`）。`sync.ts` 用 `onConflictDoUpdate` 强制 admin `source='code'`（修正旧库被 default 覆盖的情况）。
 - migration `0004`：`user` 加 `disabled` 列（经 `auth:generate` 自动生成）；新建 `system_settings` 表。
+- migration `0009_permission_contract_cleanup`：`permissions` 收敛为 code-only；关联列改名为 `permission_code`，权限外键改为 `ON DELETE RESTRICT`。不修改旧 migration，不做双读/双写或历史数据回填。
 - 部署顺序：`db:migrate` -> `db:bootstrap`（造第一个 admin）-> start（sync 同步目录 + admin 角色）。
 - `bootstrap` 幂等：组织已存在跳过；admin email 已存在报错（不覆盖密码）。
 - 用户管理端点复用 `bootstrap.ts` 原语（`hashPassword` from `better-auth/crypto` + `db.insert` user/account），不引 BA admin 插件（ADR-0007）。

@@ -64,6 +64,13 @@
       "when": 1786010213209,
       "tag": "0008_hesitant_changeling",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786118045073,
+      "tag": "0009_permission_contract_cleanup",
+      "breakpoints": true
     }
   ]
 }

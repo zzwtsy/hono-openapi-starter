@@ -1,3 +1,4 @@
+import type { PermissionCode } from "../auth/permissions.js";
 import type { UserPermissionsResult } from "./permission-checker.js";
 
 import { getPermissionCache } from "./permission-cache.js";
@@ -12,16 +13,16 @@ import { requireChecker } from "./permission-checker.js";
  * 本服务做缓存装饰,算法委托给 `requireChecker()`(Port)。
  */
 export const PermissionService = {
-  async check(userId: string, permission: string, orgId: string): Promise<boolean> {
+  async check(userId: string, permissionCode: PermissionCode, orgId: string): Promise<boolean> {
     const cache = getPermissionCache();
-    const key = `${userId}:${permission}:${orgId}`;
+    const key = `${userId}:${permissionCode}:${orgId}`;
 
     const cached = cache?.get(key);
     if (typeof cached === "boolean") {
       return cached;
     }
 
-    const allowed = await requireChecker().check(userId, permission, orgId);
+    const allowed = await requireChecker().check(userId, permissionCode, orgId);
     cache?.set(key, allowed);
     return allowed;
   },

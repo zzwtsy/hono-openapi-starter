@@ -65,7 +65,6 @@ features/iam/
   lib/                                  # feature 内工具
     organization-tree.ts                # 树索引、祖先/后代、路径与父节点候选
     iam-actions.ts                      # action delegation(cache 刷新)
-    permission-format.ts                # 权限名格式化
     group-by-resource.ts               # 权限按 resource 分组
   organizations-page.tsx               # page 组装(薄 wrapper,route 传 props)
 ```

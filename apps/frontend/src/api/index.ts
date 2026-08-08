@@ -60,7 +60,7 @@ export const alovaInstance = createAlova({
 export const $$userConfigMap = withConfigType({
   // Me.getMe:权限变更(授/撤角色、授/撤直接权限、角色权限变更)或自助改名后失效缓存,下次 beforeLoad
   // (刷新/重进 _authenticated)拿新数据。无差别 hitSource:给别人授权也失效自己 Me(多一次
-  // 重拉,无害)。限制:SPA 内不刷新则 context.auth.permissions 不即时更新(需 router.invalidate
+  // 重拉,无害)。限制:SPA 内不刷新则 context.auth.permissionCodes 不即时更新(需 router.invalidate
   // 重跑 beforeLoad,留待后续)。
   "Me.getMe": {
     cacheFor: 5 * 60_000,

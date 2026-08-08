@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/require-permission";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   beforeLoad: ({ context }) => {
-    requirePermission(context.auth.permissions, "settings.read");
+    requirePermission(context.auth.permissionCodes, "settings.read");
   },
   loader: async () => {
     await Apis.Settings.listSettings();

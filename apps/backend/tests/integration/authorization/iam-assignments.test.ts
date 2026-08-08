@@ -208,7 +208,7 @@ describe("iam user assignments", () => {
 
   it("撤直接权限:子树内 grant.orgId 但子树外 user -> 404", async () => {
     await setup();
-    await db.insert(userPermissions).values({ userId: "u-2", permission: "projects.read", orgId: "org-root", effect: "allow" });
+    await db.insert(userPermissions).values({ userId: "u-2", permissionCode: "projects.read", orgId: "org-root", effect: "allow" });
     await expect(
       IamService.deleteUserPermission("org-root", "actor-1", "u-2", "projects.read", "org-root"),
     ).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
@@ -266,7 +266,7 @@ describe("iam user assignments", () => {
 
     await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-south", effect: "allow" });
     const perms = await IamService.listUserDirectPermissions("org-root", "u-1", "org-south");
-    expect(perms.some(p => p.permission === "projects.read" && p.orgId === "org-south" && p.effect === "allow")).toBe(true);
+    expect(perms.some(p => p.permission.code === "projects.read" && p.orgId === "org-south" && p.effect === "allow")).toBe(true);
   });
 
   it("listUserEffectivePermissions:子树内不同 orgId(org-south) -> 返回有效权限(走 PermissionService holder)", async () => {
@@ -275,7 +275,7 @@ describe("iam user assignments", () => {
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
     await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-south" });
     const perms = await IamService.listUserEffectivePermissions("org-root", "u-1", "org-south");
-    expect(perms.effective.map(p => p.permission)).toContain("projects.read");
+    expect(perms.effective.map(p => p.permissionCode)).toContain("projects.read");
   });
 
   // 防自我锁死:撤销自己的授权 -> 403(对齐 disableUser)。actor-1 撤 actor-1 自己。

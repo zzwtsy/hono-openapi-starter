@@ -33,20 +33,20 @@ async function seedBase() {
     { id: ORG.fujian, name: "福建", parentId: ORG.south },
   ]);
   await db.insert(permissions).values([
-    { name: PERM.usersRead },
-    { name: PERM.usersWrite },
-    { name: PERM.usersDelete },
+    { code: PERM.usersRead },
+    { code: PERM.usersWrite },
+    { code: PERM.usersDelete },
   ]);
   await db.insert(roles).values([
     { id: ROLE.admin, name: "admin" },
     { id: ROLE.editor, name: "editor" },
   ]);
   await db.insert(rolePermissions).values([
-    { roleId: ROLE.admin, permission: PERM.usersRead },
-    { roleId: ROLE.admin, permission: PERM.usersWrite },
-    { roleId: ROLE.admin, permission: PERM.usersDelete },
-    { roleId: ROLE.editor, permission: PERM.usersRead },
-    { roleId: ROLE.editor, permission: PERM.usersWrite },
+    { roleId: ROLE.admin, permissionCode: PERM.usersRead },
+    { roleId: ROLE.admin, permissionCode: PERM.usersWrite },
+    { roleId: ROLE.admin, permissionCode: PERM.usersDelete },
+    { roleId: ROLE.editor, permissionCode: PERM.usersRead },
+    { roleId: ROLE.editor, permissionCode: PERM.usersWrite },
   ]);
   // 授权表外键引用 user.id,需先有 user 记录(Better Auth 表)。
   await db.insert(user).values({
@@ -86,7 +86,7 @@ describe("checkPermission", () => {
     // 华南直接 deny users.disable,向下传播到福建
     await db.insert(userPermissions).values({
       userId: USER_ID,
-      permission: PERM.usersDelete,
+      permissionCode: PERM.usersDelete,
       orgId: ORG.south,
       effect: "deny",
     });
@@ -104,7 +104,7 @@ describe("checkPermission", () => {
     });
     await db.insert(userPermissions).values({
       userId: USER_ID,
-      permission: PERM.usersDelete,
+      permissionCode: PERM.usersDelete,
       orgId: ORG.fujian,
       effect: "deny",
     });
@@ -117,7 +117,7 @@ describe("checkPermission", () => {
   it("过期的 allow 被过滤(expires_at 早于 now())", async () => {
     await db.insert(userPermissions).values({
       userId: USER_ID,
-      permission: PERM.usersRead,
+      permissionCode: PERM.usersRead,
       orgId: ORG.south,
       effect: "allow",
       expiresAt: new Date(Date.now() - 60_000),

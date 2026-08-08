@@ -53,7 +53,7 @@ Better Auth 内置能力经源码确认（v1.6.23）：
 - **性能责任**：权限检查每请求都跑，需 memoize / 缓存优化（第一版 memoize，后续 Redis）。
 - **管理 API**：授角色/授权限的 CRUD 端点已自建（`features/iam`，走 `/api/v1/*` + envelope）。`roles` 加 `source` 列区分代码同步角色（`code`，admin）与管理 API 创建角色（`instance`）；管理 API 改/删仅限 `instance`，代码角色只读。第一个 admin 由 `pnpm db:bootstrap` 引导。
 - **Port/Adapter 边界**：权限检查（PDP）通过 `PermissionChecker` 接口（`core/authorization/permission-checker.ts`）抽象，实现（`IamPermissionChecker`，递归 CTE）在 `features/iam`，启动时 `setPermissionChecker` 装配。core 不 import features，PDP 可替换（将来换外部引擎只换 Adapter，core 与 PEP 不动）。
-- **core 零 import features**：权限目录用 declaration merging（各 feature `permissions.ts` 用 `declare module` 把权限名 push 到 core 的 `AppPermissionRegistry`，`AppPermission` 从 registry 推导；组装点 `index.ts` 汇总各 feature 权限传 `syncAuthorizationCatalog`，`AllPermissionsCovered` 编译期校验覆盖，漏汇总编译报）。路由由组装点 `app.ts` 挂载（`core/app` 只挂认证路由）。core 不再 import features，[directory-structure.md](../architecture/backend/directory-structure.md) 的"core 不能 import features"完全成立。
+- **core 零 import features**：权限 catalog 用 declaration merging（各 feature `permissions.ts` 用 `definePermissionCatalog()` 生成完整数组，并以 `declare module` 注册到 core 的 `AppPermissionRegistry`；`AppPermissionCode` 从 registry 推导；组装点 `permissions-catalog.ts` 汇总并执行 `AllPermissionsCovered`/`NoUnknownPermissions` 校验）。权限 code 与 `PermissionRef` 展示元数据分离，DB `permissions` 只保留 code-only 外键 registry。路由由组装点 `app.ts` 挂载（`core/app` 只挂认证路由）。core 不再 import features，[directory-structure.md](../architecture/backend/directory-structure.md) 的“core 不能 import features”完全成立。契约细节见 [ADR-0011](0011-permission-contract-separation.md)。
 
 ## 关联
 

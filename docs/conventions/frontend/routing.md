@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-10
+lastReviewedAt: 2026-08-07
 ---
 
 # 前端路由与守卫规范
@@ -18,8 +18,8 @@ TanStack Router 文件路由,`src/routes/` 下文件即路由。`routeTree.gen.t
 
 | 路由 | 职责 |
 | --- | --- |
-| `_authenticated.tsx` | 登录守卫 layout:无 session -> /login;有 -> getMe 取 permissions 下钻 |
-| 单路由 `beforeLoad` | 权限守卫:`requirePermission(context.auth.permissions, "roles.read")` |
+| `_authenticated.tsx` | 登录守卫 layout:无 session -> /login;有 -> getMe 取 permissionCodes 下钻 |
+| 单路由 `beforeLoad` | 权限守卫:`requirePermission(context.auth.permissionCodes, "roles.read")` |
 | `login.tsx` / `403.tsx` | 公开路由(不在 _authenticated 下);`login` 已登录则跳 `/dashboard`,并声明 `redirect` 搜索参数供登录后回跳 |
 | `index.tsx` | / -> redirect /dashboard |
 
@@ -31,7 +31,7 @@ beforeLoad: async ({ context, location }) => {
     throw redirect({ to: "/login", search: { redirect: location.href } });
   }
   const me = await Apis.Me.getMe();
-  return { auth: { ...context.auth, user: me.user, permissions: me.permissions } };
+  return { auth: { ...context.auth, user: me.user, permissionCodes: me.permissionCodes } };
 }
 ```
 
@@ -41,11 +41,11 @@ beforeLoad: async ({ context, location }) => {
 
 ```tsx
 beforeLoad: ({ context }) => {
-  requirePermission(context.auth.permissions, "roles.read");
+  requirePermission(context.auth.permissionCodes, "roles.read");
 }
 ```
 
-权限名与后端 `AppPermission` 一致(如 `roles.read`、`assignments.grant`、`projects.read`)。
+权限 code 与后端 `AppPermissionCode` 一致(如 `roles.read`、`assignments.grant`、`projects.read`)；展示权限对象统一消费 API 返回的 `PermissionRef`，UI 只展示 `label`/`resourceLabel`，code 仅用于权限判断、请求参数和稳定 key。
 
 ## router context
 
@@ -54,7 +54,7 @@ beforeLoad: ({ context }) => {
 createRootRouteWithContext<{ auth: AuthState }>()(...)
 ```
 
-`AuthState = { session, user?, permissions? }`。session 来自 Better Auth `useSession`(App 注入);user/permissions 在 `_authenticated` beforeLoad 由 `getMe` 填充,下钻子路由。
+`AuthState = { session, user?, permissionCodes? }`。session 来自 Better Auth `useSession`(App 注入);user/permissionCodes 在 `_authenticated` beforeLoad 由 `getMe` 填充,下钻子路由。
 
 App 等 `useSession` 的 `isPending` 结束再渲染 RouterProvider,避免 beforeLoad 拿到未 resolve 的 session。
 
@@ -85,4 +85,4 @@ session 过期(alova 401)不走此流程,由 [api-alova](./api-alova.md) 的 `re
 
 ## 守卫不是授权边界
 
-前端守卫只做 UX(挡路由/隐藏菜单)。真正授权在后端 `PermissionChecker`(见 [backend/authorization](../backend/authorization.md))。前端 permissions 缓存过期不构成安全问题。
+前端守卫只做 UX(挡路由/隐藏菜单)。真正授权在后端 `PermissionChecker`(见 [backend/authorization](../backend/authorization.md))。前端 permissionCodes 缓存过期不构成安全问题。

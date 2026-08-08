@@ -34,20 +34,17 @@ export const roles = pgTable("roles", {
   updatedAt: updatedAtColumn(),
 });
 
-/** 权限:`<resource>.<action>`(如 users.read),name 作 PK,用于运行时枚举与管理界面展示。 */
+/** 权限 code registry:定义与展示元数据来自代码 catalog,此表只作为外键锚点。 */
 export const permissions = pgTable("permissions", {
-  name: text("name").primaryKey(),
-  description: text("description"),
-  createdAt: createdAtColumn(),
-  updatedAt: updatedAtColumn(),
+  code: text("code").primaryKey(),
 });
 
 /** 角色-权限关联:角色含哪些权限。 */
 export const rolePermissions = pgTable("role_permissions", {
   roleId: text("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
-  permission: text("permission").notNull().references(() => permissions.name, { onDelete: "cascade" }),
+  permissionCode: text("permission_code").notNull().references(() => permissions.code, { onDelete: "restrict" }),
 }, t => [
-  primaryKey({ columns: [t.roleId, t.permission] }),
+  primaryKey({ columns: [t.roleId, t.permissionCode] }),
   index("role_permissions_role_id_idx").on(t.roleId),
 ]);
 
@@ -66,12 +63,12 @@ export const userRoles = pgTable("user_roles", {
 /** 用户-直接权限:在某组织直接授 allow/deny,绕过角色,支持过期。 */
 export const userPermissions = pgTable("user_permissions", {
   userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-  permission: text("permission").notNull().references(() => permissions.name, { onDelete: "cascade" }),
+  permissionCode: text("permission_code").notNull().references(() => permissions.code, { onDelete: "restrict" }),
   orgId: text("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   effect: text("effect", { enum: ["allow", "deny"] }).notNull(),
   expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }),
 }, t => [
-  primaryKey({ columns: [t.userId, t.permission, t.orgId] }),
+  primaryKey({ columns: [t.userId, t.permissionCode, t.orgId] }),
   index("user_permissions_user_id_idx").on(t.userId),
   index("user_permissions_org_id_idx").on(t.orgId),
 ]);
@@ -95,7 +92,7 @@ export const permissionsRelations = relations(permissions, ({ many }) => ({
 
 export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
   role: one(roles, { fields: [rolePermissions.roleId], references: [roles.id] }),
-  permission: one(permissions, { fields: [rolePermissions.permission], references: [permissions.name] }),
+  permission: one(permissions, { fields: [rolePermissions.permissionCode], references: [permissions.code] }),
 }));
 
 export const userRolesRelations = relations(userRoles, ({ one }) => ({
@@ -106,6 +103,6 @@ export const userRolesRelations = relations(userRoles, ({ one }) => ({
 
 export const userPermissionsRelations = relations(userPermissions, ({ one }) => ({
   user: one(user, { fields: [userPermissions.userId], references: [user.id] }),
-  permission: one(permissions, { fields: [userPermissions.permission], references: [permissions.name] }),
+  permission: one(permissions, { fields: [userPermissions.permissionCode], references: [permissions.code] }),
   org: one(organizations, { fields: [userPermissions.orgId], references: [organizations.id] }),
 }));

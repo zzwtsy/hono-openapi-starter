@@ -1,4 +1,5 @@
-import type { Permission } from "@/api/globals";
+import type { PermissionRef } from "@/api/globals";
+import type { PermissionCode } from "@/types/permissions";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,18 +14,17 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { groupByResource } from "../lib/group-by-resource";
-import { formatPermission } from "../lib/permission-format";
 
 interface PermissionComboboxProps {
   value: string | null;
-  onChange: (name: string) => void;
-  permissions: Permission[];
+  onChange: (permissionCode: PermissionCode) => void;
+  permissions: PermissionRef[];
   placeholder?: string;
   disabled?: boolean;
 }
 
 /**
- * 权限选择 Combobox:搜索 + 按 resource 分组 + 显「描述(代码)」。
+ * 权限选择 Combobox:搜索 + 按 resource 分组 + 显示权限名称。
  * resource 分组标题用权限自带的 `resourceLabel`(后端 listPermissions 返回),前端零映射。
  */
 export function PermissionCombobox({
@@ -35,14 +35,14 @@ export function PermissionCombobox({
   disabled = false,
 }: PermissionComboboxProps) {
   const [open, setOpen] = useState(false);
-  const selected = permissions.find(p => p.name === value);
-  const groups = useMemo(() => groupByResource(permissions, p => p.name), [permissions]);
+  const selected = permissions.find(p => p.code === value);
+  const groups = useMemo(() => groupByResource(permissions, p => p.resourceCode), [permissions]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={<Button variant="outline" role="combobox" disabled={disabled} className="w-full justify-between font-normal" />}>
         <span className={cn("truncate", selected === undefined && "text-muted-foreground")}>
-          {selected !== undefined ? formatPermission(selected) : placeholder}
+          {selected !== undefined ? selected.label : placeholder}
         </span>
         <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
       </PopoverTrigger>
@@ -54,19 +54,19 @@ export function PermissionCombobox({
             {[...groups.entries()].map(([resource, perms]) => (
               <CommandGroup
                 key={resource}
-                heading={`${perms[0]?.resourceLabel ?? resource}（${resource}）`}
+                heading={perms[0]?.resourceLabel ?? "其他资源"}
               >
                 {perms.map(p => (
                   <CommandItem
-                    key={p.name}
-                    value={formatPermission(p)}
+                    key={p.code}
+                    value={`${p.label} ${p.resourceLabel} ${p.code} ${p.resourceCode}`}
                     onSelect={() => {
-                      onChange(p.name);
+                      onChange(p.code);
                       setOpen(false);
                     }}
                   >
-                    {formatPermission(p)}
-                    <Check className={cn("ml-auto", value === p.name ? "opacity-100" : "opacity-0")} />
+                    {p.label}
+                    <Check className={cn("ml-auto", value === p.code ? "opacity-100" : "opacity-0")} />
                   </CommandItem>
                 ))}
               </CommandGroup>

@@ -18,7 +18,7 @@ lastReviewedAt: 2026-07-10
 
 1. `src/features/<feature>/`:按需建 `components/`(必要时 `hooks.ts`/`api.ts`,见 [api-alova](./api-alova.md) 按需封装)
 2. `src/routes/_authenticated/<feature>/`:路由文件(beforeLoad 守卫 + loader 预取 + component 引用 feature 组件)
-3. 权限:`beforeLoad` 调 `requirePermission(context.auth.permissions, "<feature>.read")`
+3. 权限:`beforeLoad` 调 `requirePermission(context.auth.permissionCodes, "<feature>.read")`
 4. 文档:更新 `docs/features/frontend/<feature>.md`(若复杂)
 
 ## 新增路由

@@ -77,10 +77,11 @@ lastReviewedAt: 2026-07-28
 
 ### 3.1 目录机制
 
-- [x] 各 feature `permissions.ts` + declaration merging → `AppPermission`
-- [x] 组装点 `permissions-catalog` + `AllPermissionsCovered` 编译期覆盖
-- [x] 启动 `syncAuthorizationCatalog` upsert 权限与 admin 角色
-- [x] 前端 `AppPermission` 经 gen:api 与后端同源（不手写第二份名单）
+- [x] 各 feature `permissions.ts` 使用 `definePermissionCatalog()` + 完整数组 slot declaration merging → `AppPermissionCode`
+- [x] 组装点 `permissions-catalog` 执行 `AllPermissionsCovered`/`NoUnknownPermissions` 编译期覆盖与运行时唯一性校验
+- [x] 启动 `syncAuthorizationCatalog` 同步 code-only registry 与 admin 角色
+- [x] 前端 `PermissionCode` 经 `permissionCodes` OpenAPI enum 与 gen:api 同源（不手写第二份名单）
+- [x] 展示响应统一使用 `PermissionRef`，前端不维护 code/label 映射
 
 ### 3.2 粒度（模板目标态）
 
@@ -152,7 +153,7 @@ lastReviewedAt: 2026-07-28
 - [x] 实例角色 CRUD；`source=code|instance`；code 角色不可改删
 - [x] admin 代码角色同步全部权限
 - [x] 角色权限挂载 API + UI
-- [x] 权限从代码移除后 DB 行清理策略（sync upsert-only 不删旧行;fork 升级需手动 `DELETE FROM role_permissions WHERE permission='iam.manage'; DELETE FROM permissions WHERE name='iam.manage';`）
+- [x] 权限从代码移除后的 registry 清理策略：catalog 外且无 `role_permissions`/`user_permissions` 引用的 code 行由 sync 清理；仍被引用时启动失败，先显式处理授权关系后再同步（权限外键为 `ON DELETE RESTRICT`）
 - [x] 与细粒度角色权限对齐（见 §3.2）--角色写操作拆为 `roles.create/update/delete/assign-permissions/revoke-permissions`、读操作 `roles.read`，已对齐
 
 ---

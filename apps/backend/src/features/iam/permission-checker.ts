@@ -1,8 +1,42 @@
+import type { PermissionCode } from "@/core/auth/permissions.js";
 import type { PermissionChecker, PermissionSource, UserPermissionsResult } from "@/core/authorization/permission-checker.js";
 
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client.js";
 import { organizations, rolePermissions, roles, userPermissions, userRoles } from "@/db/schema/index.js";
+import { getPermissionRef } from "@/permissions-catalog.js";
+
+interface CheckPermissionRow extends Record<string, unknown> {
+  allowed: boolean;
+}
+
+/**
+ * CTE + UNION 查询的数据库结果行。
+ *
+ * permission_code 仍保持 string:数据库只保证它存在于 permissions registry,
+ * 是否属于当前应用 catalog 要在进入权限领域模型前由 getPermissionRef 收窄。
+ */
+interface GrantPermissionQueryRow extends Record<string, unknown> {
+  kind: "grant";
+  permission_code: string;
+  source_type: "role" | "direct";
+  role_id: string | null;
+  role_name: string | null;
+  org_id: string;
+  expires_at: Date | null;
+}
+
+interface DenyPermissionQueryRow extends Record<string, unknown> {
+  kind: "deny";
+  permission_code: string;
+  source_type: null;
+  role_id: null;
+  role_name: null;
+  org_id: string;
+  expires_at: Date | null;
+}
+
+type PermissionQueryRow = GrantPermissionQueryRow | DenyPermissionQueryRow;
 
 /**
  * PermissionChecker 的本地 Adapter:递归 CTE 实现 ADR-0004 的权限算法
@@ -11,8 +45,8 @@ import { organizations, rolePermissions, roles, userPermissions, userRoles } fro
  * 不含 memoize(由 core 的 PermissionService 装饰,读 ALS)。本类只管纯算法 + db 查询。
  */
 export class IamPermissionChecker implements PermissionChecker {
-  async check(userId: string, permission: string, orgId: string): Promise<boolean> {
-    const [result] = await db.execute(sql`
+  async check(userId: string, permissionCode: PermissionCode, orgId: string): Promise<boolean> {
+    const [result] = await db.execute<CheckPermissionRow>(sql`
       WITH RECURSIVE org_ancestors AS (
         SELECT ${organizations.id} FROM ${organizations} WHERE ${organizations.id} = ${orgId}
         UNION ALL
@@ -23,22 +57,22 @@ export class IamPermissionChecker implements PermissionChecker {
       CYCLE id SET is_cycle USING path
       SELECT EXISTS (
         SELECT 1 FROM (
-          SELECT ${rolePermissions.permission}
+          SELECT ${rolePermissions.permissionCode}
           FROM ${userRoles}
           JOIN ${rolePermissions} ON ${userRoles.roleId} = ${rolePermissions.roleId}
           WHERE ${userRoles.userId} = ${userId}
             AND ${userRoles.orgId} IN (SELECT id FROM org_ancestors)
             AND (${userRoles.expiresAt} IS NULL OR ${userRoles.expiresAt} > now())
           UNION
-          SELECT ${userPermissions.permission} FROM ${userPermissions}
+          SELECT ${userPermissions.permissionCode} FROM ${userPermissions}
           WHERE ${userPermissions.userId} = ${userId}
             AND ${userPermissions.orgId} IN (SELECT id FROM org_ancestors)
             AND ${userPermissions.effect} = 'allow'
             AND (${userPermissions.expiresAt} IS NULL OR ${userPermissions.expiresAt} > now())
         ) effective
-        WHERE effective.permission = ${permission}
-        AND effective.permission NOT IN (
-          SELECT ${userPermissions.permission} FROM ${userPermissions}
+        WHERE effective.permission_code = ${permissionCode}
+        AND effective.permission_code NOT IN (
+          SELECT ${userPermissions.permissionCode} FROM ${userPermissions}
           WHERE ${userPermissions.userId} = ${userId}
             AND ${userPermissions.orgId} IN (SELECT id FROM org_ancestors)
             AND ${userPermissions.effect} = 'deny'
@@ -47,11 +81,11 @@ export class IamPermissionChecker implements PermissionChecker {
       ) AS allowed
     `);
 
-    return Boolean(result?.allowed);
+    return result?.allowed === true;
   }
 
   async listEffectivePermissions(userId: string, orgId: string): Promise<UserPermissionsResult> {
-    const rows = await db.execute(sql`
+    const rows = await db.execute<PermissionQueryRow>(sql`
       WITH RECURSIVE org_ancestors AS (
         SELECT ${organizations.id} FROM ${organizations} WHERE ${organizations.id} = ${orgId}
         UNION ALL
@@ -60,7 +94,7 @@ export class IamPermissionChecker implements PermissionChecker {
       )
       CYCLE id SET is_cycle USING path,
       grant_sources AS (
-        SELECT ${rolePermissions.permission} AS permission, 'role' AS source_type,
+        SELECT ${rolePermissions.permissionCode} AS permission_code, 'role'::text AS source_type,
                ${userRoles.roleId} AS role_id, ${roles.name} AS role_name,
                ${userRoles.orgId} AS org_id, ${userRoles.expiresAt} AS expires_at
         FROM ${userRoles}
@@ -70,8 +104,9 @@ export class IamPermissionChecker implements PermissionChecker {
           AND ${userRoles.orgId} IN (SELECT id FROM org_ancestors)
           AND (${userRoles.expiresAt} IS NULL OR ${userRoles.expiresAt} > now())
         UNION ALL
-        SELECT ${userPermissions.permission}, 'direct', NULL, NULL,
-               ${userPermissions.orgId}, ${userPermissions.expiresAt}
+        SELECT ${userPermissions.permissionCode} AS permission_code, 'direct'::text AS source_type,
+               NULL::text AS role_id, NULL::text AS role_name,
+               ${userPermissions.orgId} AS org_id, ${userPermissions.expiresAt} AS expires_at
         FROM ${userPermissions}
         WHERE ${userPermissions.userId} = ${userId}
           AND ${userPermissions.orgId} IN (SELECT id FROM org_ancestors)
@@ -79,7 +114,7 @@ export class IamPermissionChecker implements PermissionChecker {
           AND (${userPermissions.expiresAt} IS NULL OR ${userPermissions.expiresAt} > now())
       ),
       deny_set AS (
-        SELECT ${userPermissions.permission} AS permission,
+        SELECT ${userPermissions.permissionCode} AS permission_code,
                ${userPermissions.orgId} AS org_id,
                ${userPermissions.expiresAt} AS expires_at
         FROM ${userPermissions}
@@ -88,10 +123,22 @@ export class IamPermissionChecker implements PermissionChecker {
           AND ${userPermissions.effect} = 'deny'
           AND (${userPermissions.expiresAt} IS NULL OR ${userPermissions.expiresAt} > now())
       )
-      SELECT 'grant' AS kind, gs.permission, gs.source_type, gs.role_id, gs.role_name, gs.org_id, gs.expires_at
+      SELECT 'grant'::text AS kind,
+             gs.permission_code AS permission_code,
+             gs.source_type AS source_type,
+             gs.role_id AS role_id,
+             gs.role_name AS role_name,
+             gs.org_id AS org_id,
+             gs.expires_at AS expires_at
       FROM grant_sources gs
       UNION ALL
-      SELECT 'deny' AS kind, ds.permission, NULL, NULL, NULL, ds.org_id, ds.expires_at
+      SELECT 'deny'::text AS kind,
+             ds.permission_code AS permission_code,
+             NULL::text AS source_type,
+             NULL::text AS role_id,
+             NULL::text AS role_name,
+             ds.org_id AS org_id,
+             ds.expires_at AS expires_at
       FROM deny_set ds
     `);
 
@@ -100,59 +147,54 @@ export class IamPermissionChecker implements PermissionChecker {
 }
 
 /**
- * 聚合 CTE 来源行:grant 行按 permission 聚合来源,deny 行标注抵消。
+ * 聚合 CTE 来源行:grant 行按 permissionCode 聚合来源,deny 行标注抵消。
  * - 有效:有来源且未被 deny 的 permission。
  * - 被抵消:有来源且被 deny 的 permission(suppressedSources=本会来自,deniedBy=哪些 org deny)。
  * - 无效 deny:deny 了但无来源的 permission(诚实展示,suppressedSources 为空)。
  */
-function aggregatePermissionSources(rows: Record<string, unknown>[]): UserPermissionsResult {
-  const grantMap = new Map<string, PermissionSource[]>();
-  const denyByPerm = new Map<string, { orgId: string; expiresAt: Date | null }[]>();
+function aggregatePermissionSources(rows: readonly PermissionQueryRow[]): UserPermissionsResult {
+  const grantMap = new Map<PermissionCode, PermissionSource[]>();
+  const denyByPerm = new Map<PermissionCode, { orgId: string; expiresAt: Date | null }[]>();
 
   for (const row of rows) {
-    const permission = row.permission;
-    if (typeof permission !== "string") {
-      continue;
-    }
+    const permissionCode = getPermissionRef(row.permission_code).code;
     if (row.kind === "grant") {
       const source: PermissionSource = {
-        type: row.source_type === "role" ? "role" : "direct",
-        roleId: typeof row.role_id === "string" ? row.role_id : null,
-        roleName: typeof row.role_name === "string" ? row.role_name : null,
-        orgId: typeof row.org_id === "string" ? row.org_id : "",
-        expiresAt: row.expires_at instanceof Date ? row.expires_at : null,
+        type: row.source_type,
+        roleId: row.role_id,
+        roleName: row.role_name,
+        orgId: row.org_id,
+        expiresAt: row.expires_at,
       };
-      let list = grantMap.get(permission);
+      let list = grantMap.get(permissionCode);
       if (list === undefined) {
         list = [];
-        grantMap.set(permission, list);
+        grantMap.set(permissionCode, list);
       }
       list.push(source);
     } else if (row.kind === "deny") {
-      const orgId = typeof row.org_id === "string" ? row.org_id : "";
-      const expiresAt = row.expires_at instanceof Date ? row.expires_at : null;
-      let list = denyByPerm.get(permission);
+      let list = denyByPerm.get(permissionCode);
       if (list === undefined) {
         list = [];
-        denyByPerm.set(permission, list);
+        denyByPerm.set(permissionCode, list);
       }
-      list.push({ orgId, expiresAt });
+      list.push({ orgId: row.org_id, expiresAt: row.expires_at });
     }
   }
 
   const effective: UserPermissionsResult["effective"] = [];
   const denied: UserPermissionsResult["denied"] = [];
-  for (const [permission, sources] of grantMap) {
-    const denyList = denyByPerm.get(permission);
+  for (const [permissionCode, sources] of grantMap) {
+    const denyList = denyByPerm.get(permissionCode);
     if (denyList !== undefined) {
-      denied.push({ permission, deniedBy: denyList, suppressedSources: sources });
+      denied.push({ permissionCode, deniedBy: denyList, suppressedSources: sources });
     } else {
-      effective.push({ permission, sources });
+      effective.push({ permissionCode, sources });
     }
   }
-  for (const [permission, denyList] of denyByPerm) {
-    if (!grantMap.has(permission)) {
-      denied.push({ permission, deniedBy: denyList, suppressedSources: [] });
+  for (const [permissionCode, denyList] of denyByPerm) {
+    if (!grantMap.has(permissionCode)) {
+      denied.push({ permissionCode, deniedBy: denyList, suppressedSources: [] });
     }
   }
   return { effective, denied };
