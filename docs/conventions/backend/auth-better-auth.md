@@ -99,14 +99,18 @@ requirePermission("users.read")                                    // 默认 use
 requirePermission("users.read", { orgId: c.req.param("orgId") })   // 显式组织
 ```
 
-用户归属组织通过 Better Auth `additionalFields` 在 `user` 表加 `orgId` 列：
+用户归属组织通过 Better Auth `additionalFields` 在 `user` 表加 `orgId` 列。该字段由权限层和服务端用户管理维护，不接受 Better Auth 客户端输入：
 
 ```ts
 betterAuth({
-  user: { additionalFields: { orgId: { type: "string", required: false } } },
+  user: { additionalFields: { orgId: { type: "string", required: false, input: false } } },
   // ...
 });
 ```
+
+`auth-schema.ts` 是 Better Auth CLI 生成文件，CLI schema registry 不包含授权层的 `organizations` 模型，因此 CLI 专用配置不得为 `user.orgId` 声明跨文件 `references`。组织表和授权关系由 `authorization-schema.ts` 管理；当前模板保持 `user.orgId` 为无外键列，不修改生成文件，也不通过 Better Auth 配置添加自定义迁移。
+
+CLI 使用 `apps/backend/better-auth.config.ts` 这一份仅用于生成 schema 的配置，`auth:generate` 不应直接加载运行时 `src/core/auth/better-auth.ts`：后者还会装配审计和路径别名。运行时认证行为仍只在 `src/core/auth/better-auth.ts` 维护。
 
 强制规范：
 

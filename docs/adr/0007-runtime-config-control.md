@@ -2,7 +2,7 @@
 status: Active
 adrStatus: Accepted
 owner: backend-platform
-lastReviewedAt: 2026-07-15
+lastReviewedAt: 2026-08-08
 ---
 
 # ADR-0007: 运行时配置控制 via DB + Better Auth hooks
@@ -32,11 +32,11 @@ Accepted
 
 1. **运行时可编辑配置存 DB `system_settings` 表**（key text PK + value jsonb），脱离 env。env 只留启动必需且不可热改的基础设施配置（`DATABASE_URL`、`BETTER_AUTH_SECRET`、`PORT` 等）。
 
-2. **注册开关用 Better Auth `hooks.before` 实现**：在 `better-auth.ts` 配置里声明 `hooks.before`，内部用 `new URL(ctx.request?.url).pathname.endsWith("/sign-up/email")` 判断端点（pathname 去 query/fragment，防带参 URL 绕过 endsWith 整个 url；源码核实 `dispatch.mjs` `getHooks`：BA 用户级 `hooks.before` 是单一函数，被包成 `matcher: () => true`，对所有 `/api/auth/*` 触发，无内置路径匹配；ctx 类型 `MiddlewareInputContext` 暴露 `request` 但不暴露 `path`——`path` 由 dispatch 运行时注入、类型层不可达，故用 `request.url` 判断，无需 as 断言），直接查 `system_settings` 表（`signUp.enabled`；jsonb `value` 为 unknown，用本地 zod schema `safeParse` 窄化，parse 失败按未配置处理），未配置或 `enabled !== true` 一律抛 `APIError`（`AUTH_SIGNUP_DISABLED`，原生错误形态，不包业务 envelope，保持 ADR-0003）。**不经 `SystemSettingService`**：`core/` 禁止 import `features/`（见 architecture/backend.md 边界），better-auth.ts（core/auth）直接用 db 查中立层 `system_settings` 表；signUp value schema 本地定义（与 feature registry 同构，改值结构两处同步）。**不用 Hono app-level middleware**--`hooks.before` 是 Better Auth 原生机制，在 BA 配置里声明而非散落在 create-app.ts。
+2. **注册开关用 Better Auth `hooks.before` 实现**：在 `better-auth.ts` 配置里声明 `hooks.before`，使用 Better Auth 注入的 `ctx.path === "/sign-up/email"` 判断端点，因此 HTTP 请求和 server-side `auth.api` 调用走同一条拒绝路径。`hooks.before` 对所有 `/api/auth/*` 触发，无内置路径匹配；自助注册退役后该端点永久抛 `APIError`（`AUTH_SIGNUP_DISABLED`，原生错误形态，不包业务 envelope，保持 ADR-0003）。**不用 Hono app-level middleware**--`hooks.before` 是 Better Auth 原生机制，在 BA 配置里声明而非散落在 create-app.ts。
 
-   **移除 `env.DISABLE_SIGN_UP`**：sign-up 注册由 DB `signUp.enabled` 唯一控制（脱离 env）。原"env 作二次防御"设计取消--双开关的优先级陷阱（`env.DISABLE_SIGN_UP=true` 时 BA handler 内 `disableSignUp` 检查在 `hooks.before` 放行后仍拒绝，DB 开关失效）与"运行时可编辑配置"初衷冲突。安全默认：生产 migrate 后无 seed（signUp 缺失）-> hooks 拒绝（未配置即禁）；dev seed `enabled=true` 开箱允许。
+   **已退役的运行时开关**：此前的 DB `signUp.enabled` 和 `env.DISABLE_SIGN_UP` 方案随自助注册退役；当前不读取这两个开关，`/sign-up/email` 由 hook 永久拒绝。`system_settings` 表和 API 仍保留给后续运行时配置。
 
-3. **禁用用户用 `databaseHooks.session.create.before` 实现**：在 `better-auth.ts` 配置里声明 `databaseHooks.session.create.before`，检查 user 的 `disabled` 字段，禁用时抛 `APIError`（`AUTH_ACCOUNT_DISABLED`）阻止 session 创建。这同时阻止**禁用用户登录**（sign-in 创建新 session 时拦截）和**已有 session 续期**。**不在 `requireAuth` 里检查**--requireAuth 只能阻止已有 session 的请求，不能阻止禁用用户重新登录。禁用时同时主动删 session 立即下线。
+3. **禁用用户用 `databaseHooks.session.create.before` 实现**：在 `better-auth.ts` 配置里声明 `databaseHooks.session.create.before`，检查 user 的 `disabled` 字段，禁用时抛 `APIError`（`AUTH_ACCOUNT_DISABLED`）阻止 session 创建，从而阻止**禁用用户登录**（sign-in 创建新 session 时拦截）。当前 Better Auth session 续期走 session update，不由 `session.create.before` 拦截；因此 `disableUser` 必须在同一事务内主动删除该用户的全部 session，立即下线并覆盖已有 session。**不在 `requireAuth` 里检查**--requireAuth 只能阻止已有 session 的请求，不能阻止禁用用户重新登录。
 
 4. **不引入 Better Auth admin 插件**（延续 ADR-0004）：用户管理（代创建/重置密码）走自建业务端点 `POST /api/v1/users` 等，内部复用 `bootstrap.ts` 原语（`hashPassword` from `better-auth/crypto` + `db.insert` user/account）。`hashPassword` 是 `better-auth/crypto` 的公共导出（已核实 `dist/crypto/index.d.mts`）。
 
@@ -45,7 +45,7 @@ Accepted
 优点：
 
 - **遵循官方推荐**：`hooks.before` 和 `databaseHooks` 都是 Better Auth 原生配置项，官方文档有 sign-up 拦截示例。比 Hono 外层 middleware 更内聚（在 BA 配置里声明，不散落在 create-app.ts）。
-- **禁用无漏洞**：`databaseHooks.session.create.before` 在会话创建前拦截，同时阻止登录和 session 续期，比 requireAuth 检查更完整。
+- **禁用无漏洞**：`databaseHooks.session.create.before` 阻止禁用用户创建新 session，`disableUser` 在同一事务内删除已有 session；两者组合覆盖登录和已存在会话的立即失效。
 - **无侵入**：不自建 sign-up 端点、不引 admin 插件。BA 升级时 hooks/databaseHooks 是稳定配置 API。
 - **单开关简洁**：移除 `env.DISABLE_SIGN_UP`，sign-up 完全由 DB 控制，无双开关优先级陷阱。
 - **可扩展**：`system_settings` 是 key-value 模式，后续新增运行时配置只需加 key + UI 开关，不改架构。
