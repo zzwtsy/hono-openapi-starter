@@ -52,13 +52,10 @@ export const auth = betterAuth({
   },
   hooks: {
     // 模板不提供自助注册 + sign-out 审计:hooks.before 对所有 /api/auth/* 触发。
-    // 用 createAuthMiddleware 包装获取完整 ctx 类型(GenericEndpointContext)。
+    // 用 Better Auth 注入的 ctx.path 匹配 endpoint,兼容 HTTP 和 server-side auth.api 调用。
     before: createAuthMiddleware(async (ctx) => {
-      const url = ctx.request?.url;
-      const pathname = url != null ? new URL(url).pathname : "";
-
       // 禁注册
-      if (pathname.endsWith("/sign-up/email")) {
+      if (ctx.path === "/sign-up/email") {
         throw APIError.from("FORBIDDEN", {
           message: "不支持自助注册",
           code: "AUTH_SIGNUP_DISABLED",
@@ -67,7 +64,7 @@ export const auth = betterAuth({
 
       // sign-out 审计:session 删除前记(getSessionFromCtx 拿当前 session);
       // 取不到 session(未登录/已失效)不记,成功失败判定以取到 session 为准(已知局限见计划)。
-      if (pathname.endsWith("/sign-out")) {
+      if (ctx.path === "/sign-out") {
         const session = await getSessionFromCtx(ctx, { disableRefresh: true });
         const user = signOutAuditUser(session);
         if (user != null) {
@@ -83,11 +80,8 @@ export const auth = betterAuth({
       }
     }),
     after: createAuthMiddleware(async (ctx) => {
-      const url = ctx.request?.url;
-      const pathname = url != null ? new URL(url).pathname : "";
-
       // sign-in 审计:成功和失败都执行(after hook 在 APIError 时也跑),解析收敛在纯函数
-      if (pathname.endsWith("/sign-in/email")) {
+      if (ctx.path === "/sign-in/email") {
         const event = resolveSignInEvent(ctx);
         void writeAudit({
           action: authAuditActions.signIn.action,

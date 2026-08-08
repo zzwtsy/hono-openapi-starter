@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { app } from "@/app.js";
+import { auth } from "@/core/auth/index.js";
 import { db } from "@/db/client.js";
 import { systemSettings } from "@/db/schema/index.js";
 import { SystemSettingService } from "@/features/system-settings/service.js";
@@ -12,8 +13,8 @@ import { resetDb } from "../../helpers/db.js";
  * 1) /api/auth/sign-up/email 任意 body 恒 403(hooks.before 永久拒绝,不查 DB);
  * 2) registry 当前空:SystemSettingService.list 返回空并过滤脏数据。
  *
- * sign-up 走 app.request(真实 HTTP),ctx.request 是真实 Request,hooks.before 用 request.url 判断端点
- * (server-side auth.api.signUpEmail 不构造 Request,ctx.request 为 undefined,无法触发 hook,故测试用 HTTP)。
+ * sign-up 同时覆盖真实 HTTP 与 server-side auth.api 调用，避免只依赖 Request URL
+ * 导致服务端直接调用绕过 hooks.before。
  */
 
 const SIGNUP_BODY = { email: "new@example.com", password: "password-123", name: "New User" } as const;
@@ -42,6 +43,10 @@ describe("system-settings integration", () => {
       });
 
       expect(res.status).toBe(403);
+    });
+
+    it("server-side auth.api 注册也 403", async () => {
+      await expect(auth.api.signUpEmail({ body: SIGNUP_BODY })).rejects.toMatchObject({ statusCode: 403 });
     });
   });
 
