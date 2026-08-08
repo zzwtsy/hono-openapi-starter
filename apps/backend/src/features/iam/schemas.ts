@@ -42,7 +42,7 @@ export const UpdateRoleSchema = z.object({
 
 /** 给角色配权限入参。 */
 export const AssignRolePermissionsSchema = z.object({
-  permissionCodes: z.array(PermissionCodeSchema).min(0).openapi({ description: "要授予的权限 code 列表(已存在的跳过)", example: ["projects.read"] }),
+  permissionCodes: z.array(PermissionCodeSchema).min(0).max(allPermissionCodes.length).openapi({ description: "要授予的权限 code 列表(已存在的跳过)", example: ["projects.read"] }),
 });
 
 /** 角色 ID 路径参数。 */

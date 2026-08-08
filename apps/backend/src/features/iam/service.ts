@@ -70,12 +70,16 @@ async function requireExistingOrg(id: string) {
   }
 }
 
-async function requireExistingPermission(permissionCode: string) {
+function assertPermissionCodeInCatalog(permissionCode: string): void {
   try {
     getPermissionRef(permissionCode);
   } catch {
     throw new AppError("PERMISSION_NOT_FOUND", { params: { permissionCode } });
   }
+}
+
+async function requireExistingPermission(permissionCode: string) {
+  assertPermissionCodeInCatalog(permissionCode);
   const [perm] = await db
     .select({ code: permissions.code })
     .from(permissions)
@@ -195,23 +199,24 @@ export const IamService = {
     if (permissionCodes.length === 0) {
       return;
     }
+    const uniquePermissionCodes = [...new Set(permissionCodes)];
     // 先校验 catalog，再校验 code-only registry；不依赖 DB 展示字段。
-    for (const permissionCode of permissionCodes) {
-      await requireExistingPermission(permissionCode);
+    for (const permissionCode of uniquePermissionCodes) {
+      assertPermissionCodeInCatalog(permissionCode);
     }
     const existing = await db
       .select({ code: permissions.code })
       .from(permissions)
-      .where(inArray(permissions.code, permissionCodes));
-    if (existing.length !== permissionCodes.length) {
+      .where(inArray(permissions.code, uniquePermissionCodes));
+    if (existing.length !== uniquePermissionCodes.length) {
       const found = new Set(existing.map(e => e.code));
-      const missing = permissionCodes.find(p => !found.has(p));
+      const missing = uniquePermissionCodes.find(p => !found.has(p));
       throw new AppError("PERMISSION_NOT_FOUND", { params: { permissionCode: missing! } });
     }
     await db.transaction(async (tx) => {
       await tx
         .insert(rolePermissions)
-        .values(permissionCodes.map(permissionCode => ({ roleId: id, permissionCode })))
+        .values(uniquePermissionCodes.map(permissionCode => ({ roleId: id, permissionCode })))
         .onConflictDoNothing();
     });
   },

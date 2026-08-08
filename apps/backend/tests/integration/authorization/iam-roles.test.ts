@@ -38,6 +38,14 @@ describe("iam role management", () => {
     expect(perms.map(permission => permission.code)).toEqual(expect.arrayContaining(["projects.read", "permissions.read"]));
   });
 
+  it("批量配权限会去重重复 code", async () => {
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read", "projects.read"]);
+
+    const perms = await IamService.listRolePermissions(role.id);
+    expect(perms.map(permission => permission.code)).toEqual(["projects.read"]);
+  });
+
   it("assignRolePermissions 传不存在权限 code 抛 PERMISSION_NOT_FOUND", async () => {
     const role = await IamService.createRole({ name: "viewer" });
     // permissions.nonexistent 不在权限 catalog,应由 service 返回 PERMISSION_NOT_FOUND。
