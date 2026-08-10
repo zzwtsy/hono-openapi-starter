@@ -103,7 +103,7 @@ export function AuditLogTable({ search, onSearchChange }: AuditLogTableProps) {
           onRangeChange={(from, to) => onSearchChange({ from, to })}
           onReset={handleReset}
         />
-        <FilterChipsRow chips={activeChips} total={data?.meta.total} onRemove={removeChip} onClearAll={handleReset} />
+        <FilterChipsRow chips={activeChips} onRemove={removeChip} onClearAll={handleReset} />
       </div>
 
       <AuditLogDataTable

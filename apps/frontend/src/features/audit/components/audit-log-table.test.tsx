@@ -41,6 +41,12 @@ describe("AuditLogTable actorKeyword 防抖", () => {
     vi.useRealTimers();
   });
 
+  it("仅在分页区域展示总条数", () => {
+    const { container } = renderTable({});
+
+    expect(container.querySelectorAll("[aria-live=\"polite\"]")).toHaveLength(1);
+  });
+
   it("重置时取消待执行的关键词导航", () => {
     const onSearchChange = vi.fn();
     renderTable({ actorKeyword: "旧关键词" }, onSearchChange);
