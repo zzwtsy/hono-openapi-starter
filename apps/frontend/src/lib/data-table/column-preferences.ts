@@ -1,5 +1,3 @@
-import { arrayMove } from "@dnd-kit/sortable";
-
 export interface ColumnPreferenceState {
   order: string[];
   hidden: string[];
@@ -131,7 +129,12 @@ export function moveColumnPreference(
     return state;
   }
 
-  const moved = arrayMove(state.order, from, to);
+  const moved = [...state.order];
+  const [active] = moved.splice(from, 1);
+  if (active === undefined) {
+    return state;
+  }
+  moved.splice(to, 0, active);
   return normalizeColumnPreferences({ ...state, order: moved }, config);
 }
 

@@ -45,6 +45,16 @@ describe("column preferences", () => {
       order: ["description", "name", "actions"],
       hidden: [],
     });
+    expect(moveColumnPreference({ order: ["name", "description", "actions"], hidden: [] }, "description", "name", config)).toEqual({
+      order: ["description", "name", "actions"],
+      hidden: [],
+    });
+  });
+
+  it("忽略未知列和原地移动", () => {
+    const state = { order: ["name", "description", "actions"], hidden: [] };
+    expect(moveColumnPreference(state, "unknown", "name", config)).toBe(state);
+    expect(moveColumnPreference(state, "name", "name", config)).toBe(state);
   });
 
   it("localStorage JSON 损坏或读写异常时回退默认值", () => {
