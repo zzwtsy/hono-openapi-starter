@@ -1,6 +1,6 @@
 import type { Organization } from "@/api/globals";
 import { useForm } from "@tanstack/react-form";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import Apis from "@/api";
@@ -11,6 +11,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { focusFirstInvalidControl } from "../lib/focus-first-invalid-control";
 import { buildOrganizationTree } from "../lib/organization-tree";
 
 const organizationSchema = z.object({
@@ -120,6 +121,7 @@ export function OrganizationForm({
   const [pendingValues, setPendingValues] = useState<OrganizationFormValues>();
   const [reparentConfirming, setReparentConfirming] = useState(false);
   const [reparentBusy, setReparentBusy] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const saveOrganization = (value: OrganizationFormValues) =>
     persistOrganization(organization, onSuccess, value);
 
@@ -132,6 +134,7 @@ export function OrganizationForm({
       onBlur: organizationSchema,
       onSubmit: organizationSchema,
     },
+    onSubmitInvalid: () => window.requestAnimationFrame(() => focusFirstInvalidControl(formRef.current)),
     onSubmit: async ({ value }) => {
       const nextParentId = value.parentId === "" ? null : value.parentId;
       const currentParentId = organization?.parentId ?? null;
@@ -156,6 +159,7 @@ export function OrganizationForm({
         <DialogTitle>{organization ? "编辑组织" : "新建组织"}</DialogTitle>
       </DialogHeader>
       <form
+        ref={formRef}
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
@@ -164,55 +168,59 @@ export function OrganizationForm({
         }}
         className="flex flex-col gap-4"
       >
-        <FieldGroup>
-          <form.Field name="name">
-            {(field) => {
-              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
-              return (
-                <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor="org-name">名称</FieldLabel>
-                  <Input
-                    id="org-name"
-                    name={field.name}
-                    autoComplete="off"
-                    required
-                    value={field.state.value}
-                    onChange={e => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    aria-invalid={isInvalid}
-                  />
-                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                </Field>
-              );
-            }}
-          </form.Field>
-          <form.Field name="parentId">
-            {field => (
-              <Field>
-                <FieldLabel htmlFor="org-parent">父组织</FieldLabel>
-                <Select
-                  items={parentItems}
-                  name={field.name}
-                  value={field.state.value === "" ? null : field.state.value}
-                  onValueChange={(val) => { field.handleChange(val ?? ""); }}
-                >
-                  <SelectTrigger id="org-parent" className="w-full" onBlur={field.handleBlur}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {parentItems.map(item => (
-                        <SelectItem key={item.value ?? "root"} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
-            )}
-          </form.Field>
-        </FieldGroup>
+        <form.Subscribe selector={state => state.submissionAttempts}>
+          {submissionAttempts => (
+            <FieldGroup>
+              <form.Field name="name">
+                {(field) => {
+                  const isInvalid = (field.state.meta.isTouched || submissionAttempts > 0) && !field.state.meta.isValid;
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor="org-name">名称</FieldLabel>
+                      <Input
+                        id="org-name"
+                        name={field.name}
+                        autoComplete="off"
+                        required
+                        value={field.state.value}
+                        onChange={e => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+              <form.Field name="parentId">
+                {field => (
+                  <Field>
+                    <FieldLabel htmlFor="org-parent">父组织</FieldLabel>
+                    <Select
+                      items={parentItems}
+                      name={field.name}
+                      value={field.state.value === "" ? null : field.state.value}
+                      onValueChange={(val) => { field.handleChange(val ?? ""); }}
+                    >
+                      <SelectTrigger id="org-parent" className="w-full" onBlur={field.handleBlur}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {parentItems.map(item => (
+                            <SelectItem key={item.value ?? "root"} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+              </form.Field>
+            </FieldGroup>
+          )}
+        </form.Subscribe>
         <DialogFooter>
           <form.Subscribe selector={state => state.isSubmitting}>
             {isSubmitting => (

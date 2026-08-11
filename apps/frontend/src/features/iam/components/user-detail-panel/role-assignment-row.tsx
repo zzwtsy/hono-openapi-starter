@@ -3,6 +3,7 @@ import { CalendarClock, X } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
+import { Item, ItemActions, ItemContent, ItemDescription } from "@/components/ui/item";
 
 interface RoleAssignmentRowProps {
   assignment: { roleId: string; roleName: string; orgId: string; expiresAt: string | null };
@@ -19,8 +20,8 @@ export function RoleAssignmentRow({ assignment, canRevoke, busy, onRevoke, onNav
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 rounded-lg border p-2">
-        <div className="flex flex-col gap-0.5">
+      <Item variant="outline" size="sm">
+        <ItemContent>
           <button
             type="button"
             className="text-left text-sm font-medium hover:underline"
@@ -29,19 +30,21 @@ export function RoleAssignmentRow({ assignment, canRevoke, busy, onRevoke, onNav
             {assignment.roleName}
           </button>
           {assignment.expiresAt != null && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <ItemDescription className="flex items-center gap-1">
               <CalendarClock className="size-3" />
               {expired ? "已过期" : format(new Date(assignment.expiresAt), "yyyy-MM-dd")}
-            </span>
+            </ItemDescription>
           )}
-        </div>
+        </ItemContent>
         {canRevoke && (
-          <Button variant="ghost" size="sm" onClick={() => { setConfirming(true); }}>
-            <X />
-            撤销
-          </Button>
+          <ItemActions>
+            <Button variant="ghost" size="sm" onClick={() => { setConfirming(true); }}>
+              <X data-icon="inline-start" />
+              撤销
+            </Button>
+          </ItemActions>
         )}
-      </div>
+      </Item>
       <ConfirmDeleteDialog
         open={confirming}
         busy={busy}

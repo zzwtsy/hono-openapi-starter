@@ -3,7 +3,9 @@ import { ShieldCheck } from "lucide-react";
 import { AsyncListState } from "@/components/shared/async-list";
 import { DatePicker } from "@/components/shared/date-picker";
 import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { ItemGroup } from "@/components/ui/item";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,9 +61,17 @@ export function RoleAssignmentsTab({
           errorDescription="无法获取已授角色。"
         >
           {assignments === undefined || assignments.length === 0
-            ? <p className="text-sm text-muted-foreground">暂无已授角色。</p>
+            ? (
+                <Empty className="min-h-28 p-4">
+                  <EmptyMedia variant="icon"><ShieldCheck /></EmptyMedia>
+                  <EmptyHeader>
+                    <EmptyTitle>暂无已授角色</EmptyTitle>
+                    <EmptyDescription>该用户在当前组织没有角色授权。</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )
             : (
-                <div className="flex flex-col gap-2">
+                <ItemGroup>
                   {assignments.map(a => (
                     <RoleAssignmentRow
                       key={a.roleId}
@@ -72,7 +82,7 @@ export function RoleAssignmentsTab({
                       onNavigateRole={onNavigateRole}
                     />
                   ))}
-                </div>
+                </ItemGroup>
               )}
         </AsyncListState>
       </div>
@@ -112,13 +122,13 @@ export function RoleAssignmentsTab({
               <Field>
                 <FieldLabel htmlFor="role-expires">过期时间(可选)</FieldLabel>
                 <DatePicker id="role-expires" value={expiresAt} onChange={setExpiresAt} />
-                <p className="text-xs text-muted-foreground">留空=永不过期(新授)/保留原值(续期);暂不支持从有限期改回永不过期。</p>
+                <FieldDescription>留空=永不过期(新授)/保留原值(续期)；暂不支持从有限期改回永不过期。</FieldDescription>
               </Field>
             </FieldGroup>
             <div className="flex justify-end">
               <Button disabled={selectedRoleId === "" || assigning} onClick={() => { void assignRole(); }}>
                 {assigning && <Spinner data-icon="inline-start" />}
-                <ShieldCheck />
+                <ShieldCheck data-icon="inline-start" />
                 授予
               </Button>
             </div>

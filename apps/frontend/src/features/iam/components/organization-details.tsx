@@ -1,30 +1,20 @@
 import type { OrganizationTreeIndex } from "../lib/organization-tree";
+import type { IamDetailMode } from "./iam-workbench";
 import type { Organization } from "@/api/globals";
-import { Building2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useId } from "react";
-import { Can } from "@/components/shared/can";
+import { ResourceActions } from "@/components/shared/resource-actions";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Item, ItemContent, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { useCan } from "@/hooks/use-permissions";
+import { IamDetailSurface } from "./iam-detail-surface";
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" });
 
 interface OrganizationDetailsProps {
+  mode: IamDetailMode;
   index: OrganizationTreeIndex;
   organization?: Organization;
   onCreateChild: (organization: Organization) => void;
@@ -34,6 +24,7 @@ interface OrganizationDetailsProps {
 }
 
 export function OrganizationDetails({
+  mode,
   index,
   organization,
   onCreateChild,
@@ -42,78 +33,60 @@ export function OrganizationDetails({
   onSelect,
 }: OrganizationDetailsProps) {
   const childOrganizationsTitleId = useId();
+  const canCreate = useCan("organizations.create");
+  const canUpdate = useCan("organizations.update");
+  const canDelete = useCan("organizations.delete");
 
   if (organization === undefined) {
     return (
-      <Card className="h-full">
-        <CardContent className="flex flex-1 items-center justify-center">
-          <Empty>
-            <EmptyMedia variant="icon">
-              <Building2 />
-            </EmptyMedia>
-            <EmptyHeader>
-              <EmptyTitle>选择一个组织</EmptyTitle>
-              <EmptyDescription>从组织树中选择节点后查看详情。</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        </CardContent>
-      </Card>
+      <IamDetailSurface mode={mode} title="组织详情">
+        <Empty>
+          <EmptyMedia variant="icon"><Building2 /></EmptyMedia>
+          <EmptyHeader>
+            <EmptyTitle>选择一个组织</EmptyTitle>
+            <EmptyDescription>从组织树中选择节点后查看详情。</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </IamDetailSurface>
     );
   }
 
   const parent = index.getParent(organization.id);
   const children = index.getChildren(organization.id);
+  const secondaryActions = [
+    { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { onEdit(organization); } },
+    {
+      id: "delete",
+      allowed: canDelete,
+      label: "删除",
+      icon: Trash2,
+      variant: "destructive" as const,
+      disabled: children.length > 0,
+      disabledReason: children.length > 0 ? "需先移动或删除所有直接子组织" : undefined,
+      onClick: () => { onDelete(organization); },
+    },
+  ];
 
   return (
-    <Card className="h-full">
-      <CardHeader className="has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
-        <CardTitle className="wrap-break-word text-lg">{organization.name}</CardTitle>
-        <CardDescription className="wrap-break-word">{index.getDisplayPath(organization.id)}</CardDescription>
-        <Can anyOf={["organizations.create", "organizations.update", "organizations.delete"]}>
-          <CardAction className="col-start-1 row-span-1 row-start-auto mt-3 flex flex-wrap items-center justify-self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
-            <Can permission="organizations.create">
-              <Button variant="outline" size="sm" onClick={() => { onCreateChild(organization); }}>
-                <Plus data-icon="inline-start" />
-                新建子组织
-              </Button>
-            </Can>
-            <Can permission="organizations.update">
-              <Button variant="ghost" size="sm" onClick={() => { onEdit(organization); }}>
-                <Pencil data-icon="inline-start" />
-                编辑
-              </Button>
-            </Can>
-            <Can permission="organizations.delete">
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={(
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`更多组织操作：${organization.name}`}
-                    />
-                  )}
-                >
-                  <MoreHorizontal />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={children.length > 0}
-                      onClick={() => { onDelete(organization); }}
-                    >
-                      <Trash2 />
-                      {children.length > 0 ? "请先处理子组织" : "删除组织"}
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </Can>
-          </CardAction>
-        </Can>
-      </CardHeader>
-      <CardContent className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto">
+    <IamDetailSurface
+      mode={mode}
+      title={organization.name}
+      description={index.getDisplayPath(organization.id)}
+      actions={canCreate || canUpdate || canDelete
+        ? (
+            <div className="flex items-center gap-1">
+              {canCreate && (
+                <Button variant="outline" size="sm" onClick={() => { onCreateChild(organization); }}>
+                  <Plus data-icon="inline-start" />
+                  新建子组织
+                </Button>
+              )}
+              <ResourceActions label={`${organization.name} 的操作`} items={secondaryActions} />
+            </div>
+          )
+        : undefined}
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pt-3">
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <dt className="text-xs text-muted-foreground">上级组织</dt>
@@ -145,24 +118,32 @@ export function OrganizationDetails({
             </span>
           </div>
           {children.length === 0
-            ? <p className="text-sm text-muted-foreground">当前组织没有直接子组织。</p>
+            ? (
+                <Empty className="min-h-28 p-4">
+                  <EmptyHeader>
+                    <EmptyTitle>暂无子组织</EmptyTitle>
+                    <EmptyDescription>当前组织没有直接子组织。</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )
             : (
-                <div className="grid gap-2 sm:grid-cols-2">
+                <ItemGroup className="grid gap-2 sm:grid-cols-2">
                   {children.map(child => (
-                    <Button
+                    <Item
                       key={child.id}
+                      render={<button type="button" />}
                       variant="outline"
-                      className="min-w-0 justify-start"
+                      size="sm"
                       onClick={() => { onSelect(child.id); }}
                     >
-                      <Building2 data-icon="inline-start" />
-                      <span className="truncate">{child.name}</span>
-                    </Button>
+                      <ItemMedia variant="icon"><Building2 /></ItemMedia>
+                      <ItemContent><ItemTitle>{child.name}</ItemTitle></ItemContent>
+                    </Item>
                   ))}
-                </div>
+                </ItemGroup>
               )}
         </section>
-      </CardContent>
-    </Card>
+      </div>
+    </IamDetailSurface>
   );
 }

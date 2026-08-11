@@ -8,12 +8,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCan } from "@/hooks/use-permissions";
 import { groupByResource } from "../../lib/group-by-resource";
 import { IAM_ACTIONS } from "../../lib/iam-actions";
+import { PermissionGroupLayout } from "../permission-group-layout";
 
 function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange, canReadRole, canReadOrg }: {
   source: PermissionSource;
@@ -148,7 +150,7 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
         <h4 className="text-sm font-medium">有效权限</h4>
         {effective.length === 0
           ? (
-              <Empty>
+              <Empty className="min-h-28 p-4">
                 <EmptyMedia variant="icon"><KeyRound /></EmptyMedia>
                 <EmptyHeader>
                   <EmptyTitle>暂无权限</EmptyTitle>
@@ -157,31 +159,35 @@ export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigat
               </Empty>
             )
           : (
-              <div className="flex flex-col gap-3">
+              <PermissionGroupLayout maxColumns={2}>
                 {[...groups.entries()].map(([resource, perms]) => (
-                  <div key={resource} className="flex flex-col gap-1">
+                  <section key={resource} className="mb-4 flex min-w-0 break-inside-avoid flex-col gap-1.5 rounded-lg border p-3">
                     <span className="text-xs font-medium text-muted-foreground">{perms[0]?.permission.resourceLabel ?? "其他资源"}</span>
-                    <div className="flex flex-col gap-1.5">
+                    <ItemGroup>
                       {perms.map(p => (
-                        <div key={p.permission.code} className="flex flex-wrap items-center gap-1.5 text-sm">
-                          <span>{p.permission.label}</span>
-                          {p.sources.map(s => (
-                            <SourceBadge
-                              key={`${s.type}-${s.roleId ?? "direct"}-${s.orgId}`}
-                              source={s}
-                              getOrgPath={getOrgPath}
-                              onNavigateRole={onNavigateRole}
-                              onOrgIdChange={onOrgIdChange}
-                              canReadRole={canReadRoles}
-                              canReadOrg={canReadOrgs}
-                            />
-                          ))}
-                        </div>
+                        <Item key={p.permission.code} size="xs">
+                          <ItemContent>
+                            <ItemTitle>{p.permission.label}</ItemTitle>
+                            <ItemDescription className="flex flex-wrap items-center gap-1.5">
+                              {p.sources.map(s => (
+                                <SourceBadge
+                                  key={`${s.type}-${s.roleId ?? "direct"}-${s.orgId}`}
+                                  source={s}
+                                  getOrgPath={getOrgPath}
+                                  onNavigateRole={onNavigateRole}
+                                  onOrgIdChange={onOrgIdChange}
+                                  canReadRole={canReadRoles}
+                                  canReadOrg={canReadOrgs}
+                                />
+                              ))}
+                            </ItemDescription>
+                          </ItemContent>
+                        </Item>
                       ))}
-                    </div>
-                  </div>
+                    </ItemGroup>
+                  </section>
                 ))}
-              </div>
+              </PermissionGroupLayout>
             )}
       </div>
 

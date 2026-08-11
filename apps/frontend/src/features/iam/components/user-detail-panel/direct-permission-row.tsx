@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 
 interface DirectPermissionRowProps {
   perm: UserDirectPermission;
@@ -20,29 +21,31 @@ export function DirectPermissionRow({ perm, canRevoke, busy, onRevoke }: DirectP
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 rounded-lg border p-2">
-        <div className="flex flex-col gap-0.5">
+      <Item variant="outline" size="sm">
+        <ItemContent>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{perm.permission.label}</span>
+            <ItemTitle>{perm.permission.label}</ItemTitle>
             <Badge variant={perm.effect === "deny" ? "destructive" : "secondary"}>
               {perm.effect === "deny" ? "拒绝" : "允许"}
             </Badge>
             {expired && <Badge variant="destructive">已过期</Badge>}
           </div>
           {perm.expiresAt != null && !expired && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <ItemDescription className="flex items-center gap-1">
               <CalendarClock className="size-3" />
               {format(new Date(perm.expiresAt), "yyyy-MM-dd")}
-            </span>
+            </ItemDescription>
           )}
-        </div>
+        </ItemContent>
         {canRevoke && (
-          <Button variant="ghost" size="sm" onClick={() => { setConfirming(true); }}>
-            <X />
-            撤销
-          </Button>
+          <ItemActions>
+            <Button variant="ghost" size="sm" onClick={() => { setConfirming(true); }}>
+              <X data-icon="inline-start" />
+              撤销
+            </Button>
+          </ItemActions>
         )}
-      </div>
+      </Item>
       <ConfirmDeleteDialog
         open={confirming}
         busy={busy}

@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ResourceAction {
   id: string;
@@ -19,8 +20,8 @@ interface ResourceAction {
   variant?: "destructive";
   /** 业务级禁用(如行状态不允许),与 `allowed`(权限)区分。 */
   disabled?: boolean;
-  /** tooltip / 禁用原因。 */
-  title?: string;
+  /** 业务级禁用原因，通过 tooltip 提示。 */
+  disabledReason?: string;
 }
 
 interface ResourceActionsProps {
@@ -29,12 +30,40 @@ interface ResourceActionsProps {
   label?: string;
 }
 
+function ResourceActionMenuItem({ item }: { item: ResourceAction }) {
+  const Icon = item.icon;
+  const menuItem = (
+    <DropdownMenuItem
+      variant={item.variant}
+      disabled={item.disabled}
+      aria-description={item.disabledReason}
+      onClick={item.onClick}
+    >
+      <Icon />
+      {item.label}
+    </DropdownMenuItem>
+  );
+
+  if (item.disabledReason === undefined) {
+    return menuItem;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className="block" />}>
+        {menuItem}
+      </TooltipTrigger>
+      <TooltipContent side="left">{item.disabledReason}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 /**
  * 数据驱动的行操作菜单:把「按权限显隐 + 手写 `DropdownMenuItem`」的重复样板收敛成
  * 数组声明,消除 `{canX && <DropdownMenuItem>}` 深嵌套。
  *
  * - `allowed`:权限级显隐;全部为 false 时返回 null(整列不渲染)。
- * - `disabled`/`title`:业务级禁用,对齐 CASL `<Can passThrough>` 的「禁用而非隐藏」语义。
+ * - `disabled`/`disabledReason`:业务级禁用,对齐 CASL `<Can passThrough>` 的「禁用而非隐藏」语义。
  *
  * 权限判断由调用方经 `useCan` 算好布尔传入;本组件不耦合权限 hook,便于在非路由
  * 上下文(如测试)中渲染。后端仍是唯一授权边界,本组件只做 UX。
@@ -51,21 +80,7 @@ export function ResourceActions({ items, label = "操作" }: ResourceActionsProp
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
-          {visible.map((item) => {
-            const Icon = item.icon;
-            return (
-              <DropdownMenuItem
-                key={item.id}
-                variant={item.variant}
-                disabled={item.disabled}
-                title={item.title}
-                onClick={item.onClick}
-              >
-                <Icon />
-                {item.label}
-              </DropdownMenuItem>
-            );
-          })}
+          {visible.map(item => <ResourceActionMenuItem key={item.id} item={item} />)}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

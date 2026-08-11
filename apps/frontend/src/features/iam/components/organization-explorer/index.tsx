@@ -6,19 +6,40 @@ import { toast } from "sonner";
 import Apis from "@/api";
 import { AsyncListState } from "@/components/shared/async-list";
 import { Can } from "@/components/shared/can";
-import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { buildOrganizationTree } from "../../lib/organization-tree";
+import { IamDetailSurface } from "../iam-detail-surface";
+import { IamWorkbench } from "../iam-workbench";
+import { OrganizationDetails } from "../organization-details";
 import { OrganizationDialogs } from "./organization-dialogs";
-import { ExplorerContent } from "./organization-explorer-content";
+import { OrganizationNavigationPanel } from "./organization-explorer-content";
 import { OrganizationExplorerSkeleton } from "./organization-explorer-skeleton";
 
 interface OrganizationExplorerProps {
   selectedOrganizationId?: string;
   onSelectedOrganizationChange: (id?: string) => void;
+}
+
+function EmptyOrganizations({ onCreate }: { onCreate: () => void }) {
+  return (
+    <Empty className="h-full min-h-80 border">
+      <EmptyMedia variant="icon"><Building2 /></EmptyMedia>
+      <EmptyHeader>
+        <EmptyTitle>暂无组织</EmptyTitle>
+        <EmptyDescription>创建第一个根组织，开始搭建组织结构。</EmptyDescription>
+      </EmptyHeader>
+      <Can permission="organizations.create">
+        <EmptyContent>
+          <Button onClick={onCreate}>
+            <Plus data-icon="inline-start" />
+            新建根组织
+          </Button>
+        </EmptyContent>
+      </Can>
+    </Empty>
+  );
 }
 
 export function OrganizationExplorer({
@@ -30,7 +51,6 @@ export function OrganizationExplorer({
   const [editing, setEditing] = useState<Organization>();
   const [deleting, setDeleting] = useState<Organization>();
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const isNarrowScreen = useMediaQuery("(max-width: 1023px)");
   const index = useMemo(() => buildOrganizationTree(data ?? []), [data]);
   const selectedOrganization = selectedOrganizationId === undefined
     ? index.byId.get(index.rootIds[0] ?? "")
@@ -50,7 +70,7 @@ export function OrganizationExplorer({
 
   const selectOrganization = (id: string, openDetails = false) => {
     onSelectedOrganizationChange(id);
-    if (openDetails && isNarrowScreen) {
+    if (openDetails) {
       setDetailsOpen(true);
     }
   };
@@ -86,59 +106,76 @@ export function OrganizationExplorer({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5 p-4 sm:p-6">
-      <PageHeader title="组织管理" description="浏览和维护组织层级。">
-        <Can permission="organizations.create">
-          <Button onClick={() => { setCreatingParentId(null); }}>
-            <Plus data-icon="inline-start" />
-            新建根组织
-          </Button>
-        </Can>
-      </PageHeader>
-
-      <AsyncListState
-        loading={loading}
-        error={error}
-        data={data}
-        onRetry={() => { void send(); }}
-        loadingFallback={<OrganizationExplorerSkeleton />}
-        errorDescription="无法获取组织列表，请检查网络连接后重试。"
-      >
-        {data?.length === 0
+    <>
+      <IamWorkbench
+        title="组织管理"
+        description="浏览和维护组织层级。"
+        actions={(
+          <Can permission="organizations.create">
+            <Button onClick={() => { setCreatingParentId(null); }}>
+              <Plus data-icon="inline-start" />
+              新建根组织
+            </Button>
+          </Can>
+        )}
+        navigation={(
+          <AsyncListState
+            loading={loading}
+            error={error}
+            data={data}
+            onRetry={() => { void send(); }}
+            loadingFallback={<OrganizationExplorerSkeleton />}
+            errorDescription="无法获取组织列表，请检查网络连接后重试。"
+          >
+            {data?.length === 0
+              ? <EmptyOrganizations onCreate={() => { setCreatingParentId(null); }} />
+              : (
+                  <OrganizationNavigationPanel
+                    index={index}
+                    selectedId={selectedOrganization?.id}
+                    count={data?.length ?? 0}
+                    onSelect={(id) => { selectOrganization(id, true); }}
+                  />
+                )}
+          </AsyncListState>
+        )}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={setDetailsOpen}
+        sheetTitle="组织详情"
+        sheetDescription="查看并管理所选组织。"
+        renderDetail={mode => selectedOrganization === undefined
           ? (
-              <Empty className="min-h-80 border">
-                <EmptyMedia variant="icon">
-                  <Building2 />
-                </EmptyMedia>
-                <EmptyHeader>
-                  <EmptyTitle>暂无组织</EmptyTitle>
-                  <EmptyDescription>创建第一个根组织，开始搭建组织结构。</EmptyDescription>
-                </EmptyHeader>
-                <Can permission="organizations.create">
-                  <EmptyContent>
-                    <Button onClick={() => { setCreatingParentId(null); }}>
-                      <Plus data-icon="inline-start" />
-                      新建根组织
-                    </Button>
-                  </EmptyContent>
-                </Can>
-              </Empty>
+              <IamDetailSurface mode={mode} title="组织详情">
+                <Empty>
+                  <EmptyMedia variant="icon"><Building2 /></EmptyMedia>
+                  <EmptyHeader>
+                    <EmptyTitle>选择一个组织</EmptyTitle>
+                    <EmptyDescription>从组织树中选择节点后查看详情。</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              </IamDetailSurface>
             )
           : (
-              <ExplorerContent
+              <OrganizationDetails
+                mode={mode}
                 index={index}
                 organization={selectedOrganization}
-                count={data?.length ?? 0}
-                detailsOpen={detailsOpen}
-                onDetailsOpenChange={setDetailsOpen}
-                onSelectInTree={(id) => { selectOrganization(id, true); }}
-                onSelectInDetails={(id) => { selectOrganization(id); }}
-                onCreateChild={(parentId) => { setCreatingParentId(parentId); }}
-                onEdit={setEditing}
-                onDelete={setDeleting}
+                onCreateChild={(org) => {
+                  setDetailsOpen(false);
+                  setCreatingParentId(org.id);
+                }}
+                onEdit={(org) => {
+                  setDetailsOpen(false);
+                  setEditing(org);
+                }}
+                onDelete={(org) => {
+                  setDetailsOpen(false);
+                  setDeleting(org);
+                }}
+                onSelect={(id) => { selectOrganization(id); }}
               />
             )}
-      </AsyncListState>
+      />
 
       <OrganizationDialogs
         creatingParentId={creatingParentId}
@@ -153,6 +190,6 @@ export function OrganizationExplorer({
         onUpdated={handleUpdated}
         onConfirmDelete={() => { void confirmDelete(); }}
       />
-    </div>
+    </>
   );
 }

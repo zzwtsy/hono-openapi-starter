@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
+import type { IamDetailMode } from "../iam-workbench";
 import type { Role, UserSummary } from "@/api/globals";
+import { Ban, CircleCheck, KeyRound, Pencil, Shuffle } from "lucide-react";
 import { useState } from "react";
 import Apis from "@/api";
+import { ResourceActions } from "@/components/shared/resource-actions";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +13,7 @@ import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { useIamUserCapabilities } from "../../hooks/use-iam-capabilities";
 import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
+import { IamDetailSurface } from "../iam-detail-surface";
 import { DirectPermissionsTab } from "./direct-permissions-tab";
 import { EffectivePermissionsPanel } from "./effective-permissions-panel";
 import { RoleAssignmentsTab } from "./role-assignments-tab";
@@ -23,6 +26,7 @@ interface OrgOption {
 }
 
 interface UserDetailPanelProps {
+  mode: IamDetailMode;
   user: UserSummary;
   orgId: string;
   onOrgIdChange: (orgId: string) => void;
@@ -44,21 +48,10 @@ interface UserDetailTabsProps {
   currentUserId: string;
   getOrgPath: (orgId: string) => string;
   canReadAssignments: boolean;
-  canUpdate: boolean;
-  canReset: boolean;
-  canDisable: boolean;
-  canEnable: boolean;
-  disabled: boolean;
-  isSelf: boolean;
   activeTab: string;
   onTabChange: (tab: string) => void;
   roles: Role[];
   onNavigateRole: (roleId: string, orgId?: string) => void;
-  onEdit: () => void;
-  onReset: () => void;
-  onDisable: () => void;
-  onEnable: () => void;
-  onTransfer: () => void;
   onOrgIdChange: (orgId: string) => void;
   auditTabContent?: ReactNode;
 }
@@ -69,68 +62,52 @@ function UserDetailTabs({
   currentUserId,
   getOrgPath,
   canReadAssignments,
-  canUpdate,
-  canReset,
-  canDisable,
-  canEnable,
-  disabled,
-  isSelf,
   activeTab,
   onTabChange,
   roles,
   onNavigateRole,
-  onEdit,
-  onReset,
-  onDisable,
-  onEnable,
-  onTransfer,
   onOrgIdChange,
   auditTabContent,
 }: UserDetailTabsProps) {
   return (
-    <Tabs value={activeTab} onValueChange={onTabChange} className="flex min-h-0 flex-1 flex-col">
-      <TabsList>
-        <TabsTrigger value="info">信息</TabsTrigger>
-        {canReadAssignments && (
-          <>
-            <TabsTrigger value="roles">角色授权</TabsTrigger>
-            <TabsTrigger value="direct">直接授权</TabsTrigger>
-            <TabsTrigger value="effective">有效权限</TabsTrigger>
-          </>
-        )}
-        <TabsTrigger value="audit">操作历史</TabsTrigger>
-      </TabsList>
-      <TabsContent value="info" className="min-h-0 flex-1 overflow-y-auto">
-        <UserInfoTab
-          user={user}
-          canUpdate={canUpdate}
-          canReset={canReset}
-          canDisable={canDisable}
-          canEnable={canEnable}
-          disabled={disabled}
-          isSelf={isSelf}
-          onEdit={onEdit}
-          onReset={onReset}
-          onDisable={onDisable}
-          onEnable={onEnable}
-          onTransfer={onTransfer}
-        />
+    <Tabs value={activeTab} onValueChange={onTabChange} className="min-h-0 flex-1">
+      <div className="shrink-0 overflow-x-auto pb-1">
+        <TabsList variant="line" className="min-w-max justify-start">
+          <TabsTrigger value="info">信息</TabsTrigger>
+          {canReadAssignments && (
+            <>
+              <TabsTrigger value="roles">角色授权</TabsTrigger>
+              <TabsTrigger value="direct">直接授权</TabsTrigger>
+              <TabsTrigger value="effective">有效权限</TabsTrigger>
+            </>
+          )}
+          <TabsTrigger value="audit">操作历史</TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value="info" className="min-h-0 flex-1 overflow-y-auto pt-3">
+        <div className="max-w-3xl">
+          <UserInfoTab user={user} />
+        </div>
       </TabsContent>
       {canReadAssignments && (
         <>
-          <TabsContent value="roles" className="min-h-0 flex-1 overflow-y-auto">
-            <RoleAssignmentsTab
-              userId={user.id}
-              orgId={orgId}
-              roles={roles}
-              currentUserId={currentUserId}
-              onNavigateRole={onNavigateRole}
-            />
+          <TabsContent value="roles" className="min-h-0 flex-1 overflow-y-auto pt-3">
+            <div className="max-w-3xl">
+              <RoleAssignmentsTab
+                userId={user.id}
+                orgId={orgId}
+                roles={roles}
+                currentUserId={currentUserId}
+                onNavigateRole={onNavigateRole}
+              />
+            </div>
           </TabsContent>
-          <TabsContent value="direct" className="min-h-0 flex-1 overflow-y-auto">
-            <DirectPermissionsTab userId={user.id} orgId={orgId} currentUserId={currentUserId} />
+          <TabsContent value="direct" className="min-h-0 flex-1 overflow-y-auto pt-3">
+            <div className="max-w-3xl">
+              <DirectPermissionsTab userId={user.id} orgId={orgId} currentUserId={currentUserId} />
+            </div>
           </TabsContent>
-          <TabsContent value="effective" className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="effective" className="min-h-0 flex-1 overflow-y-auto pt-3">
             <EffectivePermissionsPanel
               userId={user.id}
               orgId={orgId}
@@ -141,14 +118,15 @@ function UserDetailTabs({
           </TabsContent>
         </>
       )}
-      <TabsContent value="audit" className="min-h-0 flex-1 overflow-y-auto">
-        {auditTabContent}
+      <TabsContent value="audit" className="min-h-0 flex-1 overflow-y-auto pt-3">
+        <div className="max-w-4xl">{auditTabContent}</div>
       </TabsContent>
     </Tabs>
   );
 }
 
 export function UserDetailPanel({
+  mode,
   user,
   orgId,
   onOrgIdChange,
@@ -187,26 +165,40 @@ export function UserDetailPanel({
   const disabled = user.disabled === true;
   const isSelf = user.id === currentUserId;
   const activeTab = !canReadAssignments && ["roles", "direct", "effective"].includes(tab) ? "info" : tab;
+  const actions = [
+    { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { setEditing(true); } },
+    { id: "transfer", allowed: canUpdate && !isSelf, label: "调岗", icon: Shuffle, onClick: () => { setTransferring(true); } },
+    { id: "reset", allowed: canReset, label: "重置密码", icon: KeyRound, onClick: () => { setResetting(true); } },
+    {
+      id: "disable",
+      allowed: canDisable && !disabled && !isSelf,
+      label: "禁用",
+      icon: Ban,
+      variant: "destructive" as const,
+      onClick: () => { setDisabling(true); },
+    },
+    { id: "enable", allowed: canEnable && disabled, label: "启用", icon: CircleCheck, onClick: () => { void enableUser(); } },
+  ];
 
   return (
-    <Card className="flex h-full flex-col">
-      <CardContent className="flex h-full min-h-0 flex-col gap-4 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="truncate text-lg font-medium">{user.name}</span>
-            <span className="truncate text-sm text-muted-foreground">{user.email}</span>
-            <span className="truncate text-xs text-muted-foreground">
-              归属组织：
-              <span className="font-medium text-foreground">{(user.orgId != null) ? getOrgPath(user.orgId) : "未分配"}</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {disabled
-              ? <Badge variant="destructive">已禁用</Badge>
-              : <Badge variant="secondary">正常</Badge>}
-          </div>
+    <IamDetailSurface
+      mode={mode}
+      title={user.name}
+      description={(
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate">{user.email}</span>
+          <span className="truncate text-xs">
+            归属组织：
+            <span className="font-medium text-foreground">{user.orgId != null ? getOrgPath(user.orgId) : "未分配"}</span>
+          </span>
         </div>
-
+      )}
+      status={disabled
+        ? <Badge variant="destructive">已禁用</Badge>
+        : <Badge variant="secondary">正常</Badge>}
+      actions={<ResourceActions label={`${user.name} 的操作`} items={actions} />}
+    >
+      <div className="max-w-3xl shrink-0 pb-2">
         <Field>
           <FieldLabel htmlFor="org-select">授权视角组织</FieldLabel>
           <Select
@@ -232,32 +224,21 @@ export function UserDetailPanel({
             </SelectContent>
           </Select>
         </Field>
+      </div>
 
-        <UserDetailTabs
-          user={user}
-          orgId={orgId}
-          currentUserId={currentUserId}
-          getOrgPath={getOrgPath}
-          canReadAssignments={canReadAssignments}
-          canUpdate={canUpdate}
-          canReset={canReset}
-          canDisable={canDisable}
-          canEnable={canEnable}
-          disabled={disabled}
-          isSelf={isSelf}
-          activeTab={activeTab}
-          onTabChange={onTabChange}
-          roles={roles}
-          onNavigateRole={onNavigateRole}
-          onEdit={() => { setEditing(true); }}
-          onReset={() => { setResetting(true); }}
-          onDisable={() => { setDisabling(true); }}
-          onEnable={() => { void enableUser(); }}
-          onTransfer={() => { setTransferring(true); }}
-          onOrgIdChange={onOrgIdChange}
-          auditTabContent={auditTabContent}
-        />
-      </CardContent>
+      <UserDetailTabs
+        user={user}
+        orgId={orgId}
+        currentUserId={currentUserId}
+        getOrgPath={getOrgPath}
+        canReadAssignments={canReadAssignments}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        roles={roles}
+        onNavigateRole={onNavigateRole}
+        onOrgIdChange={onOrgIdChange}
+        auditTabContent={auditTabContent}
+      />
 
       <UserDialogs
         user={user}
@@ -273,6 +254,6 @@ export function UserDetailPanel({
         onTransferringChange={setTransferring}
         onTransferred={onTransferred}
       />
-    </Card>
+    </IamDetailSurface>
   );
 }

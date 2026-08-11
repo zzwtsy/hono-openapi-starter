@@ -31,7 +31,7 @@ export function PermissionCombobox({
   value,
   onChange,
   permissions,
-  placeholder = "选择权限...",
+  placeholder = "选择权限…",
   disabled = false,
 }: PermissionComboboxProps) {
   const [open, setOpen] = useState(false);
@@ -44,11 +44,11 @@ export function PermissionCombobox({
         <span className={cn("truncate", selected === undefined && "text-muted-foreground")}>
           {selected !== undefined ? selected.label : placeholder}
         </span>
-        <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+        <ChevronsUpDown className="shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
         <Command>
-          <CommandInput placeholder="搜索权限..." />
+          <CommandInput placeholder="搜索权限…" />
           <CommandList>
             <CommandEmpty>无匹配权限。</CommandEmpty>
             {[...groups.entries()].map(([resource, perms]) => (

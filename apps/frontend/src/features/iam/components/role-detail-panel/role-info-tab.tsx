@@ -1,20 +1,9 @@
 import type { Role } from "@/api/globals";
-import { Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDate } from "@/lib/utils";
 
-interface RoleInfoTabProps {
-  role: Role;
-  canUpdate: boolean;
-  canDelete: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-}
-
-export function RoleInfoTab({ role, canUpdate, canDelete, onEdit, onDelete }: RoleInfoTabProps) {
+export function RoleInfoTab({ role }: { role: Role }) {
   return (
     <div className="flex flex-col gap-4">
       <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
@@ -44,26 +33,6 @@ export function RoleInfoTab({ role, canUpdate, canDelete, onEdit, onDelete }: Ro
           <dd className="font-medium">{formatDate(role.createdAt)}</dd>
         </div>
       </dl>
-
-      {role.source === "instance" && (
-        <>
-          <Separator />
-          <div className="flex flex-wrap gap-2">
-            {canUpdate && (
-              <Button variant="outline" size="sm" onClick={onEdit}>
-                <Pencil data-icon="inline-start" />
-                编辑
-              </Button>
-            )}
-            {canDelete && (
-              <Button variant="outline" size="sm" onClick={onDelete}>
-                <Trash2 data-icon="inline-start" />
-                删除
-              </Button>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 }

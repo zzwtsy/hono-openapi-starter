@@ -1,25 +1,21 @@
 import type { Role } from "@/api/globals";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
+import { Plus, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import Apis from "@/api";
-import { PageHeader } from "@/components/shared/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { Can } from "@/components/shared/can";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { IamDetailSurface } from "@/features/iam/components/iam-detail-surface";
+import { IamWorkbench } from "@/features/iam/components/iam-workbench";
 import { RoleDetailPanel } from "@/features/iam/components/role-detail-panel";
 import { RoleForm } from "@/features/iam/components/role-form";
 import { RoleListPanel } from "@/features/iam/components/role-list";
 import { useRoleSelection } from "@/features/iam/hooks/use-role-selection";
 import { useUserPageState } from "@/features/iam/hooks/use-user-page-state";
 import { IAM_ACTIONS, refreshIam } from "@/features/iam/lib/iam-actions";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { requirePermission } from "@/lib/require-permission";
 
 export const Route = createFileRoute("/_authenticated/iam/roles")({
@@ -41,11 +37,10 @@ function RolesPage() {
   const { role: selectedRoleId, org: orgParam, tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const routerNavigate = useNavigate();
-  const isNarrowScreen = useMediaQuery("(max-width: 1023px)");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data: roles } = useRequest(
+  const { data: roles, loading, error, send } = useRequest(
     () => Apis.IAM.listRoles(),
     { middleware: actionDelegationMiddleware(IAM_ACTIONS.rolesList) },
   );
@@ -54,9 +49,7 @@ function RolesPage() {
 
   const handleSelect = (role: Role) => {
     void navigate({ search: { role: role.id } });
-    if (isNarrowScreen) {
-      setDetailsOpen(true);
-    }
+    setDetailsOpen(true);
   };
 
   const handleTabChange = (newTab: string) => {
@@ -67,50 +60,57 @@ function RolesPage() {
     void routerNavigate({ to: "/iam/users", search: { user: userId, org: orgId, tab: "roles" } });
   };
 
-  const detailPanel = selectedRole !== undefined
-    ? (
-        <RoleDetailPanel
-          key={selectedRole.id}
-          role={selectedRole}
-          tab={activeTab}
-          onTabChange={handleTabChange}
-          onNavigateUser={handleNavigateUser}
-          getOrgPath={getOrgPath}
-        />
-      )
-    : (
-        <Card className="flex h-full items-center justify-center">
-          <CardContent>
-            <p className="text-sm text-muted-foreground">从左侧选择一个角色查看详情。</p>
-          </CardContent>
-        </Card>
-      );
-
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-4 p-4 sm:p-6">
-      <PageHeader title="角色管理" description="管理实例角色及其权限。" />
-      <div className="grid min-h-0 flex-1 grid-rows-1 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <RoleListPanel
-          selectedRoleId={selectedRoleId}
-          onSelect={handleSelect}
-          onCreateRole={() => { setCreateOpen(true); }}
-        />
-        <div className="hidden min-h-0 min-w-0 lg:block">
-          {detailPanel}
-        </div>
-      </div>
-
-      <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <SheetContent className="overflow-y-auto data-[side=right]:w-full sm:data-[side=right]:max-w-2xl" side="right">
-          <SheetHeader>
-            <SheetTitle>角色详情</SheetTitle>
-            <SheetDescription>查看并管理所选角色。</SheetDescription>
-          </SheetHeader>
-          <div className="px-4 pb-4">
-            {detailPanel}
-          </div>
-        </SheetContent>
-      </Sheet>
+    <>
+      <IamWorkbench
+        title="角色管理"
+        description="管理实例角色及其权限。"
+        actions={(
+          <Can permission="roles.create">
+            <Button onClick={() => { setCreateOpen(true); }}>
+              <Plus data-icon="inline-start" />
+              新建角色
+            </Button>
+          </Can>
+        )}
+        navigation={(
+          <RoleListPanel
+            selectedRoleId={selectedRoleId}
+            roles={roles}
+            loading={loading}
+            error={error}
+            onRetry={() => { void send(); }}
+            onSelect={handleSelect}
+          />
+        )}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={setDetailsOpen}
+        sheetTitle="角色详情"
+        sheetDescription="查看并管理所选角色。"
+        renderDetail={mode => selectedRole !== undefined
+          ? (
+              <RoleDetailPanel
+                key={selectedRole.id}
+                mode={mode}
+                role={selectedRole}
+                tab={activeTab}
+                onTabChange={handleTabChange}
+                onNavigateUser={handleNavigateUser}
+                getOrgPath={getOrgPath}
+              />
+            )
+          : (
+              <IamDetailSurface mode={mode} title="角色详情">
+                <Empty>
+                  <EmptyMedia variant="icon"><ShieldCheck /></EmptyMedia>
+                  <EmptyHeader>
+                    <EmptyTitle>选择一个角色</EmptyTitle>
+                    <EmptyDescription>从角色列表中选择后查看详情。</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              </IamDetailSurface>
+            )}
+      />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
@@ -124,6 +124,6 @@ function RolesPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

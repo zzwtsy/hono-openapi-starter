@@ -1,5 +1,6 @@
 import type { AuditTimelineLog } from "@/api/globals";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatActorName, formatAuditSummary, formatAuditTime } from "../lib/format-diff";
 import { AuditDiffList } from "./audit-diff-list";
@@ -24,7 +25,7 @@ export function AuditTimelineItem({ log }: AuditTimelineItemProps) {
         </div>
         <span className="text-xs text-muted-foreground">{formatActorName(log)}</span>
         {summary !== "" && <span className="text-xs text-muted-foreground">{summary}</span>}
-        <CollapsibleTrigger className="text-xs text-muted-foreground underline-offset-2 hover:underline">
+        <CollapsibleTrigger render={<Button variant="link" size="xs" className="self-start px-0 text-muted-foreground" />}>
           展开详情
         </CollapsibleTrigger>
         <CollapsibleContent>

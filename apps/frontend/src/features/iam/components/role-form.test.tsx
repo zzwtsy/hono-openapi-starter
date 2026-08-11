@@ -93,4 +93,25 @@ describe("RoleForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("请输入角色名");
     expect(name).toHaveAttribute("aria-invalid", "true");
   });
+
+  it("无效提交显示未触碰字段错误、聚焦首项且不发送请求", async () => {
+    let requestCount = 0;
+    server.use(
+      http.post("*/api/v1/roles", () => {
+        requestCount += 1;
+        return okEnvelope(existingRole);
+      }),
+    );
+    renderRoleForm({ onSuccess: vi.fn() });
+    const name = screen.getByLabelText("名称");
+
+    fireEvent.submit(screen.getByRole("button", { name: "创建" }).closest("form")!);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("请输入角色名");
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    await vi.waitFor(() => {
+      expect(name).toHaveFocus();
+    });
+    expect(requestCount).toBe(0);
+  });
 });

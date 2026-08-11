@@ -1,26 +1,22 @@
 import type { UserSummary } from "@/api/globals";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
+import { Plus, Users } from "lucide-react";
 import { useState } from "react";
 import Apis from "@/api";
-import { PageHeader } from "@/components/shared/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { Can } from "@/components/shared/can";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { AuditTimeline } from "@/features/audit/components/audit-timeline";
+import { IamDetailSurface } from "@/features/iam/components/iam-detail-surface";
+import { IamWorkbench } from "@/features/iam/components/iam-workbench";
 import { UserDetailPanel } from "@/features/iam/components/user-detail-panel";
 import { UserForm } from "@/features/iam/components/user-form";
 import { UserListPanel } from "@/features/iam/components/user-list";
 import { useUserPageState } from "@/features/iam/hooks/use-user-page-state";
 import { useUserSelection } from "@/features/iam/hooks/use-user-selection";
 import { IAM_ACTIONS, refreshIam } from "@/features/iam/lib/iam-actions";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { useCan } from "@/hooks/use-permissions";
 import { requirePermission } from "@/lib/require-permission";
 
@@ -44,7 +40,6 @@ function UsersPage() {
   const { user: selectedUserId, org: orgParam, tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const routerNavigate = useNavigate();
-  const isNarrowScreen = useMediaQuery("(max-width: 1023px)");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -55,7 +50,7 @@ function UsersPage() {
   const { data: roles } = useRequest(() => Apis.IAM.listRoles(), { immediate: canReadRoles });
   const { orgOptions, getOrgPath } = useUserPageState(homeOrgId);
 
-  const { data: users } = useRequest(
+  const { data: users, loading, error, send } = useRequest(
     () => Apis.IAM.listUsers(),
     { middleware: actionDelegationMiddleware(IAM_ACTIONS.usersList) },
   );
@@ -69,9 +64,7 @@ function UsersPage() {
 
   const handleSelect = (user: UserSummary) => {
     void navigate({ search: { user: user.id } });
-    if (isNarrowScreen) {
-      setDetailsOpen(true);
-    }
+    setDetailsOpen(true);
   };
 
   const handleOrgIdChange = (newOrgId: string) => {
@@ -90,57 +83,64 @@ function UsersPage() {
     void navigate({ search: { user: selectedUserId, org: newOrgId, tab } });
   };
 
-  const detailPanel = selectedUser !== undefined
-    ? (
-        <UserDetailPanel
-          key={selectedUser.id}
-          user={selectedUser}
-          orgId={orgId}
-          onOrgIdChange={handleOrgIdChange}
-          orgOptions={orgOptions}
-          getOrgPath={getOrgPath}
-          currentUserId={currentUserId}
-          roles={roles ?? []}
-          tab={activeTab}
-          onTabChange={handleTabChange}
-          onNavigateRole={handleNavigateRole}
-          onTransferred={handleTransferred}
-          auditTabContent={<AuditTimeline resourceType="user" resourceId={selectedUser.id} />}
-        />
-      )
-    : (
-        <Card className="flex h-full items-center justify-center">
-          <CardContent>
-            <p className="text-sm text-muted-foreground">从左侧选择一个用户查看详情。</p>
-          </CardContent>
-        </Card>
-      );
-
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-4 p-4 sm:p-6">
-      <PageHeader title="用户管理" description="管理组织内的用户及其权限。" />
-      <div className="grid min-h-0 flex-1 grid-rows-1 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <UserListPanel
-          selectedUserId={selectedUserId}
-          onSelect={handleSelect}
-          onCreateUser={() => { setCreateOpen(true); }}
-        />
-        <div className="hidden min-h-0 min-w-0 lg:block">
-          {detailPanel}
-        </div>
-      </div>
-
-      <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <SheetContent className="overflow-y-auto data-[side=right]:w-full sm:data-[side=right]:max-w-2xl" side="right">
-          <SheetHeader>
-            <SheetTitle>用户详情</SheetTitle>
-            <SheetDescription>查看并管理所选用户。</SheetDescription>
-          </SheetHeader>
-          <div className="px-4 pb-4">
-            {detailPanel}
-          </div>
-        </SheetContent>
-      </Sheet>
+    <>
+      <IamWorkbench
+        title="用户管理"
+        description="管理组织内的用户及其权限。"
+        actions={(
+          <Can permission="users.create">
+            <Button onClick={() => { setCreateOpen(true); }}>
+              <Plus data-icon="inline-start" />
+              新建用户
+            </Button>
+          </Can>
+        )}
+        navigation={(
+          <UserListPanel
+            selectedUserId={selectedUserId}
+            users={users}
+            loading={loading}
+            error={error}
+            onRetry={() => { void send(); }}
+            onSelect={handleSelect}
+          />
+        )}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={setDetailsOpen}
+        sheetTitle="用户详情"
+        sheetDescription="查看并管理所选用户。"
+        renderDetail={mode => selectedUser !== undefined
+          ? (
+              <UserDetailPanel
+                key={selectedUser.id}
+                mode={mode}
+                user={selectedUser}
+                orgId={orgId}
+                onOrgIdChange={handleOrgIdChange}
+                orgOptions={orgOptions}
+                getOrgPath={getOrgPath}
+                currentUserId={currentUserId}
+                roles={roles ?? []}
+                tab={activeTab}
+                onTabChange={handleTabChange}
+                onNavigateRole={handleNavigateRole}
+                onTransferred={handleTransferred}
+                auditTabContent={<AuditTimeline resourceType="user" resourceId={selectedUser.id} />}
+              />
+            )
+          : (
+              <IamDetailSurface mode={mode} title="用户详情">
+                <Empty>
+                  <EmptyMedia variant="icon"><Users /></EmptyMedia>
+                  <EmptyHeader>
+                    <EmptyTitle>选择一个用户</EmptyTitle>
+                    <EmptyDescription>从用户列表中选择后查看详情。</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              </IamDetailSurface>
+            )}
+      />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
@@ -156,6 +156,6 @@ function UsersPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

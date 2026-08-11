@@ -1,13 +1,15 @@
 import type { UserSummary } from "@/api/globals";
 import { useForm } from "@tanstack/react-form";
+import { useRef } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import Apis from "@/api";
 import { Button } from "@/components/ui/button";
-import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { focusFirstInvalidControl } from "../lib/focus-first-invalid-control";
 
 const resetSchema = z.object({
   newPassword: z.string().min(8, "密码至少 8 位"),
@@ -20,9 +22,11 @@ interface ResetPasswordDialogProps {
 
 /** 重置密码对话框:单字段 newPassword;成功后清 session(后端) + toast。 */
 export function ResetPasswordDialog({ user, onSuccess }: ResetPasswordDialogProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const form = useForm({
     defaultValues: { newPassword: "" },
     validators: { onBlur: resetSchema, onSubmit: resetSchema },
+    onSubmitInvalid: () => window.requestAnimationFrame(() => focusFirstInvalidControl(formRef.current)),
     onSubmit: async ({ value }) => {
       try {
         await Apis.IAM.resetUserPassword({
@@ -41,17 +45,18 @@ export function ResetPasswordDialog({ user, onSuccess }: ResetPasswordDialogProp
     <>
       <DialogHeader>
         <DialogTitle>重置密码</DialogTitle>
+        <DialogDescription>
+          为
+          {" "}
+          <span className="font-medium text-foreground">{user.name}</span>
+          {" "}
+          (
+          {user.email}
+          ) 设置新密码。对方需用新密码重新登录。
+        </DialogDescription>
       </DialogHeader>
-      <p className="text-sm text-muted-foreground">
-        为
-        {" "}
-        <span className="font-medium text-foreground">{user.name}</span>
-        {" "}
-        (
-        {user.email}
-        ) 设置新密码。对方需用新密码重新登录。
-      </p>
       <form
+        ref={formRef}
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
@@ -60,31 +65,35 @@ export function ResetPasswordDialog({ user, onSuccess }: ResetPasswordDialogProp
         }}
         className="flex flex-col gap-4"
       >
-        <FieldGroup>
-          <form.Field name="newPassword">
-            {(field) => {
-              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
-              return (
-                <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor="reset-password">新密码</FieldLabel>
-                  <Input
-                    id="reset-password"
-                    name={field.name}
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    minLength={8}
-                    value={field.state.value}
-                    onChange={e => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    aria-invalid={isInvalid}
-                  />
-                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                </Field>
-              );
-            }}
-          </form.Field>
-        </FieldGroup>
+        <form.Subscribe selector={state => state.submissionAttempts}>
+          {submissionAttempts => (
+            <FieldGroup>
+              <form.Field name="newPassword">
+                {(field) => {
+                  const isInvalid = (field.state.meta.isTouched || submissionAttempts > 0) && !field.state.meta.isValid;
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor="reset-password">新密码</FieldLabel>
+                      <Input
+                        id="reset-password"
+                        name={field.name}
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        minLength={8}
+                        value={field.state.value}
+                        onChange={e => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  );
+                }}
+              </form.Field>
+            </FieldGroup>
+          )}
+        </form.Subscribe>
         <DialogFooter>
           <form.Subscribe selector={state => state.isSubmitting}>
             {isSubmitting => (

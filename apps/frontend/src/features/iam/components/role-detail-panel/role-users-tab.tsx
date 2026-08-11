@@ -6,6 +6,7 @@ import Apis from "@/api";
 import { AsyncListState } from "@/components/shared/async-list";
 import { Badge } from "@/components/ui/badge";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCan } from "@/hooks/use-permissions";
 import { IAM_ACTIONS } from "../../lib/iam-actions";
@@ -54,7 +55,7 @@ export function RoleUsersTab({ role, onNavigateUser, getOrgPath }: RoleUsersTabP
       >
         {users === undefined || users.length === 0
           ? (
-              <Empty>
+              <Empty className="min-h-28 p-4">
                 <EmptyMedia variant="icon"><Users /></EmptyMedia>
                 <EmptyHeader>
                   <EmptyTitle>暂无已授用户</EmptyTitle>
@@ -63,20 +64,20 @@ export function RoleUsersTab({ role, onNavigateUser, getOrgPath }: RoleUsersTabP
               </Empty>
             )
           : (
-              <div className="flex flex-col gap-2">
+              <ItemGroup>
                 {users.map(u => (
-                  <div key={`${u.userId}-${u.orgId}`} className="flex items-center justify-between gap-2 rounded-lg border p-2">
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <button
-                        type="button"
-                        className="text-left text-sm font-medium hover:underline"
-                        onClick={() => { onNavigateUser(u.userId, u.orgId); }}
-                      >
-                        {u.userName}
-                      </button>
-                      <span className="truncate text-xs text-muted-foreground">{u.email}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
+                  <Item
+                    key={`${u.userId}-${u.orgId}`}
+                    render={<button type="button" />}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { onNavigateUser(u.userId, u.orgId); }}
+                  >
+                    <ItemContent>
+                      <ItemTitle>{u.userName}</ItemTitle>
+                      <ItemDescription>{u.email}</ItemDescription>
+                    </ItemContent>
+                    <ItemActions className="flex-wrap justify-end">
                       <Badge variant="outline" className="text-xs">{getOrgPath(u.orgId)}</Badge>
                       {u.expiresAt != null && (
                         <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
@@ -84,10 +85,10 @@ export function RoleUsersTab({ role, onNavigateUser, getOrgPath }: RoleUsersTabP
                           {format(new Date(u.expiresAt), "yyyy-MM-dd")}
                         </span>
                       )}
-                    </div>
-                  </div>
+                    </ItemActions>
+                  </Item>
                 ))}
-              </div>
+              </ItemGroup>
             )}
       </AsyncListState>
     </div>

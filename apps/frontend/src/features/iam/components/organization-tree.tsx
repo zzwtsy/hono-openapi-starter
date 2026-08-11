@@ -7,10 +7,10 @@ import {
   syncDataLoaderFeature,
 } from "@headless-tree/core";
 import { useTree } from "@headless-tree/react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { ORGANIZATION_TREE_ROOT_ID } from "../lib/organization-tree";
 import { OrganizationTreeItem } from "./organization-tree-item";
 
@@ -104,20 +104,22 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
     <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex items-center gap-2">
         <label htmlFor="organization-search" className="sr-only">搜索组织</label>
-        <Input
-          {...tree.getSearchInputElementProps()}
-          id="organization-search"
-          name="organization-search"
-          autoComplete="off"
-          placeholder="搜索组织…"
-          className="min-w-0 flex-1"
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.preventDefault();
-              tree.closeSearch();
-            }
-          }}
-        />
+        <InputGroup className="min-w-0 flex-1">
+          <InputGroupAddon><Search /></InputGroupAddon>
+          <InputGroupInput
+            {...tree.getSearchInputElementProps()}
+            id="organization-search"
+            name="organization-search"
+            autoComplete="off"
+            placeholder="搜索组织…"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                tree.closeSearch();
+              }
+            }}
+          />
+        </InputGroup>
         {tree.getSearchValue() !== "" && (
           <>
             <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
@@ -151,7 +153,7 @@ export function OrganizationTree({ index, selectedId, onSelect }: OrganizationTr
 
       <div
         {...tree.getContainerProps("组织结构")}
-        className="min-h-72 space-y-0.5 flex-1 overflow-y-auto rounded-lg border bg-background p-1 outline-none focus-within:ring-3 focus-within:ring-ring/50"
+        className="flex min-h-72 flex-1 flex-col gap-0.5 overflow-y-auto rounded-lg border bg-background p-1 outline-none focus-within:ring-3 focus-within:ring-ring/50"
       >
         {tree.getItems().map(item => (
           <OrganizationTreeItem key={item.getKey()} item={item} onSelect={onSelect} />

@@ -39,7 +39,7 @@ describe("ResourceActions", () => {
     expect(screen.queryByText("删除")).not.toBeInTheDocument();
   });
 
-  it("透传 variant/disabled/title 到可见项", async () => {
+  it("禁用项提供 tooltip trigger 和可访问原因", async () => {
     render(
       <ResourceActions
         items={[
@@ -50,17 +50,17 @@ describe("ResourceActions", () => {
             icon: Trash2,
             variant: "destructive",
             disabled: true,
-            title: "不可删除",
+            disabledReason: "不可删除",
             onClick: vi.fn(),
           },
         ]}
       />,
     );
     screen.getByRole("button", { name: "操作" }).click();
-    const item = await screen.findByText("删除");
-    const itemEl = item.closest("[data-slot='dropdown-menu-item']")!;
+    const itemEl = await screen.findByRole("menuitem", { name: "删除" });
     expect(itemEl).toHaveAttribute("data-variant", "destructive");
     expect(itemEl).toHaveAttribute("data-disabled");
-    expect(itemEl).toHaveAttribute("title", "不可删除");
+    expect(itemEl).toHaveAttribute("aria-description", "不可删除");
+    expect(itemEl.parentElement).toHaveAttribute("data-base-ui-tooltip-trigger");
   });
 });

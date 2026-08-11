@@ -1,26 +1,9 @@
 import type { UserSummary } from "@/api/globals";
-import { Ban, CircleCheck, KeyRound, Pencil, Shuffle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { formatDate } from "@/lib/utils";
 
-interface UserInfoTabProps {
-  user: UserSummary;
-  canUpdate: boolean;
-  canReset: boolean;
-  canDisable: boolean;
-  canEnable: boolean;
-  disabled: boolean;
-  isSelf: boolean;
-  onEdit: () => void;
-  onReset: () => void;
-  onDisable: () => void;
-  onEnable: () => void;
-  onTransfer: () => void;
-}
-
-export function UserInfoTab({ user, canUpdate, canReset, canDisable, canEnable, disabled, isSelf, onEdit, onReset, onDisable, onEnable, onTransfer }: UserInfoTabProps) {
+export function UserInfoTab({ user }: { user: UserSummary }) {
+  const disabled = user.disabled === true;
   return (
     <div className="flex flex-col gap-4">
       <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
@@ -45,41 +28,6 @@ export function UserInfoTab({ user, canUpdate, canReset, canDisable, canEnable, 
           <dd className="font-medium">{formatDate(user.createdAt)}</dd>
         </div>
       </dl>
-
-      <Separator />
-
-      <div className="flex flex-wrap gap-2">
-        {canUpdate && (
-          <Button variant="outline" size="sm" onClick={onEdit}>
-            <Pencil data-icon="inline-start" />
-            编辑
-          </Button>
-        )}
-        {canUpdate && !isSelf && (
-          <Button variant="outline" size="sm" onClick={onTransfer}>
-            <Shuffle data-icon="inline-start" />
-            调岗
-          </Button>
-        )}
-        {canReset && (
-          <Button variant="outline" size="sm" onClick={onReset}>
-            <KeyRound data-icon="inline-start" />
-            重置密码
-          </Button>
-        )}
-        {canDisable && !disabled && !isSelf && (
-          <Button variant="outline" size="sm" onClick={onDisable}>
-            <Ban data-icon="inline-start" />
-            禁用
-          </Button>
-        )}
-        {canEnable && disabled && (
-          <Button variant="outline" size="sm" onClick={onEnable}>
-            <CircleCheck data-icon="inline-start" />
-            启用
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

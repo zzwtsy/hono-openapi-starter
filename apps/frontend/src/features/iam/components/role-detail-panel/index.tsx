@@ -1,21 +1,25 @@
+import type { IamDetailMode } from "../iam-workbench";
 import type { Role } from "@/api/globals";
+import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import Apis from "@/api";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
+import { IamDetailSurface } from "../iam-detail-surface";
 import { RoleForm } from "../role-form";
 import { RoleInfoTab } from "./role-info-tab";
 import { RolePermissionsTab } from "./role-permissions-tab";
 import { RoleUsersTab } from "./role-users-tab";
 
 interface RoleDetailPanelProps {
+  mode: IamDetailMode;
   role: Role;
   tab: string;
   onTabChange: (tab: string) => void;
@@ -23,7 +27,7 @@ interface RoleDetailPanelProps {
   getOrgPath: (orgId: string) => string;
 }
 
-export function RoleDetailPanel({ role, tab, onTabChange, onNavigateUser, getOrgPath }: RoleDetailPanelProps) {
+export function RoleDetailPanel({ mode, role, tab, onTabChange, onNavigateUser, getOrgPath }: RoleDetailPanelProps) {
   const canUpdate = useCan("roles.update");
   const canDelete = useCan("roles.delete");
   const [editing, setEditing] = useState(false);
@@ -47,50 +51,59 @@ export function RoleDetailPanel({ role, tab, onTabChange, onNavigateUser, getOrg
   };
 
   return (
-    <Card className="flex h-full flex-col">
-      <CardContent className="flex h-full min-h-0 flex-col gap-4 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-lg font-medium">{role.name}</span>
-            {role.description !== null && (
-              <span className="text-sm text-muted-foreground">{role.description}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {role.source === "code"
-              ? (
-                  <Tooltip>
-                    <TooltipTrigger render={<Badge variant="secondary">代码</Badge>} />
-                    <TooltipContent>代码同步角色，不可修改或删除</TooltipContent>
-                  </Tooltip>
-                )
-              : <Badge>实例</Badge>}
-          </div>
-        </div>
-
-        <Tabs value={tab} onValueChange={onTabChange} className="flex min-h-0 flex-1 flex-col">
-          <TabsList>
+    <IamDetailSurface
+      mode={mode}
+      title={role.name}
+      description={role.description ?? undefined}
+      status={role.source === "code"
+        ? (
+            <Tooltip>
+              <TooltipTrigger render={<Badge variant="secondary">代码</Badge>} />
+              <TooltipContent>代码同步角色，不可修改或删除</TooltipContent>
+            </Tooltip>
+          )
+        : <Badge variant="outline">实例</Badge>}
+      actions={role.source === "instance" && (canUpdate || canDelete)
+        ? (
+            <div className="flex items-center gap-1">
+              {canUpdate && (
+                <Button variant="outline" size="sm" onClick={() => { setEditing(true); }}>
+                  <Pencil data-icon="inline-start" />
+                  编辑
+                </Button>
+              )}
+              {canDelete && (
+                <Button variant="destructive" size="sm" onClick={() => { setDeleting(true); }}>
+                  <Trash2 data-icon="inline-start" />
+                  删除
+                </Button>
+              )}
+            </div>
+          )
+        : undefined}
+    >
+      <Tabs value={tab} onValueChange={onTabChange} className="min-h-0 flex-1">
+        <div className="shrink-0 overflow-x-auto pb-1">
+          <TabsList variant="line" className="min-w-max justify-start">
             <TabsTrigger value="info">信息</TabsTrigger>
             <TabsTrigger value="permissions">权限分配</TabsTrigger>
             <TabsTrigger value="users">已授用户</TabsTrigger>
           </TabsList>
-          <TabsContent value="info" className="min-h-0 flex-1 overflow-y-auto">
-            <RoleInfoTab
-              role={role}
-              canUpdate={canUpdate}
-              canDelete={canDelete}
-              onEdit={() => { setEditing(true); }}
-              onDelete={() => { setDeleting(true); }}
-            />
-          </TabsContent>
-          <TabsContent value="permissions" className="min-h-0 flex-1 overflow-y-auto">
-            <RolePermissionsTab key={role.id} role={role} />
-          </TabsContent>
-          <TabsContent value="users" className="min-h-0 flex-1 overflow-y-auto">
+        </div>
+        <TabsContent value="info" className="min-h-0 flex-1 overflow-y-auto pt-3">
+          <div className="max-w-3xl">
+            <RoleInfoTab role={role} />
+          </div>
+        </TabsContent>
+        <TabsContent value="permissions" className="min-h-0 flex-1 pt-3">
+          <RolePermissionsTab key={role.id} role={role} />
+        </TabsContent>
+        <TabsContent value="users" className="min-h-0 flex-1 overflow-y-auto pt-3">
+          <div className="max-w-4xl">
             <RoleUsersTab key={role.id} role={role} onNavigateUser={onNavigateUser} getOrgPath={getOrgPath} />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={editing} onOpenChange={setEditing}>
         <DialogContent>
@@ -106,6 +119,6 @@ export function RoleDetailPanel({ role, tab, onTabChange, onNavigateUser, getOrg
         onConfirm={() => { void confirmDelete(); }}
         onClose={() => setDeleting(false)}
       />
-    </Card>
+    </IamDetailSurface>
   );
 }

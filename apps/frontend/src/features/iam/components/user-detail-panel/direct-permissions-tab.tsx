@@ -6,7 +6,9 @@ import Apis from "@/api";
 import { AsyncListState } from "@/components/shared/async-list";
 import { DatePicker } from "@/components/shared/date-picker";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { ItemGroup } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -89,9 +91,17 @@ export function DirectPermissionsTab({ userId, orgId, currentUserId }: DirectPer
           errorDescription="无法获取直接授权。"
         >
           {directPerms === undefined || directPerms.length === 0
-            ? <p className="text-sm text-muted-foreground">暂无直接授权。</p>
+            ? (
+                <Empty className="min-h-28 p-4">
+                  <EmptyMedia variant="icon"><ShieldCheck /></EmptyMedia>
+                  <EmptyHeader>
+                    <EmptyTitle>暂无直接授权</EmptyTitle>
+                    <EmptyDescription>该用户在当前组织没有直接权限。</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )
             : (
-                <div className="flex flex-col gap-2">
+                <ItemGroup>
                   {directPerms.map(p => (
                     <DirectPermissionRow
                       key={p.permission.code}
@@ -101,7 +111,7 @@ export function DirectPermissionsTab({ userId, orgId, currentUserId }: DirectPer
                       onRevoke={() => { void revoke(p.permission.code); }}
                     />
                   ))}
-                </div>
+                </ItemGroup>
               )}
         </AsyncListState>
       </div>
@@ -132,11 +142,11 @@ export function DirectPermissionsTab({ userId, orgId, currentUserId }: DirectPer
                   }}
                 >
                   <ToggleGroupItem value="allow">
-                    <Check className="size-3.5" />
+                    <Check />
                     允许
                   </ToggleGroupItem>
                   <ToggleGroupItem value="deny">
-                    <Ban className="size-3.5" />
+                    <Ban />
                     拒绝
                   </ToggleGroupItem>
                 </ToggleGroup>
@@ -149,7 +159,7 @@ export function DirectPermissionsTab({ userId, orgId, currentUserId }: DirectPer
             <div className="flex justify-end">
               <Button disabled={selectedPermission === "" || assigning} onClick={() => { void assignPermission(); }}>
                 {assigning && <Spinner data-icon="inline-start" />}
-                <ShieldCheck />
+                <ShieldCheck data-icon="inline-start" />
                 授予
               </Button>
             </div>

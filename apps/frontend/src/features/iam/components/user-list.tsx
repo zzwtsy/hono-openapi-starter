@@ -1,29 +1,23 @@
 import type { UserSummary } from "@/api/globals";
-import { actionDelegationMiddleware, useRequest } from "alova/client";
-import { Plus, Search, Users } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { useMemo, useState } from "react";
-import Apis from "@/api";
 import { AsyncListState } from "@/components/shared/async-list";
-import { Can } from "@/components/shared/can";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import { IAM_ACTIONS } from "../lib/iam-actions";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item";
 
 interface UserListPanelProps {
   selectedUserId?: string;
+  users?: UserSummary[];
+  loading: boolean;
+  error: unknown;
+  onRetry: () => void;
   onSelect: (user: UserSummary) => void;
-  onCreateUser: () => void;
 }
 
-export function UserListPanel({ selectedUserId, onSelect, onCreateUser }: UserListPanelProps) {
-  const { data: users, loading, error, send } = useRequest(
-    () => Apis.IAM.listUsers(),
-    { middleware: actionDelegationMiddleware(IAM_ACTIONS.usersList) },
-  );
+export function UserListPanel({ selectedUserId, users, loading, error, onRetry, onSelect }: UserListPanelProps) {
   const [search, setSearch] = useState("");
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -34,26 +28,28 @@ export function UserListPanel({ selectedUserId, onSelect, onCreateUser }: UserLi
   }, [users, search]);
 
   return (
-    <AsyncListState loading={loading} error={error} data={users} onRetry={() => { void send(); }} errorDescription="无法获取用户列表。">
-      <Card className="flex h-full flex-col">
-        <CardContent className="flex h-full min-h-0 flex-col gap-2 p-3">
-          <Can permission="users.create">
-            <Button size="sm" onClick={onCreateUser}>
-              <Plus data-icon="inline-start" />
-              新建用户
-            </Button>
-          </Can>
+    <AsyncListState loading={loading} error={error} data={users} onRetry={onRetry} errorDescription="无法获取用户列表。">
+      <Card size="sm" className="h-full min-h-0">
+        <CardHeader>
+          <CardTitle>用户</CardTitle>
+          <CardDescription className="tabular-nums">
+            共
+            {users?.length ?? 0}
+            {" "}
+            个用户
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
           {users != null && users.length > 0 && (
-            <div className="relative">
-              <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupAddon><Search /></InputGroupAddon>
+              <InputGroupInput
                 aria-label="搜索用户"
-                placeholder="搜索用户..."
+                placeholder="搜索用户…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="h-8 pl-8"
               />
-            </div>
+            </InputGroup>
           )}
           {users?.length === 0
             ? (
@@ -68,31 +64,43 @@ export function UserListPanel({ selectedUserId, onSelect, onCreateUser }: UserLi
                 </Empty>
               )
             : (
-                <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+                <div className="min-h-0 flex-1 overflow-y-auto">
                   {filtered?.length === 0
-                    ? <p className="text-sm text-muted-foreground">无匹配用户。</p>
-                    : filtered?.map((u) => {
-                        const disabled = u.disabled === true;
-                        return (
-                          <button
-                            key={u.id}
-                            type="button"
-                            className={cn(
-                              "flex items-center justify-between gap-2 rounded-lg border p-2 text-left text-sm transition-colors hover:bg-accent",
-                              selectedUserId === u.id && "border-primary bg-accent",
-                            )}
-                            onClick={() => { onSelect(u); }}
-                          >
-                            <div className="flex min-w-0 flex-col gap-0.5">
-                              <span className="truncate font-medium">{u.name}</span>
-                              <span className="truncate text-xs text-muted-foreground">{u.email}</span>
-                            </div>
-                            {disabled
-                              ? <Badge variant="destructive">已禁用</Badge>
-                              : <Badge variant="secondary">正常</Badge>}
-                          </button>
-                        );
-                      })}
+                    ? (
+                        <Empty className="min-h-32 p-4">
+                          <EmptyHeader>
+                            <EmptyTitle>无匹配用户</EmptyTitle>
+                            <EmptyDescription>换个关键词试试。</EmptyDescription>
+                          </EmptyHeader>
+                        </Empty>
+                      )
+                    : (
+                        <ItemGroup>
+                          {filtered?.map((u) => {
+                            const disabled = u.disabled === true;
+                            return (
+                              <Item
+                                key={u.id}
+                                render={<button type="button" />}
+                                size="sm"
+                                variant={selectedUserId === u.id ? "muted" : "default"}
+                                aria-pressed={selectedUserId === u.id}
+                                onClick={() => { onSelect(u); }}
+                              >
+                                <ItemContent>
+                                  <ItemTitle>{u.name}</ItemTitle>
+                                  <ItemDescription>{u.email}</ItemDescription>
+                                </ItemContent>
+                                <ItemActions>
+                                  {disabled
+                                    ? <Badge variant="destructive">已禁用</Badge>
+                                    : <Badge variant="secondary">正常</Badge>}
+                                </ItemActions>
+                              </Item>
+                            );
+                          })}
+                        </ItemGroup>
+                      )}
                 </div>
               )}
         </CardContent>
