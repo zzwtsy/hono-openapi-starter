@@ -8,7 +8,7 @@ lastReviewedAt: 2026-07-28
 
 ## 概述
 
-IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 Headless Tree 展示层级，以组织 ID 作为稳定节点 identity，并在同一页面完成节点详情与组织 CRUD。用户管理使用细粒度 `users.*` 权限（对齐后端 #14），与 `roles.*` / `organizations.*` / `assignments.*`（组织/角色/授权）分离。
+IAM 前端提供角色、组织和用户授权管理界面。三个页面统一使用 `IamWorkbench` 主从工作台：宽屏双栏，窄屏列表 + Sheet，并且每次只挂载一份实体详情。组织管理使用 Headless Tree 展示层级，以组织 ID 作为稳定节点 identity，并在同一页面完成节点详情与组织 CRUD。用户管理使用细粒度 `users.*` 权限（对齐后端 #14），与 `roles.*` / `organizations.*` / `assignments.*`（组织/角色/授权）分离。
 
 ## 范围
 
@@ -22,7 +22,7 @@ IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 
 | --- | --- | --- | --- |
 | `/iam/roles?role=<id>&tab=info\|permissions\|users` | `requirePermission("roles.read")` | `listRoles` | `RoleListPanel` + `RoleDetailPanel` |
 | `/iam/organizations?org=<id>` | `requirePermission("organizations.read")` | `listOrganizations` | `OrganizationExplorer` |
-| `/iam/users?user=<id>&org=<id>&tab=info\|roles\|direct\|effective` | `requirePermission("users.read")` | `listUsers` | `UserListPanel` + `UserDetailPanel` |
+| `/iam/users?user=<id>&org=<id>&tab=info\|roles\|direct\|effective\|audit` | `requirePermission("users.read")` | `listUsers` | `UserListPanel` + `UserDetailPanel` |
 
 组织路由的 `org` 搜索参数保存当前选中组织。参数缺失或指向不存在的 ID 时，页面回退到第一个根组织并修正 URL。用户/角色路由的 `user`/`role` 保存当前选中项（缺失时回退首条），`tab` 保存详情面板当前 Tab（缺失默认 `info`），`org`（仅用户）保存授权视角组织（默认被选用户的 home org）——支持深链接与刷新保位。
 
@@ -33,16 +33,18 @@ IAM 前端提供角色、组织和用户授权管理界面。组织管理使用 
 ```txt
 features/iam/
   components/                           # 组件
+    iam-workbench.tsx                   # PageHeader、1280px 主从布局、单实例详情和 Sheet
+    iam-detail-surface.tsx              # desktop Card / Sheet 无 Card 的详情表面
     organization-explorer/              # 请求、页面布局、URL 选择和 CRUD orchestration(目录)
       index.tsx                         # 容器:data + 选中派生(fallback 不写 URL)+ 装配
-      organization-explorer-content.tsx # 双栏 + Sheet(抽 OrganizationDetails 重复)
+      organization-explorer-content.tsx # 组织树导航 Card
       organization-dialogs.tsx          # 创建/编辑 Dialog + 删除确认
       organization-explorer-skeleton.tsx
     organization-tree.tsx               # Headless Tree 渲染、搜索与键盘交互
     organization-details.tsx            # 节点详情和上下文动作
     organization-form.tsx               # 创建、编辑与移动组织
-    role-list.tsx                       # 左列表 + 搜索 + 选中回调 + 新建按钮
-    user-list.tsx                       # 左列表 + 搜索 + 选中回调 + disabled badge + 新建按钮
+    role-list.tsx                       # ItemGroup 导航 + InputGroup 搜索 + 选中回调
+    user-list.tsx                       # ItemGroup 导航 + InputGroup 搜索 + disabled badge
     role-detail-panel/                  # 角色详情(目录):信息 / 权限分配(diff + 批量) / 已授用户
       index.tsx                         # 容器:头部 + Tabs + 编辑/删除对话框
       role-info-tab.tsx
@@ -64,6 +66,7 @@ features/iam/
     use-user-page-state.ts              # orgOptions/getOrgPath 派生(从 route 下放)
     use-iam-capabilities.ts             # 用户授权读/授予/撤销能力矩阵
   lib/                                  # feature 内工具
+    focus-first-invalid-control.ts      # 无效提交聚焦当前表单首个错误控件
     organization-tree.ts                # 树索引、祖先/后代、路径与父节点候选
     iam-actions.ts                      # action delegation(cache 刷新)
     group-by-resource.ts               # 权限按 resource 分组
@@ -72,7 +75,17 @@ features/iam/
 
 `@headless-tree/core` / `@headless-tree/react` 只负责树状态、ARIA 和键盘行为；节点视觉继续使用项目的 shadcn/Base UI、Tailwind 语义 token 和 Lucide。
 
-角色、组织、用户和重置密码表单统一遵循 [TanStack Form 规范](../../conventions/frontend/forms-tanstack.md)：失焦 + 提交校验，shadcn `FieldError` 展示字段错误，mutation 在 `onSubmit` 中直接调用生成的 `Apis.*`。
+角色、组织、用户和重置密码表单统一遵循 [TanStack Form 规范](../../conventions/frontend/forms-tanstack.md)：失焦后展示单字段错误；提交后通过 `submissionAttempts` 展示全部错误，`onSubmitInvalid` 聚焦当前表单首个 `aria-invalid` 控件；mutation 在 `onSubmit` 中直接调用生成的 `Apis.*`。
+
+## 工作台与详情组合
+
+- `IamWorkbench` 固定接收 `title`、`description`、`actions`、`navigation`、`detailsOpen`、`onDetailsOpenChange`、Sheet 标题/说明和 `renderDetail(mode)`。
+- `>=1280px` 只调用 `renderDetail("card")`，使用 `18rem–20rem` 导航栏和自适应详情栏；`<1280px` 只显示导航，选择后打开最大 `sm:max-w-2xl` 的 Sheet，并仅在打开时调用 `renderDetail("sheet")`。
+- `IamDetailSurface` 在桌面使用完整 `CardHeader/CardTitle/CardDescription/CardAction/CardContent`；Sheet 内使用无 Card 边框的普通表面，避免嵌套边框和双滚动。
+- Sheet 自身 `overflow-hidden`；详情 Tabs 的活动内容是唯一纵向滚动区。跨越 `1280px` 会重挂载详情，URL 中的实体选择和 Tab 保留，未保存局部草稿不保证跨断点保留。
+- 角色、用户、组织的新建操作统一位于 PageHeader；实体编辑、删除、调岗、重置密码和启停操作位于详情 Header，信息 Tab 只展示数据。
+- 角色/用户导航使用 shadcn `ItemGroup + Item`，组织树保留 Headless Tree ARIA/键盘模型并对齐同一行高、hover、focus 和 muted 选中态。搜索统一使用 `InputGroup`。
+- 角色与用户详情使用 `TabsList variant="line"`，窄屏触发器容器可横向滚动。信息/授权表单/历史限制为 `max-w-3xl/4xl`，权限矩阵保持全宽。
 
 ## 用户授权
 
@@ -120,12 +133,14 @@ features/iam/
 
 ## 交互与响应式
 
-- 桌面端：左侧组织树，右侧当前节点详情。
-- 小于 `1024px`：只显示组织树，点击或按 Enter/Space 选择节点后用 Sheet 展示详情。
+- `>=1280px`：左侧角色/组织/用户导航，右侧当前实体详情。
+- `<1280px`：只显示导航，点击或按 Enter/Space 选择后用 Sheet 展示详情；关闭 Sheet 不清除 URL 选择。
 - 页头提供“新建根组织”，详情提供“新建子组织”、编辑和删除。
 - 有直接子组织时禁用删除入口；后端 409 继续兜底。
 - 搜索遵循 Headless Tree 原生语义：高亮匹配、移动焦点，不从 DOM 中过滤非匹配节点。
 - 支持 Up/Down、Left/Right、Home/End、Enter/Space 和输入搜索；焦点状态与选中状态分离显示。
+
+角色权限编辑器的资源分组使用自平衡 CSS 分栏：移动端单列、`xl` 两列、`2xl` 三列；用户有效权限复用相同布局并最多两列。每个资源组保持不可拆分，权限数量不同不会再由同一 Grid 行的最大高度制造空洞。权限草稿滚动区与差量保存条分离，保存条在有差量时保持可见，仍只发送一次批量 PATCH。操作历史限制阅读宽度，详情展开入口使用自适应宽度的 link Button。
 
 ## API 与缓存
 

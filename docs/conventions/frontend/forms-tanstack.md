@@ -18,12 +18,20 @@ lastReviewedAt: 2026-08-10
 使用原生 `useForm` + shadcn `Field`，不创建项目级 `useAppForm`、字段 DSL 或预绑定组件：
 
 ```tsx
+import { useRef } from "react";
+import { focusFirstInvalidControl } from "./focus-first-invalid-control";
+
+const formRef = useRef<HTMLFormElement>(null);
+
 const form = useForm({
   defaultValues: { name: "" },
   validators: {
     onBlur: formSchema,
     onSubmit: formSchema,
   },
+  onSubmitInvalid: () => window.requestAnimationFrame(() =>
+    focusFirstInvalidControl(formRef.current),
+  ),
   onSubmit: async ({ value }) => {
     await Apis.Example.createExample({ data: value });
   },
@@ -33,7 +41,8 @@ const form = useForm({
 默认校验策略是“失焦反馈 + 提交兜底”：
 
 - 输入期间不主动展示新错误；字段失焦后展示该字段错误。
-- 提交时校验全部字段，无效时不执行 `onSubmit`。
+- 提交时校验全部字段，无效时不执行 `onSubmit`；表单订阅 `submissionAttempts`，提交后展示全部无效字段，即使字段从未获得焦点。
+- `onSubmitInvalid` 在下一帧调用纯 DOM 辅助函数，聚焦当前 `<form>` 内第一个 `[aria-invalid="true"]` 控件；辅助函数必须限定在传入表单内查询，避免 Dialog 并存时串焦点。
 - `<form noValidate>` 关闭浏览器原生提示气泡，让 Zod 中文错误成为唯一客户端提示；控件仍保留 `name`、`type`、`autoComplete`、`required`、`minLength` 等语义属性。
 
 ## 字段与错误
@@ -41,25 +50,30 @@ const form = useForm({
 表单布局使用 `FieldGroup` + `Field`。错误只用 shadcn `FieldError`，`FieldDescription` 只放帮助文字：
 
 ```tsx
-<form.Field name="name">
-  {(field) => {
-    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
-    return (
-      <Field data-invalid={isInvalid}>
-        <FieldLabel htmlFor="example-name">名称</FieldLabel>
-        <Input
-          id="example-name"
-          name={field.name}
-          value={field.state.value}
-          onChange={event => field.handleChange(event.target.value)}
-          onBlur={field.handleBlur}
-          aria-invalid={isInvalid}
-        />
-        {isInvalid && <FieldError errors={field.state.meta.errors} />}
-      </Field>
-    );
-  }}
-</form.Field>
+<form.Subscribe selector={state => state.submissionAttempts}>
+  {submissionAttempts => (
+    <form.Field name="name">
+      {(field) => {
+        const isInvalid = (field.state.meta.isTouched || submissionAttempts > 0)
+          && !field.state.meta.isValid;
+        return (
+          <Field data-invalid={isInvalid}>
+            <FieldLabel htmlFor="example-name">名称</FieldLabel>
+            <Input
+              id="example-name"
+              name={field.name}
+              value={field.state.value}
+              onChange={event => field.handleChange(event.target.value)}
+              onBlur={field.handleBlur}
+              aria-invalid={isInvalid}
+            />
+            {isInvalid && <FieldError errors={field.state.meta.errors} />}
+          </Field>
+        );
+      }}
+    </form.Field>
+  )}
+</form.Subscribe>
 ```
 
 非原生控件遵循相同语义：
@@ -79,9 +93,9 @@ const form = useForm({
 
 新增或修改表单至少覆盖与变更相关的高价值行为：
 
-- 失焦前不显示错误，失焦或提交后通过 `role="alert"` 展示错误。
+- 失焦前不显示错误，失焦后显示单字段错误；无效提交后未触碰字段也通过 `role="alert"` 展示全部错误。
 - `data-invalid`、`aria-invalid`、label/control 关联和语义属性正确。
-- 无效提交不发请求；有效提交 payload 转换正确。
+- 无效提交聚焦当前表单内第一个错误控件且不发请求；有效提交 payload 转换正确。
 - 异步提交期间按钮禁用；失败后恢复并展示表单级反馈。
 - create/edit、条件字段或跨字段校验存在时，分别覆盖其关键分支。
 
