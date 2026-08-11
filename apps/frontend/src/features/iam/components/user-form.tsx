@@ -5,7 +5,7 @@ import { z } from "zod";
 import Apis from "@/api";
 import { Button } from "@/components/ui/button";
 import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
@@ -24,19 +24,6 @@ function buildSchema(isEdit: boolean) {
   });
 }
 
-// 字段错误显示(TanStack Form 官方 FieldInfo 模式;接 errors 而非 field,errors 元素为 unknown,
-// 用 in narrowing 取 message,全程类型安全无 any)。
-function FieldError({ errors }: { errors: readonly unknown[] }) {
-  const error = errors[0];
-  if (error === undefined) {
-    return null;
-  }
-  const message = typeof error === "object" && error !== null && "message" in error
-    ? String((error as Record<string, unknown>).message)
-    : String(error);
-  return <FieldDescription>{message}</FieldDescription>;
-}
-
 export interface UserOrgOption {
   label: string;
   value: string;
@@ -51,38 +38,50 @@ interface UserFormProps {
   defaultOrgId?: string;
 }
 
+interface UserFormValues {
+  name: string;
+  email: string;
+  password: string;
+  orgId: string;
+}
+
+function getDefaultValues(user: UserSummary | undefined, defaultOrgId: string | undefined): UserFormValues {
+  return {
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    password: "",
+    orgId: user ? (user.orgId ?? "") : (defaultOrgId ?? ""),
+  };
+}
+
+async function saveUser(user: UserSummary | undefined, value: UserFormValues, onSuccess: () => void) {
+  try {
+    if (user) {
+      await Apis.IAM.updateUser({
+        pathParams: { userId: user.id },
+        data: { name: value.name, email: value.email },
+      });
+      toast.success("用户已更新");
+    } else {
+      await Apis.IAM.createUser({
+        data: { name: value.name, email: value.email, password: value.password, orgId: value.orgId },
+      });
+      toast.success("用户已创建");
+    }
+    onSuccess();
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : "操作失败");
+  }
+}
+
 export function UserForm({ user, onSuccess, orgOptions, defaultOrgId }: UserFormProps) {
   const isEdit = user !== undefined;
+  const schema = buildSchema(isEdit);
 
   const form = useForm({
-    defaultValues: {
-      name: user?.name ?? "",
-      email: user?.email ?? "",
-      password: "",
-      orgId: isEdit ? (user?.orgId ?? "") : (defaultOrgId ?? ""),
-    },
-    validators: {
-      onChange: buildSchema(isEdit),
-    },
-    onSubmit: async ({ value }) => {
-      try {
-        if (isEdit) {
-          await Apis.IAM.updateUser({
-            pathParams: { userId: user.id },
-            data: { name: value.name, email: value.email },
-          });
-          toast.success("用户已更新");
-        } else {
-          await Apis.IAM.createUser({
-            data: { name: value.name, email: value.email, password: value.password, orgId: value.orgId },
-          });
-          toast.success("用户已创建");
-        }
-        onSuccess();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "操作失败");
-      }
-    },
+    defaultValues: getDefaultValues(user, defaultOrgId),
+    validators: { onBlur: schema, onSubmit: schema },
+    onSubmit: ({ value }) => saveUser(user, value, onSuccess),
   });
 
   return (
@@ -91,6 +90,7 @@ export function UserForm({ user, onSuccess, orgOptions, defaultOrgId }: UserForm
         <DialogTitle>{isEdit ? "编辑用户" : "新建用户"}</DialogTitle>
       </DialogHeader>
       <form
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -100,82 +100,108 @@ export function UserForm({ user, onSuccess, orgOptions, defaultOrgId }: UserForm
       >
         <FieldGroup>
           <form.Field name="name">
-            {field => (
-              <Field data-invalid={field.state.meta.errors.length > 0}>
-                <FieldLabel htmlFor="user-name">显示名</FieldLabel>
-                <Input
-                  id="user-name"
-                  autoComplete="name"
-                  value={field.state.value}
-                  onChange={e => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                />
-                <FieldError errors={field.state.meta.errors} />
-              </Field>
-            )}
+            {(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="user-name">显示名</FieldLabel>
+                  <Input
+                    id="user-name"
+                    name={field.name}
+                    autoComplete="name"
+                    required
+                    value={field.state.value}
+                    onChange={e => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
           </form.Field>
           <form.Field name="email">
-            {field => (
-              <Field data-invalid={field.state.meta.errors.length > 0}>
-                <FieldLabel htmlFor="user-email">邮箱</FieldLabel>
-                <Input
-                  id="user-email"
-                  type="email"
-                  autoComplete="email"
-                  value={field.state.value}
-                  onChange={e => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                />
-                <FieldError errors={field.state.meta.errors} />
-              </Field>
-            )}
+            {(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="user-email">邮箱</FieldLabel>
+                  <Input
+                    id="user-email"
+                    name={field.name}
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={field.state.value}
+                    onChange={e => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
           </form.Field>
           {!isEdit && (
             <>
               <form.Field name="password">
-                {field => (
-                  <Field data-invalid={field.state.meta.errors.length > 0}>
-                    <FieldLabel htmlFor="user-password">初始密码</FieldLabel>
-                    <Input
-                      id="user-password"
-                      type="password"
-                      autoComplete="new-password"
-                      value={field.state.value}
-                      onChange={e => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                      aria-invalid={field.state.meta.errors.length > 0}
-                    />
-                    <FieldError errors={field.state.meta.errors} />
-                  </Field>
-                )}
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor="user-password">初始密码</FieldLabel>
+                      <Input
+                        id="user-password"
+                        name={field.name}
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        minLength={8}
+                        value={field.state.value}
+                        onChange={e => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  );
+                }}
               </form.Field>
               <form.Field name="orgId">
-                {field => (
-                  <Field data-invalid={field.state.meta.errors.length > 0}>
-                    <FieldLabel htmlFor="user-org">归属组织</FieldLabel>
-                    <Select
-                      items={orgOptions ?? []}
-                      value={field.state.value}
-                      onValueChange={(val) => { field.handleChange(val ?? ""); }}
-                    >
-                      <SelectTrigger id="user-org" className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {(orgOptions ?? []).map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    <FieldError errors={field.state.meta.errors} />
-                  </Field>
-                )}
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor="user-org">归属组织</FieldLabel>
+                      <Select
+                        items={orgOptions ?? []}
+                        name={field.name}
+                        required
+                        value={field.state.value}
+                        onValueChange={(val) => { field.handleChange(val ?? ""); }}
+                      >
+                        <SelectTrigger
+                          id="user-org"
+                          className="w-full"
+                          onBlur={field.handleBlur}
+                          aria-invalid={isInvalid}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {(orgOptions ?? []).map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  );
+                }}
               </form.Field>
             </>
           )}

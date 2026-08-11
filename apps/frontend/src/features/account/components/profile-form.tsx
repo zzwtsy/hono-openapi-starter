@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import Apis from "@/api";
 import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -13,17 +13,6 @@ import { Spinner } from "@/components/ui/spinner";
 const schema = z.object({
   name: z.string().min(1, "请输入显示名"),
 });
-
-function FieldError({ errors }: { errors: readonly unknown[] }) {
-  const error = errors[0];
-  if (error === undefined) {
-    return null;
-  }
-  const message = typeof error === "object" && error !== null && "message" in error
-    ? String((error as Record<string, unknown>).message)
-    : String(error);
-  return <FieldDescription>{message}</FieldDescription>;
-}
 
 interface ProfileFormProps {
   currentName: string;
@@ -34,7 +23,7 @@ export function ProfileForm({ currentName }: ProfileFormProps) {
 
   const form = useForm({
     defaultValues: { name: currentName },
-    validators: { onChange: schema },
+    validators: { onBlur: schema, onSubmit: schema },
     onSubmit: async ({ value }) => {
       try {
         await Apis.Me.updateMe({ data: { name: value.name } });
@@ -49,6 +38,7 @@ export function ProfileForm({ currentName }: ProfileFormProps) {
 
   return (
     <form
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -58,20 +48,25 @@ export function ProfileForm({ currentName }: ProfileFormProps) {
     >
       <FieldGroup className="max-w-sm">
         <form.Field name="name">
-          {field => (
-            <Field data-invalid={field.state.meta.errors.length > 0}>
-              <FieldLabel htmlFor="profile-name">显示名</FieldLabel>
-              <Input
-                id="profile-name"
-                autoComplete="name"
-                value={field.state.value}
-                onChange={e => field.handleChange(e.target.value)}
-                onBlur={field.handleBlur}
-                aria-invalid={field.state.meta.errors.length > 0}
-              />
-              <FieldError errors={field.state.meta.errors} />
-            </Field>
-          )}
+          {(field) => {
+            const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+            return (
+              <Field data-invalid={isInvalid}>
+                <FieldLabel htmlFor="profile-name">显示名</FieldLabel>
+                <Input
+                  id="profile-name"
+                  name={field.name}
+                  autoComplete="name"
+                  required
+                  value={field.state.value}
+                  onChange={e => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  aria-invalid={isInvalid}
+                />
+                {isInvalid && <FieldError errors={field.state.meta.errors} />}
+              </Field>
+            );
+          }}
         </form.Field>
       </FieldGroup>
       <form.Subscribe selector={state => state.isSubmitting}>
