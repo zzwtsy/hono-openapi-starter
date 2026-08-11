@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-08-06
+lastReviewedAt: 2026-08-11
 ---
 
 # Feature: 审计日志(audit)
@@ -37,10 +37,11 @@ lastReviewedAt: 2026-08-06
 | 参数 | 类型 | 说明 |
 | --- | --- | --- |
 | `page` / `pageSize` | int | 默认 1 / 25,pageSize ≤ 100 |
-| `action` / `actorUserId` / `actorKeyword` / `status` | string | 按动作 / 操作者 ID / **操作者名称模糊搜索**(ilike `actor_name_snapshot`)/ 结果(success\|failure)过滤 |
+| `actions` | string[] | 按一个或多个动作 OR 过滤，最多 50 项；OpenAPI 使用 `style=form, explode=false`，wire format 为 `actions=a,b` |
+| `actorUserId` / `actorKeyword` / `status` | string | 按操作者 ID / **操作者名称模糊搜索**(ilike `actor_name_snapshot`)/ 结果(success\|failure)过滤 |
 | `from` / `to` | ISO datetime | 时间范围过滤 |
 
-响应 meta:`{ page, pageSize, total, totalPages }`。列表按操作者管理子树过滤(与 IAM 可见性语义一致),并包含 `actorOrgId IS NULL` 的无归属事件(登录失败等,任何管理员可见)。
+`actions` 在请求校验层兼容 CSV 和重复查询参数并归一为数组，service 使用单个 `IN (...)` 条件，列表与 count 复用同一 where。空数组等价于不筛选。响应 meta:`{ page, pageSize, total, totalPages }`。列表按操作者管理子树过滤(与 IAM 可见性语义一致),并包含 `actorOrgId IS NULL` 的无归属事件(登录失败等,任何管理员可见)。
 
 **`listAuditLogsByResource`** — cursor 分页(游标 base64 编码 `{ occurredAt, id }`,按 `occurred_at DESC, id DESC` 排序),`resourceType` + `resourceId` 必填。响应 meta:`{ nextCursor, hasMore }`(多取 1 条判断)。
 
