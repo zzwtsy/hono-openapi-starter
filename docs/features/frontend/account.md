@@ -37,13 +37,13 @@ features/account/
 
 ### 修改显示名
 
-- 表单:`ProfileForm`,TanStack Form + zod 校验(`name` min 1)。
+- 表单:`ProfileForm`,遵循 [TanStack Form 规范](../../conventions/frontend/forms-tanstack.md)，失焦 + 提交时用 zod 校验(`name` min 1)。
 - 成功后:`Apis.Me.updateMe` → `toast.success` → `router.invalidate()` 重跑 `_authenticated.beforeLoad`(失效 `Me.getMe` 缓存后重拉)→ sidebar 等依赖 `context.auth.user.name` 的组件自动刷新。
 - 不删 session:改 name 不是安全敏感操作,无需强制下线。
 
 ### 修改密码
 
-- 表单:`ChangePasswordForm`,TanStack Form + zod 校验(`currentPassword` required、`newPassword` min 8、`confirmPassword` 必须匹配 `newPassword`)。
+- 表单:`ChangePasswordForm`,遵循 [TanStack Form 规范](../../conventions/frontend/forms-tanstack.md)，失焦 + 提交时用 zod 校验(`currentPassword` required、`newPassword` min 8、`confirmPassword` 必须匹配 `newPassword`)。
 - 成功后:后端删全部 session → `toast.success("密码已修改,请重新登录")` → `signOut()` → `router.navigate({ to: "/login" })`。当前 session 已失效,必须重新登录。
 - 当前密码错误:后端返回 `USER_INVALID_PASSWORD`(401),toast 展示错误消息。
 

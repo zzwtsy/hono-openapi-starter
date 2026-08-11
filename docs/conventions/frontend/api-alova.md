@@ -20,11 +20,13 @@ lastReviewedAt: 2026-07-10
 | 组件渲染取数(需 loading/data/error reactive + cache) | `useRequest(() => Apis.IAM.listRoles())` |
 | 响应式变化自动重取(搜索/筛选/分页) | `useWatcher` |
 | 分页列表 | `usePagination` |
-| 表单提交 | `useForm` |
+| 表单内业务 mutation | 在 TanStack Form `onSubmit` 中直接 `await Apis.*` |
 | loader / beforeLoad 预取 | `await Apis.IAM.listRoles()`(写 cache) |
 | 事件回调 / 工具函数 | `await Apis.IAM.createRole({ data: {...} })` |
 
 判断标准:**结果要驱动渲染** -> hook;**不驱动渲染**(预取/事件/工具)-> 直接 await method。
+
+表单状态、字段校验和 `isSubmitting` 由 TanStack Form 管理，详见 [forms-tanstack](./forms-tanstack.md)。不要为了提交请求再叠加 alova 的同名 `useForm`；当前普通短表单直接 `await Apis.*`，仍会经过 method `name` / `hitSource` 的声明式缓存失效。alova `useForm` 只在确需草稿持久化、多步骤共享或自动恢复时单独评估。
 
 ## 用 hook 时直接传 Apis method
 

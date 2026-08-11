@@ -42,7 +42,7 @@ const { send } = useRequest(() => Apis.IAM.createRole({ data: {...} }));
 
 ## 客户端状态
 
-客户端状态(UI 状态:表单输入、tab、modal 开关)用 React state(`useState`/`useReducer`)。
+客户端 UI 状态(tab、modal 开关等)用 React state(`useState`/`useReducer`)；表单输入、校验和提交状态统一用 TanStack Form，见 [forms-tanstack](./forms-tanstack.md)。
 
 **暂不引入状态库**(zustand 等)。若未来全局状态增多,再评估引入。
 

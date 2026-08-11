@@ -26,6 +26,7 @@ lastReviewedAt: 2026-07-14
 - [LogLayer 日志规范](docs/conventions/backend/logging-loglayer.md)
 - [后端开发流程规范](docs/conventions/backend/development-workflow.md)
 - [前端开发流程规范](docs/conventions/frontend/development-workflow.md)
+- [前端表单规范](docs/conventions/frontend/forms-tanstack.md)
 - [注释规范](docs/conventions/shared/commenting.md)
 - [测试策略](docs/conventions/backend/testing-strategy.md)
 - [CI/CD、安全与可观测性](docs/conventions/shared/ci-cd-security-observability.md)

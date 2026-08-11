@@ -72,6 +72,8 @@ features/iam/
 
 `@headless-tree/core` / `@headless-tree/react` 只负责树状态、ARIA 和键盘行为；节点视觉继续使用项目的 shadcn/Base UI、Tailwind 语义 token 和 Lucide。
 
+角色、组织、用户和重置密码表单统一遵循 [TanStack Form 规范](../../conventions/frontend/forms-tanstack.md)：失焦 + 提交校验，shadcn `FieldError` 展示字段错误，mutation 在 `onSubmit` 中直接调用生成的 `Apis.*`。
+
 ## 用户授权
 
 `UserDetailPanel` 顶部「授权视角组织」选择器（操作者管理子树内 org，带路径）+ 信息、角色、直接、有效权限、操作历史 Tab 管理某用户。`org`/`tab` 进 URL，支持深链接；非法或无 `assignments.read` 的授权 Tab 回退到信息且不发起授权请求。切换视角组织或调岗后，三个授权 Tab（角色/直接/有效权限）用 `useWatcher` 监听 `orgId` 自动重拉数据。调岗成功后 URL `org` 参数同步设为新 org，防止视角卡在旧 org。

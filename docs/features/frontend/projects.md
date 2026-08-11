@@ -54,7 +54,7 @@ features/projects/
 
 ## 表单
 
-`project-form.tsx` 用 `@tanstack/react-form` + zod(zod v4 standard schema,无 adapter)。`project` prop 传入 = edit 预填,不传 = create。`description` 空串:create 发 `undefined`,update 发 `null`(清空)。提交 `form.Subscribe` 控制 button busy + `Spinner`。
+`project-form.tsx` 遵循 [TanStack Form 规范](../../conventions/frontend/forms-tanstack.md)：zod v4 standard schema 无 adapter，失焦 + 提交校验。`project` prop 传入 = edit 预填,不传 = create。`description` 空串:create 发 `undefined`,update 发 `null`(清空)。提交 `form.Subscribe` 控制 button busy + `Spinner`。
 
 ## 与后端对应
 
