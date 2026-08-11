@@ -5,7 +5,7 @@ import { z } from "zod";
 import Apis from "@/api";
 import { Button } from "@/components/ui/button";
 import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -28,7 +28,8 @@ export function RoleForm({ role, onSuccess }: RoleFormProps) {
       description: role?.description ?? "",
     },
     validators: {
-      onChange: roleSchema,
+      onBlur: roleSchema,
+      onSubmit: roleSchema,
     },
     onSubmit: async ({ value }) => {
       try {
@@ -57,6 +58,7 @@ export function RoleForm({ role, onSuccess }: RoleFormProps) {
         <DialogTitle>{role ? "编辑角色" : "新建角色"}</DialogTitle>
       </DialogHeader>
       <form
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -66,21 +68,24 @@ export function RoleForm({ role, onSuccess }: RoleFormProps) {
       >
         <FieldGroup>
           <form.Field name="name">
-            {field => (
-              <Field data-invalid={field.state.meta.errors.length > 0}>
-                <FieldLabel htmlFor="role-name">名称</FieldLabel>
-                <Input
-                  id="role-name"
-                  value={field.state.value}
-                  onChange={e => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <FieldDescription>{field.state.meta.errors[0]?.message}</FieldDescription>
-                )}
-              </Field>
-            )}
+            {(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="role-name">名称</FieldLabel>
+                  <Input
+                    id="role-name"
+                    name={field.name}
+                    required
+                    value={field.state.value}
+                    onChange={e => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
           </form.Field>
           <form.Field name="description">
             {field => (
@@ -88,6 +93,7 @@ export function RoleForm({ role, onSuccess }: RoleFormProps) {
                 <FieldLabel htmlFor="role-description">描述</FieldLabel>
                 <Input
                   id="role-description"
+                  name={field.name}
                   value={field.state.value}
                   onChange={e => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}

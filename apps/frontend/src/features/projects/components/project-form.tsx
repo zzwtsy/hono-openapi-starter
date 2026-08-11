@@ -5,7 +5,7 @@ import { z } from "zod";
 import Apis from "@/api";
 import { Button } from "@/components/ui/button";
 import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -28,7 +28,8 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       description: project?.description ?? "",
     },
     validators: {
-      onChange: projectSchema,
+      onBlur: projectSchema,
+      onSubmit: projectSchema,
     },
     onSubmit: async ({ value }) => {
       try {
@@ -57,6 +58,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
         <DialogTitle>{project ? "编辑项目" : "新建项目"}</DialogTitle>
       </DialogHeader>
       <form
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -66,21 +68,24 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
       >
         <FieldGroup>
           <form.Field name="name">
-            {field => (
-              <Field data-invalid={field.state.meta.errors.length > 0}>
-                <FieldLabel htmlFor="project-name">名称</FieldLabel>
-                <Input
-                  id="project-name"
-                  value={field.state.value}
-                  onChange={e => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <FieldDescription>{field.state.meta.errors[0]?.message}</FieldDescription>
-                )}
-              </Field>
-            )}
+            {(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="project-name">名称</FieldLabel>
+                  <Input
+                    id="project-name"
+                    name={field.name}
+                    required
+                    value={field.state.value}
+                    onChange={e => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
           </form.Field>
           <form.Field name="description">
             {field => (
@@ -88,6 +93,7 @@ export function ProjectForm({ project, onSuccess }: ProjectFormProps) {
                 <FieldLabel htmlFor="project-description">描述</FieldLabel>
                 <Input
                   id="project-description"
+                  name={field.name}
                   value={field.state.value}
                   onChange={e => field.handleChange(e.target.value)}
                   onBlur={field.handleBlur}

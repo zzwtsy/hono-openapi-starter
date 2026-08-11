@@ -5,7 +5,7 @@ import { z } from "zod";
 import Apis from "@/api";
 import { Button } from "@/components/ui/button";
 import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -22,7 +22,7 @@ interface ResetPasswordDialogProps {
 export function ResetPasswordDialog({ user, onSuccess }: ResetPasswordDialogProps) {
   const form = useForm({
     defaultValues: { newPassword: "" },
-    validators: { onChange: resetSchema },
+    validators: { onBlur: resetSchema, onSubmit: resetSchema },
     onSubmit: async ({ value }) => {
       try {
         await Apis.IAM.resetUserPassword({
@@ -52,6 +52,7 @@ export function ResetPasswordDialog({ user, onSuccess }: ResetPasswordDialogProp
         ) 设置新密码。对方需用新密码重新登录。
       </p>
       <form
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -61,23 +62,27 @@ export function ResetPasswordDialog({ user, onSuccess }: ResetPasswordDialogProp
       >
         <FieldGroup>
           <form.Field name="newPassword">
-            {field => (
-              <Field data-invalid={field.state.meta.errors.length > 0}>
-                <FieldLabel htmlFor="reset-password">新密码</FieldLabel>
-                <Input
-                  id="reset-password"
-                  type="password"
-                  autoComplete="new-password"
-                  value={field.state.value}
-                  onChange={e => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <FieldDescription>{field.state.meta.errors[0]?.message}</FieldDescription>
-                )}
-              </Field>
-            )}
+            {(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="reset-password">新密码</FieldLabel>
+                  <Input
+                    id="reset-password"
+                    name={field.name}
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                    value={field.state.value}
+                    onChange={e => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
           </form.Field>
         </FieldGroup>
         <DialogFooter>

@@ -7,7 +7,7 @@ import Apis from "@/api";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
@@ -40,6 +40,28 @@ interface OrganizationReparentDialogProps extends Omit<ReparentConfirmDialogProp
   save: (values: OrganizationFormValues) => Promise<boolean>;
   onConfirmed: () => void;
   onBusyChange: (busy: boolean) => void;
+}
+
+async function persistOrganization(
+  organization: Organization | undefined,
+  onSuccess: OrganizationFormProps["onSuccess"],
+  value: OrganizationFormValues,
+): Promise<boolean> {
+  try {
+    const parentId = value.parentId === "" ? undefined : value.parentId;
+    const savedOrganization = organization
+      ? await Apis.IAM.updateOrganization({
+          pathParams: { orgId: organization.id },
+          data: { name: value.name, parentId: parentId ?? null },
+        })
+      : await Apis.IAM.createOrganization({ data: { name: value.name, parentId } });
+    toast.success(organization ? "组织已更新" : "组织已创建");
+    await onSuccess(savedOrganization);
+    return true;
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : "操作失败");
+    return false;
+  }
 }
 
 function ReparentConfirmDialog({
@@ -98,30 +120,8 @@ export function OrganizationForm({
   const [pendingValues, setPendingValues] = useState<OrganizationFormValues>();
   const [reparentConfirming, setReparentConfirming] = useState(false);
   const [reparentBusy, setReparentBusy] = useState(false);
-
-  const saveOrganization = async (value: OrganizationFormValues): Promise<boolean> => {
-    try {
-      const parentId = value.parentId === "" ? undefined : value.parentId;
-      let savedOrganization: Organization;
-      if (organization) {
-        savedOrganization = await Apis.IAM.updateOrganization({
-          pathParams: { orgId: organization.id },
-          data: { name: value.name, parentId: parentId ?? null },
-        });
-        toast.success("组织已更新");
-      } else {
-        savedOrganization = await Apis.IAM.createOrganization({
-          data: { name: value.name, parentId },
-        });
-        toast.success("组织已创建");
-      }
-      await onSuccess(savedOrganization);
-      return true;
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "操作失败");
-      return false;
-    }
-  };
+  const saveOrganization = (value: OrganizationFormValues) =>
+    persistOrganization(organization, onSuccess, value);
 
   const form = useForm({
     defaultValues: {
@@ -129,7 +129,8 @@ export function OrganizationForm({
       parentId: organization?.parentId ?? defaultParentId ?? "",
     },
     validators: {
-      onChange: organizationSchema,
+      onBlur: organizationSchema,
+      onSubmit: organizationSchema,
     },
     onSubmit: async ({ value }) => {
       const nextParentId = value.parentId === "" ? null : value.parentId;
@@ -155,6 +156,7 @@ export function OrganizationForm({
         <DialogTitle>{organization ? "编辑组织" : "新建组织"}</DialogTitle>
       </DialogHeader>
       <form
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -164,23 +166,25 @@ export function OrganizationForm({
       >
         <FieldGroup>
           <form.Field name="name">
-            {field => (
-              <Field data-invalid={field.state.meta.errors.length > 0}>
-                <FieldLabel htmlFor="org-name">名称</FieldLabel>
-                <Input
-                  id="org-name"
-                  name="name"
-                  autoComplete="off"
-                  value={field.state.value}
-                  onChange={e => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <FieldDescription>{field.state.meta.errors[0]?.message}</FieldDescription>
-                )}
-              </Field>
-            )}
+            {(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="org-name">名称</FieldLabel>
+                  <Input
+                    id="org-name"
+                    name={field.name}
+                    autoComplete="off"
+                    required
+                    value={field.state.value}
+                    onChange={e => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    aria-invalid={isInvalid}
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
           </form.Field>
           <form.Field name="parentId">
             {field => (
@@ -188,10 +192,11 @@ export function OrganizationForm({
                 <FieldLabel htmlFor="org-parent">父组织</FieldLabel>
                 <Select
                   items={parentItems}
+                  name={field.name}
                   value={field.state.value === "" ? null : field.state.value}
                   onValueChange={(val) => { field.handleChange(val ?? ""); }}
                 >
-                  <SelectTrigger id="org-parent" className="w-full">
+                  <SelectTrigger id="org-parent" className="w-full" onBlur={field.handleBlur}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

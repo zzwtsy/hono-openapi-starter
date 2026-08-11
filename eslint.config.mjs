@@ -3,6 +3,8 @@ import boundaries from "eslint-plugin-boundaries";
 
 export default antfu({
   formatters: true,
+  // 保证 IDE、Codex 与 CI 执行相同的规则严重级别和修复行为。
+  isInEditor: false,
   react: true,
   typescript: {
     tsconfigPath: "tsconfig.json",

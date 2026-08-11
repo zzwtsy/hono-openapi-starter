@@ -50,6 +50,7 @@ lastReviewedAt: 2026-08-06
 | 新增前端 feature | `architecture/frontend/directory-structure.md`、`conventions/frontend/development-workflow.md`、`features/frontend/_template.md` |
 | 新增后端 API | `conventions/backend/api-openapi.md`、`conventions/backend/response-envelope.md`、`conventions/backend/error-code-system.md`、`conventions/backend/testing-strategy.md` |
 | 前端调用 API | `conventions/frontend/api-alova.md`、`conventions/frontend/routing.md` |
+| 新增 / 修改前端表单 | `conventions/frontend/forms-tanstack.md`、`conventions/frontend/api-alova.md`、`conventions/frontend/testing.md` |
 | 修改前端 IAM | `features/frontend/iam.md`、`conventions/frontend/routing.md`、`conventions/frontend/state-cache.md` |
 | 改用户管理 UI | `features/frontend/iam.md`（用户管理节）、`features/backend/iam.md`（users.*） |
 | 改账户自助(个人信息) | `features/frontend/account.md`、`features/backend/iam.md`（me 自助修改节） |
@@ -85,7 +86,7 @@ docs/
   conventions/
     shared/{commenting, documentation-system, ci-cd-security-observability}.md
     backend/{api-openapi, response-envelope, error-code-system, auth-better-auth, authorization, database-drizzle, logging-loglayer, development-workflow, testing-strategy}.md
-    frontend/{api-alova, routing, auth, state-cache, data-table, development-workflow, testing}.md
+    frontend/{api-alova, forms-tanstack, routing, auth, state-cache, data-table, development-workflow, testing}.md
 
   features/
     backend/{_template, iam, projects, system-settings, audit}.md

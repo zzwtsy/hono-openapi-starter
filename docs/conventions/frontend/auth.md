@@ -59,3 +59,7 @@ cookie 模式下业务 API 有 CSRF 面。后端 Better Auth cookie `SameSite` �
 ## Better Auth 端点不经 alova
 
 `/api/auth/*` 不包 envelope(见 [backend/auth-better-auth](../backend/auth-better-auth.md) + ADR-0003),前端用 Better Auth client 调,不经 alova。业务 API(`/api/v1/*`)包 envelope,走 alova(见 [api-alova](./api-alova.md))。
+
+## 登录表单
+
+`LoginForm` 遵循 [TanStack Form 规范](./forms-tanstack.md)：Zod schema 在失焦和提交时校验，字段错误使用 `FieldError`，登录提交状态由 `isSubmitting` 驱动。`useLogin` 继续调用 Better Auth client，并在 session 更新后执行安全回跳；认证失败保留为表单级 `Alert`，不映射为字段错误。
