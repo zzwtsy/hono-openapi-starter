@@ -15,7 +15,7 @@ function parsePage(value: unknown): number | undefined {
 
 function parsePageSize(value: unknown): number | undefined {
   const n = parsePage(value);
-  return n != null && n <= 100 ? n : undefined;
+  return n === 25 || n === 50 || n === 100 ? n : undefined;
 }
 
 export const Route = createFileRoute("/_authenticated/audit/")({
@@ -54,7 +54,7 @@ function Audit() {
   };
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-6">
+    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden p-6">
       <PageHeader title="操作日志" description="系统操作审计记录。" />
       <AuditLogTable search={search} onSearchChange={handleSearchChange} />
     </div>

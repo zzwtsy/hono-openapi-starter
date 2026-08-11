@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/projects/")({
 
 function Projects() {
   return (
-    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-y-auto p-6">
+    <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden p-6">
       <PageHeader title="项目" description="当前组织下的项目。" />
       <ProjectList />
     </div>

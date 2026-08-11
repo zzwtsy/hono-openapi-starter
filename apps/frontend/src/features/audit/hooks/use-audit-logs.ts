@@ -19,7 +19,7 @@ export function useAuditLogs(params: {
 }) {
   const { data, loading, error, send } = useWatcher(
     () => Apis.Audit.listAuditLogs({ params }),
-    [params.page, params.action, params.actorUserId, params.actorKeyword, params.status, params.from, params.to],
+    [params.page, params.pageSize, params.action, params.actorUserId, params.actorKeyword, params.status, params.from, params.to],
     { immediate: true, cacheFor: 0 },
   );
 

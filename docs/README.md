@@ -85,7 +85,7 @@ docs/
   conventions/
     shared/{commenting, documentation-system, ci-cd-security-observability}.md
     backend/{api-openapi, response-envelope, error-code-system, auth-better-auth, authorization, database-drizzle, logging-loglayer, development-workflow, testing-strategy}.md
-    frontend/{api-alova, routing, auth, state-cache, development-workflow, testing}.md
+    frontend/{api-alova, routing, auth, state-cache, data-table, development-workflow, testing}.md
 
   features/
     backend/{_template, iam, projects, system-settings, audit}.md

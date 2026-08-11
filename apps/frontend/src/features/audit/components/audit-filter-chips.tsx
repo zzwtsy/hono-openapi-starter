@@ -6,14 +6,13 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 /** 筛选字段键(chip 移除用)。 */
 export type FilterKey = "action" | "status" | "actorKeyword" | "from" | "to";
 
-/** active chips 行:筛选可见性(字段: 值)+ 结果计数;aria-live 播报变化。 */
-export function FilterChipsRow({ chips, total, onRemove, onClearAll }: {
+/** active chips 行:展示当前筛选条件并通过 aria-live 播报变化。 */
+export function FilterChipsRow({ chips, onRemove, onClearAll }: {
   chips: ActiveFilterChip[];
-  total: number | undefined;
   onRemove: (key: FilterKey) => void;
   onClearAll: () => void;
 }) {
-  if (chips.length === 0 && total == null) {
+  if (chips.length === 0) {
     return null;
   }
   return (
@@ -36,15 +35,6 @@ export function FilterChipsRow({ chips, total, onRemove, onClearAll }: {
       ))}
       {chips.length >= 2 && (
         <Button type="button" variant="ghost" size="xs" onClick={onClearAll}>清除全部</Button>
-      )}
-      {total != null && (
-        <span className="ml-auto text-xs text-muted-foreground">
-          共
-          {" "}
-          {total}
-          {" "}
-          条
-        </span>
       )}
     </div>
   );
