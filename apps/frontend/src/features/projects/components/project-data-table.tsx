@@ -7,14 +7,14 @@ import { FolderKanban, Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AsyncListState } from "@/components/shared/async-list";
 import { DataTableColumnSettings } from "@/components/shared/data-table/data-table-column-settings";
-import { DataTableFooter, DataTableFrame, DataTableToolbar, DataTableViewport } from "@/components/shared/data-table/data-table-frame";
+import { DataTableFooter, DataTableFrame, DataTableHeader, DataTableToolbar, DataTableViewport } from "@/components/shared/data-table/data-table-frame";
 import { DataTablePagination } from "@/components/shared/data-table/data-table-pagination";
 import { useColumnPreferences } from "@/components/shared/data-table/use-column-preferences";
 import { ResourceActions } from "@/components/shared/resource-actions";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { resolveUpdater } from "@/lib/data-table/column-preferences";
 import { createAppColumnHelper, useAppTable } from "@/lib/data-table/table";
 import { formatDate } from "@/lib/utils";
@@ -165,7 +165,7 @@ export function ProjectDataTable({ data, loading, error, canCreate, canUpdate, c
                 )
               : (
                   <Table className="min-w-max">
-                    <TableHeader className="sticky top-0 z-10 bg-background">
+                    <DataTableHeader>
                       {table.getHeaderGroups().map(headerGroup => (
                         <TableRow key={headerGroup.id}>
                           {headerGroup.headers.map((header) => {
@@ -174,7 +174,7 @@ export function ProjectDataTable({ data, loading, error, canCreate, canUpdate, c
                           })}
                         </TableRow>
                       ))}
-                    </TableHeader>
+                    </DataTableHeader>
                     <TableBody>
                       {table.getRowModel().rows.map(row => (
                         <TableRow key={row.id}>

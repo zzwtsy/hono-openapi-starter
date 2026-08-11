@@ -6,12 +6,12 @@ import { flexRender } from "@tanstack/react-table";
 import { useMemo } from "react";
 import { AsyncListState } from "@/components/shared/async-list";
 import { DataTableColumnSettings } from "@/components/shared/data-table/data-table-column-settings";
-import { DataTableFooter, DataTableFrame, DataTableToolbar, DataTableViewport } from "@/components/shared/data-table/data-table-frame";
+import { DataTableFooter, DataTableFrame, DataTableHeader, DataTableToolbar, DataTableViewport } from "@/components/shared/data-table/data-table-frame";
 import { DataTablePagination } from "@/components/shared/data-table/data-table-pagination";
 import { useColumnPreferences } from "@/components/shared/data-table/use-column-preferences";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { resolveUpdater } from "@/lib/data-table/column-preferences";
 import { createAppColumnHelper, useAppTable } from "@/lib/data-table/table";
 import { formatActorName, formatAuditTime, formatResourceRefs, getActionLabel } from "../lib/format-diff";
@@ -140,7 +140,7 @@ export function AuditLogDataTable({ actions, data, loading, error, page, pageSiz
               ? <div className="flex min-h-full items-center justify-center p-6"><AuditEmptyState filtered={filtered} /></div>
               : (
                   <Table className="min-w-max">
-                    <TableHeader className="sticky top-0 z-10 bg-background">
+                    <DataTableHeader>
                       {table.getHeaderGroups().map(headerGroup => (
                         <TableRow key={headerGroup.id}>
                           {headerGroup.headers.map((header) => {
@@ -149,7 +149,7 @@ export function AuditLogDataTable({ actions, data, loading, error, page, pageSiz
                           })}
                         </TableRow>
                       ))}
-                    </TableHeader>
+                    </DataTableHeader>
                     <TableBody>
                       {table.getRowModel().rows.map(row => (
                         <TableRow
