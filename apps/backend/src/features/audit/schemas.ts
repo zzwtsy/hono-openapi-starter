@@ -95,7 +95,25 @@ export const AuditActionSchema = z.object({
 
 /** 全局审计列表查询参数(offset 分页 + 筛选)。 */
 export const ListAuditLogsQuerySchema = OffsetPaginationQuerySchema.extend({
-  action: z.string().optional().openapi({ description: "按动作过滤" }),
+  actions: z.preprocess(
+    (value) => {
+      let values: unknown[] | undefined;
+      if (Array.isArray(value)) {
+        values = value;
+      } else if (typeof value === "string") {
+        values = [value];
+      }
+      return values == null
+        ? value
+        : values.flatMap(item => typeof item === "string" ? item.split(",").map(part => part.trim()) : [item]);
+    },
+    z.array(z.string().min(1).regex(/^[^,]+$/)).max(50),
+  ).optional().openapi({
+    type: "array",
+    items: { type: "string", minLength: 1, pattern: "^[^,]+$" },
+    description: "按一个或多个动作过滤（OR）",
+    param: { style: "form", explode: false },
+  }),
   actorUserId: z.string().optional().openapi({ description: "按操作者 ID 过滤" }),
   actorKeyword: z.string().optional().openapi({ description: "按操作者名称模糊搜索" }),
   status: z.enum(["success", "failure"]).optional().openapi({ description: "按结果过滤" }),

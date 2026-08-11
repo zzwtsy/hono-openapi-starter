@@ -68,7 +68,7 @@ export const AuditService = {
   async list(query: {
     page: number;
     pageSize: number;
-    action?: string;
+    actions?: string[];
     actorUserId?: string;
     /** 按操作者名称模糊搜索(ilike,通配符 % 当通配符用)。 */
     actorKeyword?: string;
@@ -93,8 +93,8 @@ export const AuditService = {
     }
 
     // 筛选条件
-    if (query.action != null) {
-      conditions.push(eq(auditLogs.action, query.action));
+    if (query.actions != null && query.actions.length > 0) {
+      conditions.push(inArray(auditLogs.action, query.actions));
     }
     if (query.actorUserId != null) {
       conditions.push(eq(auditLogs.actorUserId, query.actorUserId));

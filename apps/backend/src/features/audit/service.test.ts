@@ -129,14 +129,14 @@ describe("AuditService.list", () => {
     expect(params).toContain("org-b");
   });
 
-  it("筛选条件:action/actorUserId/status/from/to 都进 WHERE", async () => {
+  it("筛选条件:actions/actorUserId/status/from/to 都进 WHERE", async () => {
     const { captured } = mockDbChain([[], [{ count: 0 }]]);
 
     await AuditService.list({
       page: 1,
       pageSize: 25,
       actorOrgIds: ["org-a"],
-      action: "projects.update",
+      actions: ["projects.update", "iam.user.create"],
       actorUserId: "u1",
       status: "failure",
       from: "2026-06-01T00:00:00.000Z",
@@ -148,7 +148,16 @@ describe("AuditService.list", () => {
     expect(sql).toContain("actor_user_id");
     expect(sql).toContain("status");
     expect(sql).toContain("occurred_at");
-    expect(params).toEqual(expect.arrayContaining(["projects.update", "u1", "failure"]));
+    expect(sql).toMatch(/action.*in/i);
+    expect(params).toEqual(expect.arrayContaining(["projects.update", "iam.user.create", "u1", "failure"]));
+  });
+
+  it("actions 空数组等价于未筛选", async () => {
+    const { captured } = mockDbChain([[], [{ count: 0 }]]);
+
+    await AuditService.list({ page: 1, pageSize: 25, actorOrgIds: ["org-a"], actions: [] });
+
+    expect(sqlQuery(captured[0]).sql).not.toContain("\"audit_logs\".\"action\"");
   });
 
   it("actorName 为 null(登录失败等无 actor 事件):DTO 直通 null", async () => {

@@ -3653,8 +3653,10 @@ declare global {
        * type QueryParameters = {
        *   page?: number
        *   pageSize?: number
-       *   // 按动作过滤
-       *   action?: string
+       *   // 按一个或多个动作过滤（OR）
+       *   // [items] start
+       *   // [items] end
+       *   actions?: string[]
        *   // 按操作者 ID 过滤
        *   actorUserId?: string
        *   // 按操作者名称模糊搜索
@@ -3799,9 +3801,9 @@ declare global {
             page?: number;
             pageSize?: number;
             /**
-             * 按动作过滤
+             * 按一个或多个动作过滤（OR）
              */
-            action?: string;
+            actions?: string[];
             /**
              * 按操作者 ID 过滤
              */

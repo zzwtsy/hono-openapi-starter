@@ -31,9 +31,10 @@ function renderTable(search: AuditSearch, onSearchChange = vi.fn()) {
   return render(<AuditLogTable search={search} onSearchChange={onSearchChange} />);
 }
 
-describe("AuditLogTable actorKeyword 防抖", () => {
+describe("AuditLogTable", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.clearAllMocks();
     useAuditLogsMock.mockReturnValue(emptyAuditLogs);
   });
 
@@ -45,6 +46,31 @@ describe("AuditLogTable actorKeyword 防抖", () => {
     const { container } = renderTable({});
 
     expect(container.querySelectorAll("[aria-live=\"polite\"]")).toHaveLength(1);
+  });
+
+  it("刷新当前筛选结果且不修改 URL 状态", () => {
+    const send = vi.fn();
+    const onSearchChange = vi.fn();
+    useAuditLogsMock.mockReturnValue({ ...emptyAuditLogs, send });
+    renderTable({ actions: ["auth.sign-in", "iam.role.create"], page: 2 }, onSearchChange);
+
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(onSearchChange).not.toHaveBeenCalled();
+    expect(useAuditLogsMock).toHaveBeenCalledWith(expect.objectContaining({
+      actions: ["auth.sign-in", "iam.role.create"],
+    }));
+  });
+
+  it("刷新请求进行中时禁止重复提交", () => {
+    useAuditLogsMock.mockReturnValue({ ...emptyAuditLogs, data: undefined, loading: true });
+    renderTable({});
+
+    const refreshButton = screen.getByRole("button", { name: "刷新" });
+    expect(refreshButton).toBeDisabled();
+    expect(refreshButton).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("combobox", { name: "操作筛选" })).toBeInTheDocument();
   });
 
   it("重置时取消待执行的关键词导航", () => {
@@ -62,7 +88,7 @@ describe("AuditLogTable actorKeyword 防抖", () => {
 
     expect(onSearchChange).toHaveBeenCalledTimes(1);
     expect(onSearchChange).toHaveBeenCalledWith({
-      action: undefined,
+      actions: undefined,
       status: undefined,
       actorKeyword: undefined,
       from: undefined,
@@ -70,14 +96,14 @@ describe("AuditLogTable actorKeyword 防抖", () => {
     });
   });
 
-  it("移除 actorKeyword chip 时取消待执行的关键词导航", () => {
+  it("清除操作人筛选时取消待执行的关键词导航", () => {
     const onSearchChange = vi.fn();
-    renderTable({ actorKeyword: "旧关键词", action: "projects.update" }, onSearchChange);
+    renderTable({ actorKeyword: "旧关键词", actions: ["projects.update"] }, onSearchChange);
 
     fireEvent.change(screen.getByRole("textbox", { name: "操作人姓名" }), {
       target: { value: "新关键词" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "移除操作人：旧关键词筛选" }));
+    fireEvent.click(screen.getByRole("button", { name: "清除操作人筛选" }));
 
     act(() => {
       vi.advanceTimersByTime(300);

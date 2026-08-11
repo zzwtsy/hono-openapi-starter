@@ -1,11 +1,9 @@
 import type { AuditSearch } from "../lib/audit-search";
-import type { FilterKey } from "./audit-filter-chips";
 import type { AuditLog } from "@/api/globals";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuditActions } from "../hooks/use-audit-actions";
 import { useAuditLogs } from "../hooks/use-audit-logs";
-import { deriveActiveFilters, hasActiveFilters } from "../lib/audit-filters";
-import { FilterChipsRow } from "./audit-filter-chips";
+import { hasActiveFilters } from "../lib/audit-filters";
 import { AuditLogDataTable } from "./audit-log-data-table";
 import { AuditLogDetailSheet } from "./audit-log-detail-sheet";
 import { AuditLogFilters } from "./audit-log-filters";
@@ -22,13 +20,12 @@ export function AuditLogTable({ search, onSearchChange }: AuditLogTableProps) {
   const page = search.page ?? 1;
   const pageSize = search.pageSize ?? 25;
   const filters = {
-    action: search.action,
+    actions: search.actions,
     status: search.status,
     actorKeyword: search.actorKeyword,
     from: search.from,
     to: search.to,
   };
-  const activeChips = deriveActiveFilters(filters, actions);
   const filtered = hasActiveFilters(filters);
 
   // actorKeyword 文本输入:本地 state 即时响应 + 250ms 防抖写 URL。
@@ -61,7 +58,7 @@ export function AuditLogTable({ search, onSearchChange }: AuditLogTableProps) {
   const { data, loading, error, send } = useAuditLogs({
     page,
     pageSize,
-    action: filters.action,
+    actions: filters.actions,
     status: filters.status,
     actorKeyword: filters.actorKeyword,
     from: filters.from,
@@ -78,34 +75,16 @@ export function AuditLogTable({ search, onSearchChange }: AuditLogTableProps) {
   const handleReset = () => {
     clearKeywordDebounce();
     setKeyword("");
-    onSearchChange({ action: undefined, status: undefined, actorKeyword: undefined, from: undefined, to: undefined });
+    onSearchChange({ actions: undefined, status: undefined, actorKeyword: undefined, from: undefined, to: undefined });
   };
-  const removeChip = (key: FilterKey) => {
-    if (key === "actorKeyword") {
-      clearKeywordDebounce();
-      setKeyword("");
-    }
-    onSearchChange({ [key]: undefined });
+  const handleKeywordClear = () => {
+    clearKeywordDebounce();
+    setKeyword("");
+    onSearchChange({ actorKeyword: undefined });
   };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="shrink-0">
-        <AuditLogFilters
-          action={filters.action}
-          status={filters.status}
-          actorKeyword={keyword}
-          from={filters.from}
-          to={filters.to}
-          onActionChange={v => onSearchChange({ action: v })}
-          onStatusChange={v => onSearchChange({ status: v })}
-          onActorKeywordChange={onKeywordChange}
-          onRangeChange={(from, to) => onSearchChange({ from, to })}
-          onReset={handleReset}
-        />
-        <FilterChipsRow chips={activeChips} onRemove={removeChip} onClearAll={handleReset} />
-      </div>
-
       <AuditLogDataTable
         actions={actions}
         data={data}
@@ -115,6 +94,23 @@ export function AuditLogTable({ search, onSearchChange }: AuditLogTableProps) {
         pageSize={pageSize}
         filtered={filtered}
         selectedId={selected?.id}
+        toolbar={(
+          <AuditLogFilters
+            actions={actions}
+            selectedActions={filters.actions ?? []}
+            status={filters.status}
+            actorKeyword={keyword}
+            from={filters.from}
+            to={filters.to}
+            onActionsChange={values => onSearchChange({ actions: values.length > 0 ? values : undefined })}
+            onStatusChange={value => onSearchChange({ status: value })}
+            onActorKeywordChange={onKeywordChange}
+            onActorKeywordClear={handleKeywordClear}
+            onRangeChange={(from, to) => onSearchChange({ from, to })}
+            onReset={handleReset}
+          />
+        )}
+        onRefresh={() => { void send(); }}
         onRetry={() => { void send(); }}
         onRowSelect={handleRowClick}
         onPageChange={nextPage => onSearchChange({ page: nextPage })}

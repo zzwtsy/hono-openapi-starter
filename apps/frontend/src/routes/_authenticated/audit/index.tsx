@@ -2,7 +2,7 @@ import type { AuditSearch } from "@/features/audit/lib/audit-search";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/shared/page-header";
 import { AuditLogTable } from "@/features/audit/components/audit-log-table";
-import { parseAuditSearchDate } from "@/features/audit/lib/audit-search";
+import { parseAuditSearchActions, parseAuditSearchDateRange } from "@/features/audit/lib/audit-search";
 import { requirePermission } from "@/lib/require-permission";
 
 function parsePage(value: unknown): number | undefined {
@@ -19,15 +19,17 @@ function parsePageSize(value: unknown): number | undefined {
 }
 
 export const Route = createFileRoute("/_authenticated/audit/")({
-  validateSearch: (search: Record<string, unknown>): AuditSearch => ({
-    page: parsePage(search.page),
-    pageSize: parsePageSize(search.pageSize),
-    action: typeof search.action === "string" ? search.action : undefined,
-    status: search.status === "success" || search.status === "failure" ? search.status : undefined,
-    actorKeyword: typeof search.actorKeyword === "string" ? search.actorKeyword : undefined,
-    from: parseAuditSearchDate(search.from),
-    to: parseAuditSearchDate(search.to),
-  }),
+  validateSearch: (search: Record<string, unknown>): AuditSearch => {
+    const range = parseAuditSearchDateRange(search.from, search.to);
+    return {
+      page: parsePage(search.page),
+      pageSize: parsePageSize(search.pageSize),
+      actions: parseAuditSearchActions(search.actions),
+      status: search.status === "success" || search.status === "failure" ? search.status : undefined,
+      actorKeyword: typeof search.actorKeyword === "string" ? search.actorKeyword : undefined,
+      ...range,
+    };
+  },
   beforeLoad: ({ context }) => {
     requirePermission(context.auth.permissionCodes, "audit.read");
   },

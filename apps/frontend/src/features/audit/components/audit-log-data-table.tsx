@@ -1,8 +1,10 @@
 import type { PaginationState } from "@tanstack/react-table";
+import type { ReactNode } from "react";
 import type { AuditAction, AuditLog, AuditLogList } from "@/api/globals";
 import type { DataTableColumnSetting } from "@/components/shared/data-table/data-table-column-settings";
 import type { DataTableColumnMeta } from "@/lib/data-table/table";
 import { flexRender } from "@tanstack/react-table";
+import { RefreshCw } from "lucide-react";
 import { useMemo } from "react";
 import { AsyncListState } from "@/components/shared/async-list";
 import { DataTableColumnSettings } from "@/components/shared/data-table/data-table-column-settings";
@@ -10,12 +12,14 @@ import { DataTableFooter, DataTableFrame, DataTableHeader, DataTableToolbar, Dat
 import { DataTablePagination } from "@/components/shared/data-table/data-table-pagination";
 import { useColumnPreferences } from "@/components/shared/data-table/use-column-preferences";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { resolveUpdater } from "@/lib/data-table/column-preferences";
 import { createAppColumnHelper, useAppTable } from "@/lib/data-table/table";
 import { formatActorName, formatAuditTime, formatResourceRefs, getActionLabel } from "../lib/format-diff";
-import { AuditEmptyState } from "./audit-filter-chips";
+import { AuditEmptyState } from "./audit-empty-state";
 
 const EMPTY_AUDIT_LOGS: AuditLog[] = [];
 const AUDIT_PAGE_SIZES = [25, 50, 100] as const;
@@ -38,6 +42,8 @@ interface AuditLogDataTableProps {
   pageSize: number;
   filtered: boolean;
   selectedId: string | undefined;
+  toolbar: ReactNode;
+  onRefresh: () => void;
   onRetry: () => void;
   onRowSelect: (log: AuditLog) => void;
   onPageChange: (page: number) => void;
@@ -90,7 +96,7 @@ function toColumnSettings(hidden: readonly string[]): DataTableColumnSetting[] {
   });
 }
 
-export function AuditLogDataTable({ actions, data, loading, error, page, pageSize, filtered, selectedId, onRetry, onRowSelect, onPageChange, onPageSizeChange }: AuditLogDataTableProps) {
+export function AuditLogDataTable({ actions, data, loading, error, page, pageSize, filtered, selectedId, toolbar, onRefresh, onRetry, onRowSelect, onPageChange, onPageSizeChange }: AuditLogDataTableProps) {
   const columns = useMemo(() => createAuditColumns(actions), [actions]);
   const rows = data?.items ?? EMPTY_AUDIT_LOGS;
   const pagination = useMemo<PaginationState>(() => ({ pageIndex: Math.max(0, page - 1), pageSize }), [page, pageSize]);
@@ -117,16 +123,16 @@ export function AuditLogDataTable({ actions, data, loading, error, page, pageSiz
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <AsyncListState
-        loading={loading}
-        error={error}
-        data={data?.items}
-        onRetry={onRetry}
-        errorDescription="无法获取审计日志。"
-        loadingFallback={<div className="flex min-h-0 flex-1 items-center justify-center"><Skeleton className="h-64 w-full" /></div>}
-      >
-        <DataTableFrame>
-          <DataTableToolbar>
+      <DataTableFrame>
+        <DataTableToolbar className="justify-between">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{toolbar}</div>
+          <div className="ml-auto flex items-center gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={loading} aria-busy={loading} onClick={onRefresh}>
+              {loading
+                ? <Spinner data-icon="inline-start" aria-hidden="true" />
+                : <RefreshCw data-icon="inline-start" aria-hidden="true" />}
+              刷新
+            </Button>
             <DataTableColumnSettings
               columns={columnSettings}
               order={columnPreferences.preferences.order}
@@ -134,7 +140,16 @@ export function AuditLogDataTable({ actions, data, loading, error, page, pageSiz
               onMove={columnPreferences.setOrder}
               onReset={columnPreferences.reset}
             />
-          </DataTableToolbar>
+          </div>
+        </DataTableToolbar>
+        <AsyncListState
+          loading={loading}
+          error={error}
+          data={data?.items}
+          onRetry={onRetry}
+          errorDescription="无法获取审计日志。"
+          loadingFallback={<div className="flex min-h-0 flex-1 items-center justify-center"><Skeleton className="h-64 w-full" /></div>}
+        >
           <DataTableViewport>
             {data != null && data.items.length === 0
               ? <div className="flex min-h-full items-center justify-center p-6"><AuditEmptyState filtered={filtered} /></div>
@@ -177,8 +192,8 @@ export function AuditLogDataTable({ actions, data, loading, error, page, pageSiz
                   </Table>
                 )}
           </DataTableViewport>
-        </DataTableFrame>
-      </AsyncListState>
+        </AsyncListState>
+      </DataTableFrame>
       <DataTableFooter>
         <DataTablePagination
           page={page}

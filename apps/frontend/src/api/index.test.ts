@@ -82,4 +82,27 @@ describe("api responded.onSuccess", () => {
     expect(data.items[0]).not.toHaveProperty("requestId");
     expect(data.items[0]).not.toHaveProperty("metadata");
   });
+
+  it("审计列表按 OpenAPI CSV 形式序列化多个 actions 查询参数", async () => {
+    let receivedActions: string | null = null;
+    server.use(
+      http.get("/api/v1/audit-logs", ({ request }) => {
+        receivedActions = new URL(request.url).searchParams.get("actions");
+        return okEnvelope({
+          items: [],
+          meta: { page: 1, pageSize: 25, total: 0, totalPages: 0 },
+        });
+      }),
+    );
+
+    await Apis.Audit.listAuditLogs({
+      params: {
+        page: 1,
+        pageSize: 25,
+        actions: ["auth.sign-in", "iam.role.create"],
+      },
+    });
+
+    expect(receivedActions).toBe("auth.sign-in,iam.role.create");
+  });
 });

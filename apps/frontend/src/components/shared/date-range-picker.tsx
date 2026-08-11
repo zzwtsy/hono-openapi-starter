@@ -1,15 +1,21 @@
 import type { DateRange } from "react-day-picker";
-import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
+import { useState } from "react";
 import { zhCN } from "react-day-picker/locale";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
-/** 审计筛选用快捷预设(由调用方注入,shared 层不依赖 features)。from 为 ISO,须固定值(不随渲染漂移)。 */
+/** 审计筛选用快捷预设；时间边界在打开 Popover 时解析，避免长驻页面使用过期的 now。 */
 export interface TimeRangePreset {
+  key: string;
+  label: string;
+  resolveFrom: () => string;
+}
+
+interface ResolvedTimeRangePreset {
   key: string;
   label: string;
   from: string;
@@ -21,132 +27,195 @@ interface DateRangePickerProps {
   /** 已选 to(ISO);undefined 表示无截止(预设「近 24 小时」或日历半选态)。 */
   to?: string;
   /** 快捷预设列表(「全部时间」由组件内置)。 */
-  presets: TimeRangePreset[];
-  /** 范围变化统一出口(预设/日历/清除),输出 ISO。 */
+  presets: readonly TimeRangePreset[];
+  /** 范围变化统一出口；预设立即提交，自定义日历在点击“应用”后提交。 */
   onRangeChange: (from: string | undefined, to: string | undefined) => void;
 }
 
-// 禁未来日期:模块级常量,避免 render 内 new Date() 破坏纯度(date-picker.tsx 同款先例)。
-const disabledFuture = { after: new Date() };
+const shortDateFormatter = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" });
+const fullDateFormatter = new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
 
-/**
- * 审计时间范围选择器:触发按钮 + Popover(预设 Select + 双月 range 日历)。
- * 结构依据 shadcn 官方示例 date-picker-with-range / date-picker-with-presets:
- * - 触发按钮 outline + justify-start + placeholder muted(官方 range 示例)
- * - 预设用 Popover 内嵌 Select 而非按钮组(官方 presets 示例)
- * - Calendar mode="range" + numberOfMonths=2 + autoFocus(官方示例 initialFocus,v10.0.1 为 autoFocus)
- * 适配:base-nova 无 asChild,触发用 render prop(date-picker.tsx 先例);
- * zhCN + weekStartsOn=1(项目约定);禁未来日期;值直接绑 URL search(无本地 state)。
- */
-export function DateRangePicker({ from, to, presets, onRangeChange }: DateRangePickerProps) {
-  const range: DateRange = {
-    from: from != null ? new Date(from) : undefined,
+function formatDate(date: Date, withYear = false) {
+  return (withYear ? fullDateFormatter : shortDateFormatter).format(date).replaceAll("/", "-");
+}
+
+function toDateRange(from: string | undefined, to: string | undefined): DateRange | undefined {
+  if (from == null) {
+    return undefined;
+  }
+  return {
+    from: new Date(from),
     to: to != null ? new Date(to) : undefined,
   };
+}
 
-  // 触发按钮文案:无值 → 全部时间;仅 from → MM-dd 起;同日 → MM-dd;同年 → MM-dd ~ MM-dd;跨年带年防歧义
-  let label = "全部时间";
-  if (from != null && to == null) {
-    label = `${format(new Date(from), "MM-dd")} 起`;
-  } else if (from != null && to != null) {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
-    if (format(fromDate, "yyyy-MM-dd") === format(toDate, "yyyy-MM-dd")) {
-      label = format(fromDate, "MM-dd");
-    } else if (fromDate.getFullYear() === toDate.getFullYear()) {
-      label = `${format(fromDate, "MM-dd")} ~ ${format(toDate, "MM-dd")}`;
-    } else {
-      label = `${format(fromDate, "yyyy-MM-dd")} ~ ${format(toDate, "yyyy-MM-dd")}`;
+function toIsoRange(range: DateRange): [string, string | undefined] {
+  const from = range.from;
+  if (from == null) {
+    return ["", undefined];
+  }
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate(), 0, 0, 0, 0);
+  const to = range.to;
+  if (to == null) {
+    return [start.toISOString(), undefined];
+  }
+  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999);
+  return [start.toISOString(), end.toISOString()];
+}
+
+function resolvePresets(presets: readonly TimeRangePreset[]): ResolvedTimeRangePreset[] {
+  return presets.map(preset => ({ key: preset.key, label: preset.label, from: preset.resolveFrom() }));
+}
+
+function getRangeLabel(from: string | undefined, to: string | undefined, presets: ResolvedTimeRangePreset[]): string {
+  const matchedPreset = to == null ? presets.find(preset => preset.from === from) : undefined;
+  if (matchedPreset != null) {
+    return matchedPreset.label;
+  }
+  if (from == null) {
+    return "全部时间";
+  }
+  const fromDate = new Date(from);
+  if (to == null) {
+    return `${formatDate(fromDate)} 起`;
+  }
+  const toDate = new Date(to);
+  if (fullDateFormatter.format(fromDate) === fullDateFormatter.format(toDate)) {
+    return formatDate(fromDate);
+  }
+  if (fromDate.getFullYear() === toDate.getFullYear()) {
+    return `${formatDate(fromDate)} ~ ${formatDate(toDate)}`;
+  }
+  return `${formatDate(fromDate, true)} ~ ${formatDate(toDate, true)}`;
+}
+
+function getPresetValue(range: DateRange | undefined, presets: ResolvedTimeRangePreset[]): string {
+  if (range?.from == null) {
+    return "all";
+  }
+  const matched = range.to == null
+    ? presets.find(preset => preset.from === range.from?.toISOString())
+    : undefined;
+  return matched?.key ?? "custom";
+}
+
+function getCalendarStartMonth(range: DateRange | undefined, today: Date, isWide: boolean): Date {
+  const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const selectedMonth = range?.from == null
+    ? currentMonth
+    : new Date(range.from.getFullYear(), range.from.getMonth(), 1);
+
+  if (!isWide || selectedMonth < currentMonth) {
+    return selectedMonth;
+  }
+  return new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+}
+
+/**
+ * 审计时间范围选择器：触发按钮 + Popover（预设 ToggleGroup + 响应式 range 日历）。
+ * 结构依据 shadcn 官方示例 date-picker-with-range:
+ * - 触发按钮 outline + justify-start + placeholder muted(官方 range 示例)
+ * - PopoverContent 直接承载 Calendar，不再叠加 Select 与内层边框
+ * - 桌面双月、窄屏单月；自定义范围通过“应用”一次性提交
+ * 适配:base-nova 无 asChild,触发用 render prop(date-picker.tsx 先例);
+ * zhCN + weekStartsOn=1（项目约定）；禁未来日期；关闭弹层会丢弃未应用草稿。
+ */
+export function DateRangePicker({ from, to, presets, onRangeChange }: DateRangePickerProps) {
+  const isWide = useMediaQuery("(min-width: 640px)");
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<DateRange | undefined>(() => toDateRange(from, to));
+  const [calendarToday, setCalendarToday] = useState(() => new Date());
+  const [resolvedPresets, setResolvedPresets] = useState(() => resolvePresets(presets));
+  const committedRange = toDateRange(from, to);
+  const label = getRangeLabel(from, to, resolvedPresets);
+
+  const presetValue = getPresetValue(draft, resolvedPresets);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      setDraft(toDateRange(from, to));
+      setCalendarToday(new Date());
+      setResolvedPresets(resolvePresets(presets));
     }
-  }
-
-  // 预设 Select:选中态 = from 精确匹配某预设;无值 → 全部时间;有值不匹配 → 只读「自定义」显示项
-  const presetItems = [
-    { value: "all", label: "全部时间" },
-    ...presets.map(p => ({ value: p.key, label: p.label })),
-    { value: "custom", label: "自定义", disabled: true },
-  ];
-  const matchedPreset = to == null ? presets.find(p => p.from === from) : undefined;
-  let presetValue: string;
-  if (from == null && to == null) {
-    presetValue = "all";
-  } else if (matchedPreset != null) {
-    presetValue = matchedPreset.key;
-  } else {
-    presetValue = "custom";
-  }
+    setOpen(nextOpen);
+  };
 
   const handlePresetChange = (value: string | null) => {
     if (value === "all") {
       onRangeChange(undefined, undefined);
+      setOpen(false);
       return;
     }
-    const preset = presets.find(p => p.key === value);
+    const preset = resolvedPresets.find(item => item.key === value);
     if (preset != null) {
       onRangeChange(preset.from, undefined);
+      setOpen(false);
     }
     // 「custom」为只读显示项,忽略
   };
 
-  const handleSelect = (next: DateRange | undefined) => {
-    if (next == null || next.from == null) {
-      onRangeChange(undefined, undefined);
+  const handleApply = () => {
+    if (draft?.from == null) {
       return;
     }
-    // 日历给的是本地日期,重建当天边界:from 00:00 / to 23:59:59.999(与后端 inclusive 语义一致)
-    const start = new Date(next.from.getFullYear(), next.from.getMonth(), next.from.getDate(), 0, 0, 0, 0);
-    if (next.to == null) {
-      onRangeChange(start.toISOString(), undefined);
-      return;
-    }
-    const end = new Date(next.to.getFullYear(), next.to.getMonth(), next.to.getDate(), 23, 59, 59, 999);
-    onRangeChange(start.toISOString(), end.toISOString());
+    const [nextFrom, nextTo] = toIsoRange(draft);
+    onRangeChange(nextFrom, nextTo);
+    setOpen(false);
   };
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={triggerProps => (
           <Button
             type="button"
             variant="outline"
+            data-empty={from == null && to == null}
             aria-label="选择时间范围"
-            className={cn(
-              "w-60 justify-start gap-2 text-left font-normal",
-              from == null && to == null && "text-muted-foreground",
-            )}
+            className="w-60 justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
             {...triggerProps}
           >
-            <CalendarIcon className="size-4 shrink-0" />
+            <CalendarIcon data-icon="inline-start" aria-hidden="true" />
             {label}
           </Button>
         )}
       />
-      <PopoverContent align="start" className="flex w-auto flex-col gap-2 p-2">
-        <Select items={presetItems} value={presetValue} onValueChange={handlePresetChange}>
-          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {presetItems.map(item => (
-                <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <div className="rounded-md border">
-          {/* key 让默认月份在值变化(如点预设)时重新定位到 from 所在月,避免受控 month 的 setState 复杂度 */}
-          <Calendar
-            key={from ?? "empty"}
-            mode="range"
-            numberOfMonths={2}
-            locale={zhCN}
-            weekStartsOn={1}
-            autoFocus
-            defaultMonth={range.from}
-            selected={range}
-            onSelect={handleSelect}
-            disabled={disabledFuture}
-          />
+      <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] gap-0 overflow-hidden p-0">
+        <div className="border-b p-2">
+          <ToggleGroup
+            aria-label="快捷时间范围"
+            size="sm"
+            spacing={1}
+            value={presetValue === "custom" ? [] : [presetValue]}
+            onValueChange={(values) => {
+              const nextValue = values.at(-1);
+              if (nextValue != null) {
+                handlePresetChange(nextValue);
+              }
+            }}
+            className="flex-wrap"
+          >
+            <ToggleGroupItem value="all">全部</ToggleGroupItem>
+            {resolvedPresets.map(preset => (
+              <ToggleGroupItem key={preset.key} value={preset.key}>{preset.label}</ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
+        <Calendar
+          mode="range"
+          numberOfMonths={isWide ? 2 : 1}
+          locale={zhCN}
+          weekStartsOn={1}
+          autoFocus={isWide}
+          defaultMonth={getCalendarStartMonth(draft ?? committedRange, calendarToday, isWide)}
+          endMonth={calendarToday}
+          selected={draft}
+          onSelect={setDraft}
+          disabled={{ after: calendarToday }}
+        />
+        <div className="flex items-center justify-end gap-2 border-t p-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>取消</Button>
+          <Button type="button" size="sm" disabled={draft?.from == null} onClick={handleApply}>应用</Button>
         </div>
       </PopoverContent>
     </Popover>
