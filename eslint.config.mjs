@@ -46,14 +46,31 @@ const frontendBoundaryElements = [
   { type: "api", pattern: "apps/frontend/src/api/**", partialMatch: false },
 ];
 
+const frontendBoundaryFiles = [
+  { category: "bootstrap", pattern: "apps/frontend/src/main.tsx" },
+  { category: "application", pattern: "apps/frontend/src/app.tsx" },
+  { category: "router", pattern: "apps/frontend/src/router.tsx" },
+  { category: "route-tree", pattern: "apps/frontend/src/routeTree.gen.ts" },
+];
+
 const frontendBoundaryPolicies = [
+  // bootstrap 只挂载应用和全局展示 Provider，不直接进入路由或业务 feature。
+  { from: { file: { categories: "bootstrap" } }, allow: { to: { file: { categories: "application" } } } },
+  { from: { file: { categories: "bootstrap" } }, allow: { to: { element: { type: "components" } } } },
+  // App 只负责恢复 session 并把它注入 RouterProvider。
+  { from: { file: { categories: "application" } }, allow: { to: { file: { categories: "router" } } } },
+  { from: { file: { categories: "application" } }, allow: { to: { element: { type: "lib" } } } },
+  // router 只定义路由树实例；实际页面组合由 routes 承担。
+  { from: { file: { categories: "router" } }, allow: { to: { file: { categories: "route-tree" } } } },
   // routes 是装配层，可以组合业务 feature 和所有通用层。
   { from: { element: { type: "routes" } }, allow: { to: { element: { type: ["features", "components", "hooks", "lib", "types", "api"] } } } },
   // feature 间禁止直接依赖；共享能力应下沉到通用层或由 route 装配。
   { from: { element: { type: "features" } }, allow: { to: { element: { type: ["components", "hooks", "lib", "types", "api"] } } } },
   // 通用层不能反向依赖业务 feature 或 route。
-  { from: { element: { type: "components" } }, allow: { to: { element: { type: ["components", "hooks", "lib", "types", "api"] } } } },
-  { from: { element: { type: "hooks" } }, allow: { to: { element: { type: ["hooks", "lib", "types", "api", "components"] } } } },
+  { from: { element: { type: "components" } }, allow: { to: { element: { type: ["components", "hooks", "lib", "types"] } } } },
+  // 导航配置消费生成路由联合，仅形成类型依赖，不反向调用 route 实现。
+  { from: { element: { type: "components" } }, allow: { to: { file: { categories: "route-tree" } } } },
+  { from: { element: { type: "hooks" } }, allow: { to: { element: { type: ["hooks", "lib", "types"] } } } },
   { from: { element: { type: "lib" } }, allow: { to: { element: { type: ["lib", "types", "api"] } } } },
   { from: { element: { type: "types" } }, allow: { to: { element: { type: ["types", "api", "lib"] } } } },
   { from: { element: { type: "api" } }, allow: { to: { element: { type: ["api", "lib", "types"] } } } },
@@ -81,8 +98,9 @@ export default antfu(
       "apps/frontend/src/routeTree.gen.ts",
       "apps/backend/src/db/migrations",
       "apps/backend/src/db/schema/auth-schema.ts",
-      "apps/frontend/src/api/*",
-      "!apps/frontend/src/api/index.ts",
+      "apps/frontend/src/api/apiDefinitions.ts",
+      "apps/frontend/src/api/createApis.ts",
+      "apps/frontend/src/api/globals.d.ts",
     ],
     overrides: {
       javascript: {
@@ -151,6 +169,7 @@ export default antfu(
         typescript: { project: "apps/frontend/tsconfig.json" },
       },
       "boundaries/elements": frontendBoundaryElements,
+      "boundaries/files": frontendBoundaryFiles,
     },
     rules: {
       "boundaries/dependencies": ["error", {
@@ -165,6 +184,19 @@ export default antfu(
       "max-lines": ["error", 300],
       "no-nested-ternary": "error",
       "unicorn/filename-case": ["error", { cases: { kebabCase: true } }],
+    },
+  },
+  {
+    name: "project/frontend-feature-isolation",
+    files: ["apps/frontend/src/features/**/*.{ts,tsx}"],
+    rules: {
+      // feature 内统一使用相对路径；任何 feature alias import 都视为跨 feature 依赖。
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          group: ["@/features/*", "@/features/*/**"],
+          message: "feature 之间不得直接依赖；请经 route 装配或下沉到通用层。",
+        }],
+      }],
     },
   },
   {
