@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-10
+lastReviewedAt: 2026-08-11
 ---
 
 # 前端开发流程
@@ -31,7 +31,7 @@ lastReviewedAt: 2026-07-10
 
 ## shadcn 组件
 
-- 添加:`pnpm dlx shadcn@latest add <component>`
+- 添加:`pnpm --filter frontend exec shadcn add <component>`
 - 添加后跑 `pnpm --filter frontend lint:fix`(shadcn 生成无分号,补分号保持 `semi: true`)
 - `components/ui/` eslint 豁免 `react-refresh`(导出 cva 变体)
 
