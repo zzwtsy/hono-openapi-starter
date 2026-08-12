@@ -40,7 +40,7 @@ export function DatePicker({ value, onChange, placeholder = "永不过期", clas
               className={cn("w-full justify-start font-normal", selected && "pr-8", !selected && "text-muted-foreground", className)}
               {...props}
             >
-              <CalendarIcon className="size-4" />
+              <CalendarIcon data-icon="inline-start" />
               {selected ? format(selected, "yyyy年M月d日") : placeholder}
             </Button>
           )}
@@ -52,10 +52,10 @@ export function DatePicker({ value, onChange, placeholder = "永不过期", clas
             size="icon-sm"
             aria-label="清除日期"
             disabled={disabled}
-            className="absolute top-1/2 right-1.5 -translate-y-1/2"
+            className="absolute inset-y-0 right-1.5 my-auto"
             onClick={() => { onChange(null); }}
           >
-            <XIcon className="size-3.5" />
+            <XIcon />
           </Button>
         )}
       </div>
