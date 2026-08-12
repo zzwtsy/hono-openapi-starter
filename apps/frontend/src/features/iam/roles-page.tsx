@@ -63,7 +63,7 @@ export function RolesPage({
         )}
         navigation={(
           <RoleListPanel
-            selectedRoleId={selectedRoleId}
+            selectedRoleId={selectedRole?.id}
             roles={roles}
             loading={loading}
             error={error}

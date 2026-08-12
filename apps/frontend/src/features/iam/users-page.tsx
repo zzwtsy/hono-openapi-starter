@@ -84,7 +84,7 @@ export function UsersPage({
         )}
         navigation={(
           <UserListPanel
-            selectedUserId={selectedUserId}
+            selectedUserId={selectedUser?.id}
             users={users}
             loading={loading}
             error={error}
