@@ -13,6 +13,21 @@ export interface AuditSearch {
 
 const isoDateTimeSchema = z.iso.datetime();
 
+/** TanStack Router 会先 JSON 解析 search；兼容数字与手工拼接 URL 中的字符串。 */
+export function parseAuditSearchPage(value: unknown): number | undefined {
+  if (typeof value !== "number" && typeof value !== "string") {
+    return undefined;
+  }
+  const page = Number(value);
+  return Number.isInteger(page) && page >= 1 ? page : undefined;
+}
+
+/** 页面容量只允许表格提供的固定选项。 */
+export function parseAuditSearchPageSize(value: unknown): number | undefined {
+  const pageSize = parseAuditSearchPage(value);
+  return pageSize === 25 || pageSize === 50 || pageSize === 100 ? pageSize : undefined;
+}
+
 /** URL 可同时出现单值或重复参数；统一为去重后的动作代码数组。 */
 export function parseAuditSearchActions(value: unknown): string[] | undefined {
   let values: unknown[] = [];

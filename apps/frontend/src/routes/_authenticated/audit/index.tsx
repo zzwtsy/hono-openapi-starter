@@ -2,28 +2,20 @@ import type { AuditSearch } from "@/features/audit/lib/audit-search";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/shared/page-header";
 import { AuditLogTable } from "@/features/audit/components/audit-log-table";
-import { parseAuditSearchActions, parseAuditSearchDateRange } from "@/features/audit/lib/audit-search";
+import {
+  parseAuditSearchActions,
+  parseAuditSearchDateRange,
+  parseAuditSearchPage,
+  parseAuditSearchPageSize,
+} from "@/features/audit/lib/audit-search";
 import { requirePermission } from "@/lib/require-permission";
-
-function parsePage(value: unknown): number | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 1 ? n : undefined;
-}
-
-function parsePageSize(value: unknown): number | undefined {
-  const n = parsePage(value);
-  return n === 25 || n === 50 || n === 100 ? n : undefined;
-}
 
 export const Route = createFileRoute("/_authenticated/audit/")({
   validateSearch: (search: Record<string, unknown>): AuditSearch => {
     const range = parseAuditSearchDateRange(search.from, search.to);
     return {
-      page: parsePage(search.page),
-      pageSize: parsePageSize(search.pageSize),
+      page: parseAuditSearchPage(search.page),
+      pageSize: parseAuditSearchPageSize(search.pageSize),
       actions: parseAuditSearchActions(search.actions),
       status: search.status === "success" || search.status === "failure" ? search.status : undefined,
       actorKeyword: typeof search.actorKeyword === "string" ? search.actorKeyword : undefined,

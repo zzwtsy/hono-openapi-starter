@@ -1,6 +1,28 @@
 import { describe, expect, it } from "vitest";
 
-import { parseAuditSearchActions, parseAuditSearchDate, parseAuditSearchDateRange } from "./audit-search";
+import {
+  parseAuditSearchActions,
+  parseAuditSearchDate,
+  parseAuditSearchDateRange,
+  parseAuditSearchPage,
+  parseAuditSearchPageSize,
+} from "./audit-search";
+
+describe("parseAuditSearchPage", () => {
+  it("保留 Router JSON 解析后的数字分页参数", () => {
+    expect(parseAuditSearchPage(2)).toBe(2);
+    expect(parseAuditSearchPageSize(50)).toBe(50);
+  });
+
+  it("兼容字符串并拒绝无效分页参数", () => {
+    expect(parseAuditSearchPage("2")).toBe(2);
+    expect(parseAuditSearchPage(0)).toBeUndefined();
+    expect(parseAuditSearchPage(1.5)).toBeUndefined();
+    expect(parseAuditSearchPage("invalid")).toBeUndefined();
+    expect(parseAuditSearchPageSize(10)).toBeUndefined();
+    expect(parseAuditSearchPageSize(100)).toBe(100);
+  });
+});
 
 describe("parseAuditSearchActions", () => {
   it("兼容单值与数组并去重、清理空值", () => {
