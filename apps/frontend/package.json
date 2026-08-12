@@ -1,7 +1,6 @@
 {
   "name": "frontend",
   "type": "module",
-  "version": "0.0.1",
   "private": true,
   "scripts": {
     "dev": "vite --host",
@@ -38,7 +37,6 @@
     "react": "catalog:",
     "react-day-picker": "catalog:",
     "react-dom": "catalog:",
-    "shadcn": "catalog:",
     "sonner": "catalog:",
     "tailwind-merge": "catalog:",
     "tailwindcss": "catalog:",
@@ -54,9 +52,9 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
-    "globals": "catalog:",
     "happy-dom": "catalog:",
     "msw": "catalog:",
+    "shadcn": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

@@ -1,15 +1,13 @@
-# minimumReleaseAge: 新发布包需满 24h 才安装(防供应链攻击:恶意发布通常 1h 内被发现下架)。
-# minimumReleaseAgeExclude: 排除需立即装的包(shadcn/tsx 曾需即时);无主规则时排除不生效。
+catalogMode: strict
+
+# 显式配置会启用严格模式：依赖发布未满 24 小时时直接拒绝解析。
 minimumReleaseAge: 1440
-minimumReleaseAgeExclude:
-  - shadcn@4.13.0 || 4.14.0
-  - tsx@4.23.0
-  - "@antfu/eslint-config@9.2.0"
-  - react-dom@19.2.8
-  - react@19.2.8
 shellEmulator: true
 
 trustPolicy: no-downgrade
+# Babel 依赖的 semver@6.3.1 会触发历史信任降级；精确放行，避免跨 major 全局 override。
+trustPolicyExclude:
+  - semver@6.3.1
 
 packages:
   - "apps/*"
@@ -22,9 +20,6 @@ allowBuilds:
   protobufjs: false
   ssh2: false
   unrs-resolver: false
-
-overrides:
-  semver: ^7
 
 catalog:
   "@alova/wormhole": ^1.5.2
@@ -58,6 +53,7 @@ catalog:
   "@types/react-dom": ^19
   "@vitejs/plugin-react": ^6
   alova: ^3.5.2
+  auth: 1.6.23
   better-auth: ^1.6.23
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
@@ -71,7 +67,6 @@ catalog:
   eslint-plugin-boundaries: ^7.1.0
   eslint-plugin-format: ^2.0.1
   eslint-plugin-react-refresh: ^0.5.3
-  globals: ^17
   happy-dom: ^20.11.0
   hono: ^4.12.31
   hono-rate-limiter: ^0.5.3

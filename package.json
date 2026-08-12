@@ -1,14 +1,18 @@
 {
-  "name": "hono-backend-template-docs",
-  "version": "1.0.0",
+  "name": "hono-openapi-starter",
+  "private": true,
   "packageManager": "pnpm@11.9.0",
-  "description": "",
-  "author": "",
-  "license": "ISC",
-  "keywords": [],
+  "description": "Hono + React full-stack starter with OpenAPI-driven type safety",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": "11.9.0"
+  },
   "scripts": {
+    "build": "pnpm --filter backend build && pnpm --filter frontend build",
     "lint": "eslint",
-    "lint:fix": "eslint --fix"
+    "lint:fix": "eslint --fix",
+    "test": "pnpm --filter backend test && pnpm --filter frontend test",
+    "typecheck": "pnpm --filter backend typecheck && pnpm --filter frontend typecheck"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
