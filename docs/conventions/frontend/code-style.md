@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-26
+lastReviewedAt: 2026-08-11
 ---
 
 # 前端代码品味与组件规范
@@ -71,13 +71,13 @@ route 文件是装配层,只做四件事:`createFileRoute` + `beforeLoad` 守卫
 
 ## 8. eslint 强制
 
-[eslint.config.mjs](../../../eslint.config.mjs) 在 `boundaries`(结构)之外补充品味规则,渐进策略:先 `warn`,存量修完升 `error`:
+[eslint.config.mjs](../../../eslint.config.mjs) 在 `boundaries`(结构)之外补充品味规则。当前存量已归零，以下规则均作为 `error` 强制执行：
 
 ```js
-"complexity": ["warn", 15],
-"max-lines-per-function": ["warn", { max: 150, skipComments: true }],
-"max-lines": ["warn", 300],
-"no-nested-ternary": "warn",
+"complexity": ["error", 15],
+"max-lines-per-function": ["error", { max: 150, skipComments: true }],
+"max-lines": ["error", 300],
+"no-nested-ternary": "error",
 "unicorn/filename-case": ["error", { cases: { kebabCase: true } }],
 ```
 

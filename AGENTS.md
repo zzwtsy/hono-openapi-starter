@@ -13,17 +13,15 @@
 
 ## 常用命令
 
-根目录无聚合 script,按 package filter 跑;完整 scripts 见各 `package.json`。
+根目录提供常用聚合 script;需要缩小范围或运行数据库、生成器任务时按 package filter 跑。完整 scripts 见各 `package.json`。
 
 | 操作 | 命令 |
 | --- | --- |
-| 后端 typecheck | `pnpm --filter backend typecheck` |
-| 前端 typecheck | `pnpm --filter frontend typecheck` |
-| lint | `pnpm lint`(根) |
-| 后端单元测试 | `pnpm --filter backend test` |
+| 前后端 typecheck | `pnpm typecheck` |
+| lint | `pnpm lint` |
+| 前后端单元测试 | `pnpm test` |
+| 前后端 build | `pnpm build` |
 | 后端集成测试 | `pnpm --filter backend test:integration`(需 Docker) |
-| 后端 build | `pnpm --filter backend build` |
-| 前端 build | `pnpm --filter frontend build` |
 | 前端生成 API | `pnpm --filter frontend gen:api` |
 
 集成测试用 testcontainers,需 Docker daemon 运行;默认 `pnpm --filter backend test` 只跑单元测试。

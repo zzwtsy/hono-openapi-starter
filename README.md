@@ -116,6 +116,9 @@ pnpm --filter frontend gen:api
 | 目标 | 命令 |
 | --- | --- |
 | 全仓 lint | `pnpm lint` |
+| 前后端类型检查 | `pnpm typecheck` |
+| 前后端单元测试 | `pnpm test` |
+| 前后端构建 | `pnpm build` |
 | 后端类型检查 | `pnpm --filter backend typecheck` |
 | 后端单元测试 | `pnpm --filter backend test` |
 | 后端集成测试 | `pnpm --filter backend test:integration` |
