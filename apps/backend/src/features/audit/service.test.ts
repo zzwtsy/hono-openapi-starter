@@ -1,27 +1,20 @@
 import type { SQL } from "drizzle-orm";
 
-import type { Context } from "hono";
-import type { AppBindings } from "@/core/http/context.js";
 import { Buffer } from "node:buffer";
 
 import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppError } from "@/core/errors/app-error.js";
 import { AuditService } from "./service.js";
 
 // 依赖 mock:db 用链式 fake(按调用顺序消费结果队列),其余纯替身。
 const {
   mockSelect,
   mockGetRetentionCutoff,
-  mockGetManagedSubtree,
-  mockProjectGetById,
-  mockPermissionCheck,
+  mockGetAuditResourceVisibilityPolicy,
 } = vi.hoisted(() => ({
   mockSelect: vi.fn(),
   mockGetRetentionCutoff: vi.fn(),
-  mockGetManagedSubtree: vi.fn(),
-  mockProjectGetById: vi.fn(),
-  mockPermissionCheck: vi.fn(),
+  mockGetAuditResourceVisibilityPolicy: vi.fn(),
 }));
 
 vi.mock("@/db/client.js", () => ({ db: { select: mockSelect } }));
@@ -29,9 +22,9 @@ vi.mock("@/core/audit/retention.js", () => ({
   getRetentionCutoff: mockGetRetentionCutoff,
   startRetentionCleanup: vi.fn(),
 }));
-vi.mock("@/features/iam/org-tree.js", () => ({ getManagedSubtree: mockGetManagedSubtree }));
-vi.mock("@/features/projects/service.js", () => ({ ProjectService: { getById: mockProjectGetById } }));
-vi.mock("@/core/authorization/index.js", () => ({ PermissionService: { check: mockPermissionCheck } }));
+vi.mock("@/core/audit/index.js", () => ({
+  getAuditResourceVisibilityPolicy: mockGetAuditResourceVisibilityPolicy,
+}));
 
 /** 链式 db fake:select().from().where()... 按调用顺序消费 results 队列;where 条件被捕获供 SQL 断言。 */
 function mockDbChain(results: unknown[][]) {
@@ -61,13 +54,6 @@ function sqlQuery(cond: unknown): { sql: string; params: unknown[] } {
   return { sql: query.sql, params: query.params };
 }
 
-/** requireOrgUser 用的最小 Context 替身。 */
-function makeCtx(user: { id: string; orgId: string } | undefined): Context<AppBindings> {
-  return {
-    get: (key: string) => (key === "user" ? user : undefined),
-  } as unknown as Context<AppBindings>;
-}
-
 /** 审计日志 DB 行($inferSelect 形状,含 actorNameSnapshot 快照列)。 */
 function row(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -95,7 +81,6 @@ function row(overrides: Partial<Record<string, unknown>> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetRetentionCutoff.mockReturnValue(null); // 默认不过滤
-  mockPermissionCheck.mockResolvedValue(true);
 });
 
 describe("AuditService.list", () => {
@@ -266,88 +251,26 @@ describe("AuditService.listByResource", () => {
 });
 
 describe("AuditService.checkResourceVisibility", () => {
-  it("project:复用 ProjectService.getById(在组织内通过)", async () => {
-    mockProjectGetById.mockResolvedValue({ id: "p1" });
+  it("调用应用装配的可见性策略", async () => {
+    const policy = vi.fn();
+    mockGetAuditResourceVisibilityPolicy.mockReturnValue(policy);
+    const actor = { userId: "u1", organizationId: "org-a" };
 
-    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "project", "p1"))
+    await expect(AuditService.checkResourceVisibility(actor, "project", "p1"))
       .resolves
       .toBeUndefined();
-    expect(mockPermissionCheck).toHaveBeenCalledWith("u1", "projects.read", "org-a");
-    expect(mockProjectGetById).toHaveBeenCalledWith("p1", "org-a");
-  });
-
-  it("project:getById 抛错(不在组织)原样传播", async () => {
-    mockProjectGetById.mockRejectedValue(new AppError("PROJECT_NOT_FOUND"));
-
-    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "project", "p1"))
-      .rejects
-      .toMatchObject({ code: "PROJECT_NOT_FOUND" });
-  });
-
-  it("user:orgId 在管理子树内通过,不在子树或不存在抛 USER_NOT_FOUND", async () => {
-    mockGetManagedSubtree.mockResolvedValue(["org-a", "org-b"]);
-
-    // 子树内
-    mockDbChain([[{ orgId: "org-b" }]]);
-    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "user", "u2"))
-      .resolves
-      .toBeUndefined();
-
-    // 子树外
-    mockDbChain([[{ orgId: "org-x" }]]);
-    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "user", "u2"))
-      .rejects
-      .toMatchObject({ code: "USER_NOT_FOUND" });
-
-    // 用户不存在(orgId 为空)
-    mockDbChain([[]]);
-    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "user", "u2"))
-      .rejects
-      .toMatchObject({ code: "USER_NOT_FOUND" });
-  });
-
-  it("role/org/setting:全局资源,对应 *.read 权限校验", async () => {
-    mockPermissionCheck.mockResolvedValue(true);
-    const ctx = makeCtx({ id: "u1", orgId: "org-a" });
-
-    await expect(AuditService.checkResourceVisibility(ctx, "role", "role-admin")).resolves.toBeUndefined();
-    await expect(AuditService.checkResourceVisibility(ctx, "org", "org-a")).resolves.toBeUndefined();
-    await expect(AuditService.checkResourceVisibility(ctx, "setting", "site-name")).resolves.toBeUndefined();
-    expect(mockPermissionCheck).toHaveBeenNthCalledWith(1, "u1", "roles.read", "org-a");
-    expect(mockPermissionCheck).toHaveBeenNthCalledWith(2, "u1", "organizations.read", "org-a");
-    expect(mockPermissionCheck).toHaveBeenNthCalledWith(3, "u1", "settings.read", "org-a");
-  });
-
-  it("project/user:无业务 read 权限抛 COMMON_FORBIDDEN", async () => {
-    mockPermissionCheck.mockResolvedValue(false);
-
-    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "project", "p1"))
-      .rejects
-      .toMatchObject({ code: "COMMON_FORBIDDEN" });
-    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "user", "u2"))
-      .rejects
-      .toMatchObject({ code: "COMMON_FORBIDDEN" });
-    expect(mockProjectGetById).not.toHaveBeenCalled();
-    expect(mockGetManagedSubtree).not.toHaveBeenCalled();
-  });
-
-  it("role:无 roles.read 权限抛 COMMON_FORBIDDEN", async () => {
-    mockPermissionCheck.mockResolvedValue(false);
-
-    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "role", "role-admin"))
-      .rejects
-      .toMatchObject({ code: "COMMON_FORBIDDEN" });
+    expect(policy).toHaveBeenCalledWith(actor, "p1");
   });
 
   it("未知资源类型:抛 COMMON_VALIDATION_FAILED", async () => {
-    await expect(AuditService.checkResourceVisibility(makeCtx({ id: "u1", orgId: "org-a" }), "widget", "w1"))
+    mockGetAuditResourceVisibilityPolicy.mockReturnValue(undefined);
+
+    await expect(AuditService.checkResourceVisibility(
+      { userId: "u1", organizationId: "org-a" },
+      "widget",
+      "w1",
+    ))
       .rejects
       .toMatchObject({ code: "COMMON_VALIDATION_FAILED" });
-  });
-
-  it("未认证 context(无 user):抛 COMMON_UNAUTHORIZED", async () => {
-    await expect(AuditService.checkResourceVisibility(makeCtx(undefined), "project", "p1"))
-      .rejects
-      .toMatchObject({ code: "COMMON_UNAUTHORIZED" });
   });
 });

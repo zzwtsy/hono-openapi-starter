@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import env from "../env.js";
+import env from "@/config/env.js";
 import * as schema from "./schema/index.js";
 
 // 连接池句柄保持模块私有:外部只需 `db`(查询)与 `closeDb()`(收尾),

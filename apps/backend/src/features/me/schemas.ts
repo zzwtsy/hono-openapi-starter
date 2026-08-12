@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 
-import { allPermissionCodes } from "@/permissions-catalog.js";
+import { allPermissionCodes } from "@/catalogs/permissions.js";
 
 /** 当前用户信息(关键字段)。 */
 export const UserSchema = z.object({

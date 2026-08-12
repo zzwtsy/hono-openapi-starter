@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { allPermissions, assertPermissionCatalog } from "./permissions-catalog.js";
+import { allPermissions, assertPermissionCatalog } from "./permissions.js";
 
 describe("application permission catalog", () => {
   it("汇总所有 feature，code 唯一且字段一致", () => {

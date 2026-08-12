@@ -4,12 +4,12 @@ import type {
   NoUnknownPermissions,
   PermissionDefinition,
   PermissionRef,
-} from "./core/auth/permissions.js";
-import { PERMISSION_SEGMENT_PATTERN } from "./core/auth/permissions.js";
-import { auditPermissions } from "./features/audit/permissions.js";
-import { iamPermissions } from "./features/iam/permissions.js";
-import { projectPermissions } from "./features/projects/permissions.js";
-import { systemSettingPermissions } from "./features/system-settings/permissions.js";
+} from "@/core/auth/permissions.js";
+import { PERMISSION_SEGMENT_PATTERN } from "@/core/auth/permissions.js";
+import { auditPermissions } from "@/features/audit/permissions.js";
+import { iamPermissions } from "@/features/iam/permissions.js";
+import { projectPermissions } from "@/features/projects/permissions.js";
+import { systemSettingPermissions } from "@/features/system-settings/permissions.js";
 
 /** 应用级权限目录组装点。 */
 export const allPermissions = [

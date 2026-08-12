@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { allPermissions } from "@/catalogs/permissions.js";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { setPermissionChecker } from "@/core/authorization/permission-checker.js";
 import { db } from "@/db/client.js";
@@ -7,7 +8,6 @@ import { user } from "@/db/schema/auth-schema.js";
 import { organizations, userPermissions, userRoles } from "@/db/schema/authorization-schema.js";
 import { IamPermissionChecker } from "@/features/iam/permission-checker.js";
 import { IamService } from "@/features/iam/service.js";
-import { allPermissions } from "@/permissions-catalog.js";
 import { resetDb } from "../../helpers/db.js";
 
 /**

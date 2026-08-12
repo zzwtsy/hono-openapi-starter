@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 
-import { allPermissionCodes } from "@/permissions-catalog.js";
+import { allPermissionCodes } from "@/catalogs/permissions.js";
 
 /** 权限目录项(代码同步的权限定义,管理 API 只读)。 */
 export const PermissionCodeSchema = z.enum(allPermissionCodes).openapi({

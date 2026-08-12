@@ -2,9 +2,9 @@ import type { PermissionCode } from "@/core/auth/permissions.js";
 import type { PermissionChecker, PermissionSource, UserPermissionsResult } from "@/core/authorization/permission-checker.js";
 
 import { sql } from "drizzle-orm";
+import { getPermissionRef } from "@/catalogs/permissions.js";
 import { db } from "@/db/client.js";
 import { organizations, rolePermissions, roles, userPermissions, userRoles } from "@/db/schema/index.js";
-import { getPermissionRef } from "@/permissions-catalog.js";
 
 interface CheckPermissionRow extends Record<string, unknown> {
   allowed: boolean;

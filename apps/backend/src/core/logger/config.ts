@@ -1,4 +1,4 @@
-import type { Env } from "@/env.js";
+import type { Env } from "@/config/env.js";
 
 export type AppLogLevel = Env["LOG_LEVEL"];
 

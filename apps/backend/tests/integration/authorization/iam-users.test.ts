@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { allPermissions } from "@/catalogs/permissions.js";
 import { auth } from "@/core/auth/index.js";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { setPermissionChecker } from "@/core/authorization/permission-checker.js";
@@ -9,7 +10,6 @@ import { db } from "@/db/client.js";
 import { account, organizations, session, user, userPermissions, userRoles } from "@/db/schema/index.js";
 import { IamPermissionChecker } from "@/features/iam/permission-checker.js";
 import { IamService } from "@/features/iam/service.js";
-import { allPermissions } from "@/permissions-catalog.js";
 import { resetDb } from "../../helpers/db.js";
 
 /**

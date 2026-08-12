@@ -1,15 +1,14 @@
-import { sql } from "drizzle-orm";
-
-import { AppError } from "@/core/errors/app-error.js";
-import { db } from "@/db/client.js";
-import { organizations } from "@/db/schema/index.js";
-
 /**
  * 组织树子树原语(PAP 辅助):管理范围 = 操作者 home org 的自身+子孙。
  *
  * 与 permission-checker.ts(祖先 CTE,PDP 权限检查)分工:本文件后代 CTE,管「操作者能管哪些 org」(写范围)。
  * 管理子树(向下)与 Grant 继承(向上)方向相反,见 [authorization.md 组织三轴](../../../docs/conventions/backend/authorization.md)。
  */
+import { sql } from "drizzle-orm";
+
+import { AppError } from "@/core/errors/app-error.js";
+import { db } from "@/db/client.js";
+import { organizations } from "@/db/schema/index.js";
 
 /**
  * 取操作者管理子树(自身 + 所有子孙 orgId)。

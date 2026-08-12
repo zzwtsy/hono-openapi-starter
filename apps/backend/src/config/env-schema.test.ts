@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatEnvValidationError, safeParseEnv } from "./env-validation.js";
+import { formatEnvValidationError, safeParseEnv } from "./env-schema.js";
 
 const validEnv = {
   NODE_ENV: "development",

@@ -8,7 +8,7 @@ import { AppError } from "../errors/app-error.js";
 import { createAppLogger } from "./index.js";
 import { REDACTED, sanitizeErrorText } from "./redact.js";
 
-vi.mock("../../env.js", () => ({
+vi.mock("@/config/env.js", () => ({
   default: {
     NODE_ENV: "test",
     PORT: 3001,

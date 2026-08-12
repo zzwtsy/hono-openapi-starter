@@ -1,19 +1,15 @@
 import type { z } from "@hono/zod-openapi";
 
-import type { Context } from "hono";
 import type { AuditLogSchema, AuditTimelineLogSchema } from "./schemas.js";
-import type { AppBindings } from "@/core/http/context.js";
+import type { AuditVisibilityActor } from "@/core/audit/index.js";
 
 import { and, desc, eq, gte, ilike, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { getAuditResourceVisibilityPolicy } from "@/core/audit/index.js";
 import { getRetentionCutoff } from "@/core/audit/retention.js";
-import { requireOrgUser } from "@/core/auth/context.js";
-import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { decodeCursor, encodeCursor } from "@/core/http/pagination.js";
 import { db } from "@/db/client.js";
-import { auditLogs, user } from "@/db/schema/index.js";
-import { getManagedSubtree } from "@/features/iam/org-tree.js";
-import { ProjectService } from "@/features/projects/service.js";
+import { auditLogs } from "@/db/schema/index.js";
 import { listRegisteredAuditActions } from "./audit-actions.js";
 
 /** API 响应 DTO 类型(与 AuditLogSchema 同源,jsonb 列在 DB 边界显式转换)。 */
@@ -194,68 +190,17 @@ export const AuditService = {
     };
   },
 
-  /** by-resource 可见性校验:按 resourceType 分派,复用各 feature 现有校验逻辑。 */
+  /** by-resource 可见性校验：按 resourceType 调用应用层已注册策略。 */
   async checkResourceVisibility(
-    c: Context<AppBindings>,
+    actor: AuditVisibilityActor,
     resourceType: string,
     resourceId: string,
   ): Promise<void> {
-    const { orgId: actorOrgId, id: userId } = requireOrgUser(c);
-
-    switch (resourceType) {
-      case "project": {
-        const allowed = await PermissionService.check(userId, "projects.read", actorOrgId);
-        if (!allowed) {
-          throw new AppError("COMMON_FORBIDDEN");
-        }
-        // 复用 ProjectService.getById(含组织归属校验,不在本组织抛 NOT_FOUND)
-        await ProjectService.getById(resourceId, actorOrgId);
-        break;
-      }
-      case "user": {
-        const allowed = await PermissionService.check(userId, "users.read", actorOrgId);
-        if (!allowed) {
-          throw new AppError("COMMON_FORBIDDEN");
-        }
-        // 查用户 orgId 是否在操作者管理子树内
-        const subtree = await getManagedSubtree(actorOrgId);
-        const [target] = await db
-          .select({ orgId: user.orgId })
-          .from(user)
-          .where(eq(user.id, resourceId));
-        if (target?.orgId == null || !subtree.includes(target.orgId)) {
-          throw new AppError("USER_NOT_FOUND");
-        }
-        break;
-      }
-      case "role": {
-        // 全局资源:需 roles.read(角色不绑组织,有 read 即可查其审计历史)
-        const allowed = await PermissionService.check(userId, "roles.read", actorOrgId);
-        if (!allowed) {
-          throw new AppError("COMMON_FORBIDDEN");
-        }
-        break;
-      }
-      case "org": {
-        // 全局资源:需 organizations.read
-        const allowed = await PermissionService.check(userId, "organizations.read", actorOrgId);
-        if (!allowed) {
-          throw new AppError("COMMON_FORBIDDEN");
-        }
-        break;
-      }
-      case "setting": {
-        // 全局资源:需 settings.read
-        const allowed = await PermissionService.check(userId, "settings.read", actorOrgId);
-        if (!allowed) {
-          throw new AppError("COMMON_FORBIDDEN");
-        }
-        break;
-      }
-      default: {
-        throw new AppError("COMMON_VALIDATION_FAILED");
-      }
+    const policy = getAuditResourceVisibilityPolicy(resourceType);
+    if (policy == null) {
+      throw new AppError("COMMON_VALIDATION_FAILED");
     }
+    await policy(actor, resourceId);
   },
 
   /** action 目录(前端渲染查表)。 */

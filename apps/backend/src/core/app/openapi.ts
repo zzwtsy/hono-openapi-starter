@@ -1,7 +1,7 @@
 import type { AppOpenAPI } from "./create-router.js";
 
 import { Scalar } from "@scalar/hono-api-reference";
-import env from "../../env.js";
+import env from "@/config/env.js";
 import { securitySchemes } from "../http/openapi/security.js";
 
 export function configureOpenApi(app: AppOpenAPI) {

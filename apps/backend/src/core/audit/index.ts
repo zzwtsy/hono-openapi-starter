@@ -21,7 +21,7 @@ export {
   registerAuditRelationResolver,
   registerAuditResourceResolver,
 } from "./relation-resolvers.js";
-export { getRetentionCutoff, startRetentionCleanup } from "./retention.js";
+export { getRetentionCutoff, startRetentionCleanup, stopRetentionCleanup } from "./retention.js";
 export type {
   AuditAfterConfig,
   AuditConfig,
@@ -33,4 +33,15 @@ export type {
   AuditSnapshotResolver,
   AuditSnapshotTransform,
 } from "./types.js";
+export {
+  getAuditResourceVisibilityPolicy,
+  registerAuditActorOrgScopeResolver,
+  registerAuditResourceVisibilityPolicy,
+  resolveAuditActorOrgScope,
+} from "./visibility-policies.js";
+export type {
+  AuditActorOrgScopeResolver,
+  AuditResourceVisibilityPolicy,
+  AuditVisibilityActor,
+} from "./visibility-policies.js";
 export { writeAudit } from "./write-audit.js";

@@ -11,7 +11,7 @@ import { AppError } from "../errors/app-error.js";
  * - 需在 `requireAuth` 之后调用(读 `c.get("user")`)
  * - orgId 默认 `user.orgId`;显式传入则用传入的
  * - 请求级 memoize 由全局 `permissionCacheMiddleware`(ALS)提供,调用方无需关心
- * - `permissionCode` 必须是 `AppPermissionCode` union 的成员(从 `permissions-catalog.ts` 的
+ * - `permissionCode` 必须是 `AppPermissionCode` union 的成员(从 `catalogs/permissions.ts` 的
  *   `allPermissions` 数组推导);若 TS 报 "string 不可赋值给 never",说明对应 feature 还没在
  *   catalog 展开自己的权限数组
  *

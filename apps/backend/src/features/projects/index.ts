@@ -10,4 +10,5 @@ const router = createRouter()
   .openapi(routes.updateProjectRoute, handlers.updateProjectHandler)
   .openapi(routes.deleteProjectRoute, handlers.deleteProjectHandler);
 
+export { ProjectService } from "./service.js";
 export default router;

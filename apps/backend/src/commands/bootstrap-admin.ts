@@ -1,0 +1,59 @@
+import { randomUUID } from "node:crypto";
+import process from "node:process";
+
+import { hashPassword } from "better-auth/crypto";
+import { eq } from "drizzle-orm";
+
+import { allPermissions } from "@/catalogs/permissions.js";
+import env from "@/config/env.js";
+import { ADMIN_ROLE, syncAuthorizationCatalog } from "@/core/authorization/index.js";
+import { logger } from "@/core/logger/index.js";
+import { closeDb, db } from "@/db/client.js";
+import { account, organizations, user, userRoles } from "@/db/schema/index.js";
+
+/** 生产首次部署引导：原子创建根组织、首个管理员账号和角色授权。 */
+async function main() {
+  const email = env.BOOTSTRAP_ADMIN_EMAIL;
+  const password = env.BOOTSTRAP_ADMIN_PASSWORD;
+  if (email == null || password == null) {
+    throw new Error("bootstrap: 缺少 BOOTSTRAP_ADMIN_EMAIL 或 BOOTSTRAP_ADMIN_PASSWORD（参考 .env.example）");
+  }
+
+  const rootOrgId = env.BOOTSTRAP_ROOT_ORG_ID;
+  await syncAuthorizationCatalog(allPermissions);
+  const passwordHash = await hashPassword(password);
+  const userId = randomUUID();
+
+  await db.transaction(async (tx) => {
+    await tx.insert(organizations).values({ id: rootOrgId, name: "Root" }).onConflictDoNothing();
+
+    const [existing] = await tx.select({ id: user.id }).from(user).where(eq(user.email, email));
+    if (existing != null) {
+      throw new Error(`bootstrap: 用户 ${email} 已存在，如需重置请先手动删除或换邮箱`);
+    }
+
+    await tx.insert(user).values({ id: userId, name: "Admin", email, orgId: rootOrgId });
+    await tx.insert(account).values({
+      id: randomUUID(),
+      accountId: userId,
+      providerId: "credential",
+      userId,
+      password: passwordHash,
+    });
+    await tx
+      .insert(userRoles)
+      .values({ userId, roleId: ADMIN_ROLE.id, orgId: rootOrgId })
+      .onConflictDoNothing();
+  });
+
+  logger.withMetadata({ email, rootOrgId }).info("bootstrapped first admin");
+}
+
+main()
+  .catch((error) => {
+    logger.withError(error).error("bootstrap failed");
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await closeDb().catch(error => logger.withError(error).warn("closeDb failed"));
+  });

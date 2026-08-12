@@ -1,8 +1,8 @@
 import { lt } from "drizzle-orm";
 
+import env from "@/config/env.js";
 import { db } from "@/db/client.js";
 import { auditLogs } from "@/db/schema/index.js";
-import env from "../../env.js";
 import { logger } from "../logger/index.js";
 
 /**
@@ -29,13 +29,21 @@ let cleanupTimer: NodeJS.Timeout | undefined;
 
 /** 启动定时物理删除(进程启动时调一次)。RETENTION_DAYS=0 时不启动。 */
 export function startRetentionCleanup(): void {
-  if (RETENTION_DAYS === 0) {
+  if (RETENTION_DAYS === 0 || cleanupTimer != null) {
     return;
   }
   cleanupTimer = setInterval(() => {
     void cleanupExpired();
   }, CLEANUP_INTERVAL_MS);
   cleanupTimer.unref();
+}
+
+/** 停止定时物理删除；由 application lifecycle 在关闭阶段显式调用。 */
+export function stopRetentionCleanup(): void {
+  if (cleanupTimer != null) {
+    clearInterval(cleanupTimer);
+    cleanupTimer = undefined;
+  }
 }
 
 async function cleanupExpired(): Promise<void> {

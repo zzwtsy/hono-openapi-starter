@@ -2,12 +2,12 @@ import process from "node:process";
 
 import { hashPassword } from "better-auth/crypto";
 
-import { ADMIN_ROLE, syncAuthorizationCatalog } from "../core/authorization/index.js";
-import { logger } from "../core/logger/index.js";
-import env from "../env.js";
-import { allPermissions } from "../permissions-catalog.js";
-import { closeDb, db } from "./client.js";
-import { account, organizations, projects, user, userRoles } from "./schema/index.js";
+import { allPermissions } from "@/catalogs/permissions.js";
+import env from "@/config/env.js";
+import { ADMIN_ROLE, syncAuthorizationCatalog } from "@/core/authorization/index.js";
+import { logger } from "@/core/logger/index.js";
+import { closeDb, db } from "@/db/client.js";
+import { account, organizations, projects, user, userRoles } from "@/db/schema/index.js";
 
 /**
  * dev 环境演示数据:dev 组织 + 可登录的 dev 用户(授标准 admin 角色)+ 样例项目。
@@ -29,7 +29,8 @@ const DEV = {
 async function main() {
   if (env.NODE_ENV === "production") {
     logger.error("db:seed 拒绝在生产环境执行(需 NODE_ENV=development 或 test)");
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   // 权限目录 + 标准 admin 角色(复用启动同步,幂等)
@@ -69,7 +70,7 @@ async function main() {
 main()
   .catch((error) => {
     logger.withError(error).error("seed failed");
-    process.exit(1);
+    process.exitCode = 1;
   })
   .finally(async () => {
     // 关池,否则 postgres-js 保持 socket 活跃,进程不退出。

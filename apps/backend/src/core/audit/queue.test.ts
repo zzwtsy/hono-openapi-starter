@@ -27,8 +27,6 @@ vi.mock("../logger/index.js", () => ({
   },
 }));
 
-// 动态导入以获取 reset 函数(导入时触发 process.on("beforeExit") 注册)。
-// process.on 调用在模块顶层,通过模块成功加载间接验证。
 const {
   beginAuditWrite,
   endAuditWrite,
@@ -208,14 +206,6 @@ describe("audit queue", () => {
 
       await vi.advanceTimersByTimeAsync(5000);
       expect(getAuditQueueStats().flushCount).toBe(1);
-    });
-  });
-
-  describe("beforeExit", () => {
-    it("模块加载时注册了 beforeExit 回调(通过模块成功加载间接验证)", () => {
-      // process.on("beforeExit", ...) 在 queue.ts 顶层调用。
-      // 模块已成功加载(通过 dynamic import 获取到导出),表明注册未抛错。
-      expect(enqueue).toBeDefined();
     });
   });
 });

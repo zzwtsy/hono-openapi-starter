@@ -14,7 +14,7 @@ import { runMigrations } from "../../src/db/run-migrations.js";
 
 /**
  * 测试专用 env(无真实密钥,仅供 EnvSchema 校验通过)。
- * 注意:需与 EnvSchema(src/core/app/env-validation.ts)的必填字段保持同步——新增必填项时这里也要补。
+ * 注意:需与 EnvSchema(src/config/env-schema.ts)的必填字段保持同步——新增必填项时这里也要补。
  */
 const TEST_ENV = {
   NODE_ENV: "test",

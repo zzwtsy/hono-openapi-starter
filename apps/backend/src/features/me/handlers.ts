@@ -2,10 +2,10 @@ import type { ChangeMyPasswordRoute, GetMeRoute, UpdateMeRoute } from "./routes.
 
 import type { UserPermissionsResult } from "@/core/authorization/index.js";
 import type { AppRouteHandler } from "@/core/http/context.js";
+import { toAppPermissionCodes } from "@/catalogs/permissions.js";
 import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { successResponse } from "@/core/http/response.js";
-import { toAppPermissionCodes } from "@/permissions-catalog.js";
 import { MeService } from "./service.js";
 
 /** 获取当前用户信息与有效权限。me 只需认证,不需 iam.* 权限(看自己)。 */

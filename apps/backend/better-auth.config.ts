@@ -1,9 +1,9 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
+import env from "./src/config/env.js";
 import { db } from "./src/db/client.js";
 import * as authSchema from "./src/db/schema/auth-schema.js";
-import env from "./src/env.js";
 
 /**
  * Better Auth CLI 专用配置。

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { app } from "../../src/app.js";
+import { app } from "../../src/app/create-application.js";
 
 // 静态 spec 校验:用 app.getOpenAPIDocument() 取契约,对齐 Spectral OAS 标准规则校验实现。
 interface Operation {

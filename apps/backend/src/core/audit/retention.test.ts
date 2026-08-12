@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getRetentionCutoff } from "./retention.js";
+import { getRetentionCutoff, startRetentionCleanup, stopRetentionCleanup } from "./retention.js";
 
 // mock env 避免依赖真实环境变量
-vi.mock("../../env.js", () => ({
+vi.mock("@/config/env.js", () => ({
   default: {
     AUDIT_LOG_RETENTION_DAYS: 90,
   },
@@ -18,6 +18,11 @@ vi.mock("@/db/schema/index.js", () => ({
 }));
 
 describe("audit retention", () => {
+  afterEach(() => {
+    stopRetentionCleanup();
+    vi.useRealTimers();
+  });
+
   it("getRetentionCutoff 返回 90 天前的时间", () => {
     const cutoff = getRetentionCutoff();
     expect(cutoff).not.toBeNull();
@@ -28,10 +33,21 @@ describe("audit retention", () => {
   it("retention 为 0 时返回 null(永久保留)", async () => {
     // 重新 mock env
     vi.resetModules();
-    vi.doMock("../../env.js", () => ({
+    vi.doMock("@/config/env.js", () => ({
       default: { AUDIT_LOG_RETENTION_DAYS: 0 },
     }));
     const { getRetentionCutoff: getCutoff } = await import("./retention.js");
     expect(getCutoff()).toBeNull();
+  });
+
+  it("定时清理启动幂等且可以显式停止", () => {
+    vi.useFakeTimers();
+
+    startRetentionCleanup();
+    startRetentionCleanup();
+    expect(vi.getTimerCount()).toBe(1);
+
+    stopRetentionCleanup();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

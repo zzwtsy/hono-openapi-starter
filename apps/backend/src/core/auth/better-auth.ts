@@ -3,9 +3,9 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { bearer } from "better-auth/plugins/bearer";
 
+import env from "@/config/env.js";
 import { db } from "../../db/client.js";
 import * as authSchema from "../../db/schema/auth-schema.js";
-import env from "../../env.js";
 import { registerAuditAction, writeAudit } from "../audit/index.js";
 import { authAuditActions } from "./audit-actions.js";
 import { resolveSignInEvent, signOutAuditUser } from "./auth-audit-events.js";

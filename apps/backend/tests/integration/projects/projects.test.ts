@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { allPermissions } from "@/catalogs/permissions.js";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
 import { projects } from "@/db/schema/index.js";
 import { IamService } from "@/features/iam/service.js";
 import { ProjectService } from "@/features/projects/service.js";
-import { allPermissions } from "@/permissions-catalog.js";
 import { resetDb } from "../../helpers/db.js";
 
 /**

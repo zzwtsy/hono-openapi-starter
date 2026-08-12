@@ -2,7 +2,7 @@ import { honoLogLayer } from "@loglayer/hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
-import env from "../../env.js";
+import env from "@/config/env.js";
 import { auditContextMiddleware } from "../audit/index.js";
 import { permissionCacheMiddleware } from "../authorization/index.js";
 import { errorHandler } from "../errors/error-handler.js";

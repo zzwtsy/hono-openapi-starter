@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { allPermissions } from "@/catalogs/permissions.js";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { db } from "@/db/client.js";
 import { user } from "@/db/schema/auth-schema.js";
 import { organizations, rolePermissions, roles, userPermissions, userRoles } from "@/db/schema/authorization-schema.js";
 import { IamPermissionChecker } from "@/features/iam/permission-checker.js";
-import { allPermissions } from "@/permissions-catalog.js";
 import { resetDb } from "../../helpers/db.js";
 
 /**

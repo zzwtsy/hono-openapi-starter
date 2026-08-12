@@ -12,7 +12,7 @@ const migrationsFolder = resolve(__dirname, "migrations");
 /**
  * 用一次性连接(max:1)跑 drizzle migration,跑完关闭——不在 app 运行时调用。
  *
- * 供 `db:migrate` 命令(src/db/migrate.ts)与集成测试 globalSetup(tests/helpers/global-setup.ts)
+ * 供 `db:migrate` 命令(src/commands/migrate.ts)与集成测试 globalSetup(tests/helpers/global-setup.ts)
  * 共用,单一来源维护 migrations 文件夹路径与 migrate+close 序列,避免两处漂移。
  */
 export async function runMigrations(databaseUrl: string) {

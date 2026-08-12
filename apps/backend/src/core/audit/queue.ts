@@ -1,6 +1,4 @@
 import type { AuditRecord } from "./types.js";
-import process from "node:process";
-
 import { db } from "@/db/client.js";
 import { auditLogs } from "@/db/schema/index.js";
 import { logger } from "../logger/index.js";
@@ -244,19 +242,6 @@ export function getAuditQueueStats(): AuditQueueStats {
     shuttingDown,
     ...counters,
   };
-}
-
-process.on("beforeExit", () => {
-  void shutdownAuditQueue();
-});
-
-// SIGTERM/SIGINT:等待 drain 完成或超时后再退出,不在 flush 未完成时直接 process.exit。
-for (const sig of ["SIGTERM", "SIGINT"] as const) {
-  process.on(sig, () => {
-    void shutdownAuditQueue().finally(() => {
-      process.exit(0);
-    });
-  });
 }
 
 // --- 测试辅助(仅 vitest 使用,不在 index.ts 导出) ---

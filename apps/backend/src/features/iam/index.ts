@@ -34,4 +34,6 @@ const router = createRouter()
   .openapi(routes.updateOrganizationRoute, handlers.updateOrganizationHandler)
   .openapi(routes.deleteOrganizationRoute, handlers.deleteOrganizationHandler);
 
+export { getManagedSubtree } from "./org-tree.js";
+export { IamPermissionChecker } from "./permission-checker.js";
 export default router;

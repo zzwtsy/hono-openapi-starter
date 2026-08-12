@@ -5,7 +5,7 @@ import { redactionPlugin } from "@loglayer/plugin-redaction";
 import { LogLayer } from "loglayer";
 import { serializeError } from "serialize-error";
 
-import env from "../../env.js";
+import env from "@/config/env.js";
 
 import { createLoggerConfig } from "./config.js";
 import { logRedactionPaths, REDACTED, sanitizeSerializedError } from "./redact.js";

@@ -11,18 +11,29 @@ const FRONTEND_ROUTE_AND_TEST_FILES = [
 const FRONTEND_UI_FILES = ["apps/frontend/src/components/ui/**/*.{ts,tsx}"];
 
 const backendBoundaryElements = [
+  { type: "application", pattern: "apps/backend/src/app/**", partialMatch: false },
+  { type: "commands", pattern: "apps/backend/src/commands/**", partialMatch: false },
+  { type: "config", pattern: "apps/backend/src/config/**", partialMatch: false },
+  { type: "catalogs", pattern: "apps/backend/src/catalogs/**", partialMatch: false },
   { type: "core", pattern: "apps/backend/src/core/**", partialMatch: false },
   { type: "features", pattern: "apps/backend/src/features/*" },
   { type: "db", pattern: "apps/backend/src/db/**", partialMatch: false },
 ];
 
 const backendBoundaryPolicies = [
-  // core 只依赖 core/db，禁止反向依赖业务 feature。
-  { from: { element: { type: "core" } }, allow: { to: { element: { type: ["core", "db"] } } } },
-  // feature 可以复用 core/db；同 feature 内部依赖由元素捕获语义约束。
-  { from: { element: { type: "features" } }, allow: { to: { element: { type: ["core", "db", "features"] } } } },
-  // db 脚本可以复用 core 的日志、配置等基础设施。
-  { from: { element: { type: "db" } }, allow: { to: { element: { type: ["db", "core"] } } } },
+  // application 是组合层，可以连接所有应用内能力。
+  { from: { element: { type: "application" } }, allow: { to: { element: { type: ["application", "catalogs", "config", "core", "db", "features"] } } } },
+  // 独立命令负责应用编排，但不直接依赖 feature 内部实现。
+  { from: { element: { type: "commands" } }, allow: { to: { element: { type: ["catalogs", "commands", "config", "core", "db"] } } } },
+  // catalog 是显式的应用级契约汇总点，可以聚合 feature 定义。
+  { from: { element: { type: "catalogs" } }, allow: { to: { element: { type: ["catalogs", "core", "features"] } } } },
+  // core 只依赖 core/db/config，禁止反向依赖业务 feature。
+  { from: { element: { type: "core" } }, allow: { to: { element: { type: ["config", "core", "db"] } } } },
+  // feature 可以复用 core/db/catalog；同 feature 内部依赖由元素捕获语义约束。
+  { from: { element: { type: "features" } }, allow: { to: { element: { type: ["catalogs", "core", "db"] } } } },
+  // db 仅依赖数据库自身、配置和跨业务基础设施。
+  { from: { element: { type: "db" } }, allow: { to: { element: { type: ["config", "core", "db"] } } } },
+  { from: { element: { type: "config" } }, allow: { to: { element: { type: "config" } } } },
 ];
 
 const frontendBoundaryElements = [
@@ -115,6 +126,19 @@ export default antfu(
       "boundaries/dependencies": ["error", {
         default: "disallow",
         policies: backendBoundaryPolicies,
+      }],
+    },
+  },
+  {
+    name: "project/backend-feature-isolation",
+    files: ["apps/backend/src/features/**/*.ts"],
+    rules: {
+      // feature 内统一使用相对路径；任何 feature alias import 都视为跨 feature 依赖。
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          group: ["@/features/*", "@/features/*/**"],
+          message: "feature 之间不得直接依赖；请经 application composition 或 core port 装配。",
+        }],
       }],
     },
   },

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { app } from "@/app.js";
+import { app } from "@/app/create-application.js";
 import { auth } from "@/core/auth/index.js";
 import { db } from "@/db/client.js";
 import { systemSettings } from "@/db/schema/index.js";
