@@ -36,7 +36,7 @@ pnpm --filter frontend dev
 
 ```txt
 src/
-├── main.tsx              # React 挂载入口
+├── main.tsx              # React 挂载与全局展示 Provider
 ├── app.tsx               # 会话恢复与 RouterProvider
 ├── router.tsx            # TanStack Router 实例与类型注册
 ├── routes/               # 文件路由与权限守卫，只做页面装配
@@ -48,17 +48,17 @@ src/
 ├── hooks/                # 通用 hooks
 ├── lib/                  # 请求、认证和通用工具
 ├── types/                # 跨 feature 通用类型
-├── api/                  # OpenAPI 生成客户端及 alova 入口
+├── api/                  # 生成 API、alova client、method 配置与装配入口
 └── test/                 # 测试环境、MSW handlers 与辅助设施
 ```
 
 核心约束：
 
-- `routes/` 是装配层，只负责路由定义、守卫、loader 和页面组合；
+- `routes/` 是装配层，只负责路由定义、守卫、loader、URL 状态适配和跨 feature 组合；
 - 业务逻辑与 UI 放在 `features/<feature>`，feature 之间禁止直接依赖；
 - 可复用能力下沉到 `components/`、`hooks/`、`lib/` 或 `types/`，通用层不能反向依赖 feature；
 - `components/ui/` 是 shadcn vendored 生成物，`components/shared/` 才是项目手写共享组件；
-- `src/api/createApis.ts`、`src/api/apiDefinitions.ts` 和 `src/routeTree.gen.ts` 是生成物，不要手工修改。
+- `src/api/createApis.ts`、`src/api/apiDefinitions.ts`、`src/api/globals.d.ts` 和 `src/routeTree.gen.ts` 是生成物，不要手工修改；`api/client.ts` 与 `api/method-config.ts` 是手写配置。
 
 依赖方向由 ESLint `boundaries` 规则强制。完整说明见[前端目录结构](../../docs/architecture/frontend/directory-structure.md)。
 

@@ -1,24 +1,24 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-08-11
+lastReviewedAt: 2026-08-12
 ---
 
 # 前端代码品味与组件规范
 
-本规范约束 `apps/frontend/src`(除 `components/ui/**` shadcn 生成物、`api/**` wormhole 生成物)的代码品味与组件组织。目录分层、依赖边界、API 封装见 [directory-structure](../../architecture/frontend/directory-structure.md)、[api-alova](./api-alova.md);本文件只管"怎么写得好读、好维护"。
+本规范约束 `apps/frontend/src`（除 `components/ui/**` shadcn 生成物和 API/route 生成文件）的代码品味与组件组织。目录分层、依赖边界、API 封装见 [directory-structure](../../architecture/frontend/directory-structure.md)、[api-alova](./api-alova.md)；本文件只管“怎么写得好读、好维护”。
 
 ## 1. 命名
 
 - **文件名一律 kebab-case**。依据:shadcn 生成物全 kebab(`button.tsx`、`login-form.tsx`),TanStack Router route 文件 kebab + token(`__root.tsx`)。React 官方只要求组件**标识符**(变量名)PascalCase,对文件名无强制;选 kebab 是为了与 `ui/` 生成物一致、避免业务层与设计系统层命名割裂。
 - **文件名 = 主导出名的 kebab 形式**,禁止文件名与导出名不一致。如 `user-list.tsx` 导出 `UserListPanel`(不是 `UserList`)。
 - 非组件文件(hooks/utils/types/lib)kebab-case,导出用 camelCase(函数/变量)或 PascalCase(类型)。
-- 豁免:`api/**` 生成物(`createApis.ts`/`apiDefinitions.ts`)由 wormhole 决定,eslint 已 ignore,不约束。
+- 豁免：`api/createApis.ts`、`api/apiDefinitions.ts`、`api/globals.d.ts` 由 wormhole 生成，eslint 已 ignore；`api/client.ts`、`method-config.ts`、`index.ts` 是手写代码，正常执行全部规则。
 
 ## 2. 导入与 barrel
 
 - **直接从具体文件导入**,禁止 `index.ts` barrel 聚合业务组件。barrel 损害 tree-shaking 与增量编译(TkDodo *Please Stop Using Barrel Files*)。shadcn 官方亦无 barrel,每组件 `import { Button } from "@/components/ui/button"`。
-- 例外(显式声明,对齐 [FSD public-api](https://feature-sliced.design/docs/reference/public-api)):`shared/api/index.ts`(wormhole 可编辑入口)、feature/slice 目录 `index.tsx` 容器(导出单组件,目录 index 解析,非聚合 barrel)。禁 `export *`。
+- 例外（显式声明，对齐 [FSD public-api](https://feature-sliced.design/docs/reference/public-api)）：`api/index.ts`（生成 API 最小装配入口）、feature 内组件目录的 `index.tsx` 容器（导出单组件，目录 index 解析，非聚合 barrel）。禁 `export *`。
 
 ## 3. route 文件必须薄(≤ 60 行)
 
@@ -81,7 +81,7 @@ route 文件是装配层,只做四件事:`createFileRoute` + `beforeLoad` 守卫
 "unicorn/filename-case": ["error", { cases: { kebabCase: true } }],
 ```
 
-`components/ui/**` 生成物单独豁免 `complexity`/`max-lines*`/`no-nested-ternary`(同 `react-refresh` 豁免位置)。`api/**` 已整体 ignore。`unicorn/filename-case` 对生成物 `createApis.ts`/`apiDefinitions.ts` 因 `api/*` ignore 自动豁免。
+`components/ui/**` 生成物单独豁免 `complexity`/`max-lines*`/`no-nested-ternary`（同 `react-refresh` 豁免位置）。API 只 ignore 三个生成文件，因此 `unicorn/filename-case` 不会要求改写 wormhole 的 `createApis.ts` / `apiDefinitions.ts`，手写 API 文件仍必须使用 kebab-case。
 
 ## 参考(联网核验来源)
 

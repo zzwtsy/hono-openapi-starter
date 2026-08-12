@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-08-11
+lastReviewedAt: 2026-08-12
 ---
 
 # 前端开发流程
@@ -37,7 +37,7 @@ lastReviewedAt: 2026-08-11
 
 ## 生成物
 
-- `src/api/`(wormhole 生成):入 git,eslint ignore `createApis.ts`/`apiDefinitions.ts`
+- `src/api/` 的 wormhole 生成物入 git，eslint ignore `createApis.ts` / `apiDefinitions.ts` / `globals.d.ts`；手写 `client.ts` / `method-config.ts` / `index.ts` 正常参与 lint
 - `src/routeTree.gen.ts`(router 生成):入 git,eslint ignore
 
 ## 质量门禁

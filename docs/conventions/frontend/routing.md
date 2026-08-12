@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-08-07
+lastReviewedAt: 2026-08-12
 ---
 
 # 前端路由与守卫规范
@@ -13,6 +13,18 @@ TanStack Router 文件路由,`src/routes/` 下文件即路由。`routeTree.gen.t
 - `_xxx.tsx`:pathless layout route(不进 URL,作 layout + 守卫)。
 - `_xxx/`:其下路由受 `_xxx` layout 守卫。
 - `index.tsx`:目录的 index 路由。
+
+## 薄路由边界
+
+路由文件只负责：
+
+- `validateSearch` 与 URL 状态适配；
+- `beforeLoad` 登录/权限守卫；
+- `loader` 关键请求预取；
+- 把 router context、search 和 navigation 回调注入 feature page；
+- 跨 feature 组合。
+
+页面请求、Dialog/Sheet 开关、选中项派生和业务布局放在 `features/<feature>/*-page.tsx`。feature page 不调用 `Route.useSearch()` / `Route.useNavigate()`，从而可脱离具体路由测试和复用。跨 feature 内容不能随页面一起下沉；例如用户详情的审计时间线由 users route 通过 render prop 注入，IAM 不直接 import Audit。
 
 ## 守卫结构
 

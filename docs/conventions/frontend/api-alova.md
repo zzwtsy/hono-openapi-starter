@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-10
+lastReviewedAt: 2026-08-12
 ---
 
 # 前端 API 调用规范(alova + wormhole)
@@ -35,11 +35,10 @@ lastReviewedAt: 2026-07-10
 const { data, loading, error } = useRequest(() => Apis.IAM.listRoles());
 ```
 
-hook 的策略(`cacheFor`/`transform`/`hitSource`)在 `useRequest` 第二参数 config,不在 method 封装:
+共享 method 策略（`cacheFor` / `hitSource` / mutation `name`）集中在 `src/api/method-config.ts`，保证 loader 与 hook 创建出的同一 method 使用同一策略。组件特有的 `immediate`、`middleware`、`transform` 等仍放在 `useRequest` 第二参数：
 
 ```ts
 useRequest(() => Apis.IAM.listRoles(), {
-  cacheFor: 60_000,
   transform: data => data.filter(r => r.source === "instance"),
 });
 ```
@@ -53,7 +52,7 @@ useRequest(() => Apis.IAM.listRoles(), {
 ```ts
 // ✅ 多组件都要 roles 列表 + 同样的缓存/transform -> 封装复用
 function useRoles() {
-  return useRequest(() => Apis.IAM.listRoles(), { cacheFor: 60_000, transform: ... });
+  return useRequest(() => Apis.IAM.listRoles(), { transform: ... });
 }
 ```
 
@@ -88,7 +87,7 @@ useRoles = () => useRequest(() => iamApi.listRoles());
 后端业务 API 强制 envelope `{ success, code, message, data, error, meta }`(见 [backend/response-envelope](../backend/response-envelope.md))。前端两端剥离,使生成类型 = data 类型,运行时也返回 data:
 
 - **类型剥离**:`alova.config.ts` 的 `handleApi` 仅当响应同时含 `success` + `data`(确认是 envelope)时把 `responses` 改为 `properties.data`;非 envelope 端点原样保留(与 `meta.raw` 运行时分支对齐,避免类型变 `undefined`)。
-- **运行时剥离**:`src/api/index.ts` 的 `responded.onSuccess` 先检 `res.status === 401`(session 过期/无效 -> hard-nav `/login?redirect=<当前路径>` 并抛错,重载后 `useSession` 重新求值),再 `res.json()` 检 `!json.success` 抛错、`return json.data`。
+- **运行时剥离**:`src/api/client.ts` 的 `responded.onSuccess` 先检 `res.status === 401`(session 过期/无效 -> hard-nav `/login?redirect=<当前路径>` 并抛错,重载后 `useSession` 重新求值),再 `res.json()` 检 `!json.success` 抛错、`return json.data`。
 
 两端一致:生成类型 = data 类型,运行时返回 data。
 
@@ -101,7 +100,7 @@ useRoles = () => useRequest(() => iamApi.listRoles());
 后端规范:业务 API 必须 envelope;Better Auth `/api/auth/*` 例外(前端走 Better Auth client,不经 alova)。未来若有非 envelope 业务端点走 alova(文件下载/SSE/二进制),用 `meta.raw` 标记跳过剥离:
 
 ```ts
-// src/api/index.ts
+// src/api/client.ts
 declare module "alova" {
   interface AlovaCustomTypes {
     meta: { raw?: boolean };
@@ -125,7 +124,7 @@ alovaInstance.Get("/api/v1/export", { meta: { raw: true } });
 
 - 配置:`apps/frontend/alova.config.ts`,`input` 后端 `http://localhost:3001/openapi.json`,`handleApi` 剥 envelope 类型。
 - 生成:`pnpm --filter frontend gen:api`(需后端 dev 运行)。
-- 产物:`src/api/{index.ts(可编辑), createApis.ts, apiDefinitions.ts, globals.d.ts}`。
+- 产物:`src/api/{createApis.ts, apiDefinitions.ts, globals.d.ts}`；手写装配文件为 `client.ts`、`method-config.ts` 和 `index.ts`。
 - **生成物入 git**(克隆即用,CI 不依赖后端 dev);`createApis.ts`/`apiDefinitions.ts` eslint ignore(不 lint 生成代码)。
-- `index.ts` 生成时不覆盖,放 alova 实例定制(envelope 剥离 + meta.raw + statesHook)。
+- `client.ts` 放 alova 实例定制（envelope 剥离 + meta.raw + statesHook）；`method-config.ts` 放缓存/失效策略；`index.ts` 保持最小装配并继续导出生成类型需要的 `alovaInstance` / `$$userConfigMap`。
 - 后端 spec 变更:重新 `gen:api`(或 VSCode 扩展 autoUpdate)同步前端 API。

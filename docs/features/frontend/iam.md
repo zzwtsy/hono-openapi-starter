@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-28
+lastReviewedAt: 2026-08-12
 ---
 
 # 前端 IAM
@@ -32,6 +32,9 @@ IAM 前端提供角色、组织和用户授权管理界面。三个页面统一�
 
 ```txt
 features/iam/
+  users-page.tsx                        # 用户页请求、选择、工作台与创建 Dialog 编排
+  roles-page.tsx                        # 角色页请求、选择、工作台与创建 Dialog 编排
+  organizations-page.tsx                # 组织页薄 feature wrapper
   components/                           # 组件
     iam-workbench.tsx                   # PageHeader、1280px 主从布局、单实例详情和 Sheet
     iam-detail-surface.tsx              # desktop Card / Sheet 无 Card 的详情表面
@@ -70,8 +73,9 @@ features/iam/
     organization-tree.ts                # 树索引、祖先/后代、路径与父节点候选
     iam-actions.ts                      # action delegation(cache 刷新)
     group-by-resource.ts               # 权限按 resource 分组
-  organizations-page.tsx               # page 组装(薄 wrapper,route 传 props)
 ```
+
+三个 route 只保留 search/context/navigation 适配、权限守卫和 loader。`users-page.tsx` 通过 `renderAuditTimeline(userId)` 接收路由层注入的审计内容，因此 IAM feature 不直接依赖 Audit feature；用户、角色页面也不直接调用 TanStack Router 的 Route API。
 
 `@headless-tree/core` / `@headless-tree/react` 只负责树状态、ARIA 和键盘行为；节点视觉继续使用项目的 shadcn/Base UI、Tailwind 语义 token 和 Lucide。
 
@@ -146,7 +150,7 @@ features/iam/
 
 - 列表：`useRequest(() => Apis.IAM.listOrganizations())` 等。
 - 写操作：直接调用生成的 Method，成功后 `send()` 刷新当前列表状态。
-- `api/index.ts` 已通过 mutation `name` + list `hitSource` 自动失效列表缓存。
+- `api/method-config.ts` 已通过 mutation `name` + list `hitSource` 自动失效列表缓存。
 - 路由 loader 预取列表，组件首次请求命中 alova cache。
 
 ## 权限

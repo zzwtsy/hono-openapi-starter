@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-29
+lastReviewedAt: 2026-08-12
 ---
 
 # 前端账户自助
@@ -54,7 +54,7 @@ features/account/
 | 改显示名 | `Apis.Me.updateMe({ data: { name } })` | hitSource 失效 `Me.getMe` + `IAM.listUsers` |
 | 改密码 | `Apis.Me.changeMyPassword({ data: { currentPassword, newPassword } })` | 改密码后 session 全删,前端 signOut |
 
-`api/index.ts` 缓存配置:`Me.getMe` 和 `IAM.listUsers` 的 hitSource 均含 `Me.updateMe`(改 name 后两处缓存都失效)。
+`api/method-config.ts` 缓存配置：`Me.getMe` 和 `IAM.listUsers` 的 hitSource 均含 `Me.updateMe`（改 name 后两处缓存都失效）。
 
 ## 权限
 

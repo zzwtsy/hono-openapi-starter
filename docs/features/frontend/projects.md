@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-14
+lastReviewedAt: 2026-08-12
 ---
 
 # 前端 projects
@@ -50,7 +50,7 @@ features/projects/
 - 列表:`useRequest(() => Apis.Projects.listProjects())`,loader 预取缓存命中。
 - 表格：接口仍全量返回，页面端使用 TanStack `paginatedRowModel`，页容量 10/25/50；表体滚动、分页栏常驻。列顺序/显隐存于本地 `hono-openapi-starter:data-table:projects:v1`，操作列不参与配置且固定在末尾。
 - 写:`Apis.Projects.createProject({ data })` / `updateProject({ pathParams: { projectId }, data })` / `deleteProject({ pathParams: { projectId } })`。
-- `api/index.ts` 的 `$$userConfigMap`:`Projects.listProjects.hitSource = [createProject, updateProject, deleteProject]`,三个 mutation 标 `name`;mutation 成功自动失效列表 cache(声明式),`send()` 双保险立即重绘。
+- `api/method-config.ts` 的 `$$userConfigMap`：`Projects.listProjects.hitSource = [createProject, updateProject, deleteProject]`，三个 mutation 标 `name`；mutation 成功自动失效列表 cache（声明式），`send()` 双保险立即重绘。
 
 ## 表单
 

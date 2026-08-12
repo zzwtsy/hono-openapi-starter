@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-07-15
+lastReviewedAt: 2026-08-12
 ---
 
 # 前端测试规范
@@ -56,7 +56,7 @@ CI frontend job 含 `pnpm --filter frontend test`（见 `.github/workflows/ci.ym
 | `lib/permissions.test.ts` | 权限谓词 undefined/持有/未持有 |
 | `lib/safe-redirect.test.ts` | open-redirect 防御（`//`、外链、fallback） |
 | `lib/require-permission.test.ts` | 无权限抛 `redirect` → `/403`（`isRedirect` + `options.to`） |
-| `features/iam/organization-tree.test.ts` | 树索引、缺父升根、环打断、路径、编辑排除后代 |
+| `features/iam/lib/organization-tree.test.ts` | 树索引、缺父升根、环打断、路径、编辑排除后代 |
 | `hooks/use-permissions.test.ts` | `usePermissions` 切片(undefined/正常) |
 | `components/Can.test.tsx` | `<Can>` permission/anyOf/allOf + render-prop + fallback |
 | `components/resource-actions.test.tsx` | `ResourceActions` 空返回 null/有项渲染/`variant`·`disabled`·`title` 透传 |
