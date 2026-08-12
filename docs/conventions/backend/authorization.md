@@ -29,9 +29,9 @@ lastReviewedAt: 2026-08-07
 | ALS 缓存机制 | `core/authorization/permission-cache.ts` | 请求级缓存，纯横切基础设施 |
 | 启动同步 | `core/authorization/sync.ts` | 接收组装点传入的权限定义数组，upsert 到 db 镜像，无策略 |
 | PDP Adapter | `features/iam/permission-checker.ts` | `IamPermissionChecker`，递归 CTE 算法 + db 查询 |
-| PAP（管理） | `features/iam/service.ts` | 角色/授权/组织管理 API |
+| PAP（管理） | `features/iam/{roles,assignments,organizations,users}/service.ts` | 角色/授权/组织/用户管理 API；根 `service.ts` 仅为 facade |
 
-core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `app.ts` 启动时 `setPermissionChecker(new IamPermissionChecker())` 装配。这层隔离让 PDP 可替换——将来换 Cerbos/SpiceDB 等外部引擎，只换 Adapter，core 与 PEP 不动。
+core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `app/create-application.ts` 调用 `setPermissionChecker(new IamPermissionChecker())` 装配。这层隔离让 PDP 可替换——将来换 Cerbos/SpiceDB 等外部引擎，只换 Adapter，core 与 PEP 不动。
 
 ## 权限模型
 
@@ -49,7 +49,7 @@ core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `ap
 - `PermissionCode` 是唯一机器身份，授权检查、缓存 key、数据库外键和 OpenAPI 输入都只使用 code。
 - 每个 feature 在自己的 `permissions.ts` 中调用 `definePermissionCatalog()`，一次声明 resource/action 的 code 与展示 label；builder 自动生成 `code`、`resourceCode` 和 `actionCode`。
 - `PermissionDefinition` / `PermissionRef` 包含 `code`、`resourceCode`、`actionCode`、`resourceLabel`、`label`。label 只用于 HTTP presenter 和前端展示，不进入授权核心或数据库。
-- declaration merging 以 feature 的完整权限数组作为一个 registry slot；`permissions-catalog.ts` 负责汇总、唯一性校验和覆盖校验。core 不维护具体业务资源、中文 label、`PermissionName` 或 `getResourceLabel`。
+- declaration merging 以 feature 的完整权限数组作为一个 registry slot；`catalogs/permissions.ts` 负责汇总、唯一性校验和覆盖校验。core 不维护具体业务资源、中文 label、`PermissionName` 或 `getResourceLabel`。
 - `/api/v1/me` 返回 `permissionCodes`；需要展示权限的响应返回 `permission: PermissionRef`。字符串身份统一命名为 `permissionCode`，字符串数组统一命名为 `permissionCodes`。
 
 因此，新增权限只需在 feature catalog 声明并在应用 catalog 汇总；授权代码不再重复维护文本映射。
@@ -160,7 +160,7 @@ user_permissions(user_id, permission_code, org_id, effect, expires_at?)
 
 | 数据 | 表 | 真相来源 | 生产怎么来 |
 | --- | --- | --- | --- |
-| ① 权限 registry | `permissions` | 代码 catalog（各 feature `definePermissionCatalog()` + `declare module` 注册；`permissions-catalog.ts` 汇总） | `index.ts` 启动时把 `allPermissions` 传 `syncAuthorizationCatalog` 同步 code |
+| ① 权限 registry | `permissions` | 代码 catalog（各 feature `definePermissionCatalog()` + `declare module` 注册；`catalogs/permissions.ts` 汇总） | `app/lifecycle.ts` 启动时把 `allPermissions` 传 `syncAuthorizationCatalog` 同步 code |
 | ② 角色定义 | `roles` + `role_permissions` | 代码（`admin` 角色，`source='code'`）+ 管理 API（其他角色，`source='instance'`） | `admin` 启动同步；其他角色管理 API 建 |
 | ③ 实例数据 | `organizations` / `users` / `user_roles` / `user_permissions` | 每个 deployment 自己 | 管理 API + 一次性 bootstrap（`pnpm db:bootstrap`） |
 
@@ -173,7 +173,7 @@ user_permissions(user_id, permission_code, org_id, effect, expires_at?)
 - catalog 外的 DB code 若仍被 `role_permissions` 或 `user_permissions` 引用，启动同步失败；若没有任何授权引用则允许清理 registry 行。同步不会自动删除角色授权或用户直接授权，避免静默丢授权。
 - code-only schema 不保存 label、description、创建/更新时间等展示或生命周期字段；权限生命周期不由数据库管理。
 
-各 feature 在 `permissions.ts` 调用 `definePermissionCatalog()` 声明完整权限数组，并用 module augmentation 注册一个数组 slot；`permissions-catalog.ts` 汇总为 `allPermissions`，同时执行运行时唯一性/格式校验和编译期 registry 覆盖校验。新增 feature 时在 catalog 追加 import + 展开到数组——漏登记会导致 `requirePermission("x")` 编译报错。
+各 feature 在 `permissions.ts` 调用 `definePermissionCatalog()` 声明完整权限数组，并用 module augmentation 注册一个数组 slot；`catalogs/permissions.ts` 汇总为 `allPermissions`，同时执行运行时唯一性/格式校验和编译期 registry 覆盖校验。新增 feature 时在 catalog 追加 import + 展开到数组——漏登记会导致 `requirePermission("x")` 编译报错。
 
 ### 实例数据（③）
 

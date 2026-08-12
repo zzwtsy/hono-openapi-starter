@@ -1,307 +1,166 @@
 # 后端目录结构
 
-> 本文档是当前架构事实,以 `apps/backend/src/` 实际文件为准(与 `rg`/`find` 核对过);发现漂移请随任务修正。
+> 本文档是当前架构事实，以 `apps/backend/src/` 实际文件为准；目录或依赖边界变化时必须随代码更新。
 >
-> 2026-08-06 复查:审计基础设施位于 `core/audit`,业务资源 resolver 和可见性策略由 `audit-resolvers.ts` 装配,`features/audit` 只负责查询 API;该边界与 ADR-0010 一致。
+> 2026-08-11 复查：后端采用 feature 垂直切片、显式 application composition、独立 commands/config/catalogs 和受限 core/db。ESLint 对这些层级执行依赖门禁。
 
-## 推荐目录树
+## 当前目录树
 
 ```txt
 src/
-  index.ts                      # 启动入口(syncAuthorizationCatalog + serve)
-  app.ts                        # 应用装配(权限 checker + 审计保留策略 + 路由挂载)
-  audit-resolvers.ts            # 应用层装配审计资源名称 resolver
-  env.ts                        # env 校验入口(safeParseEnv)
-  permissions-catalog.ts        # 全项目权限汇总(allPermissions,编译期覆盖校验)
+  index.ts                         # 最薄进程入口，只启动 lifecycle 并收口启动失败
 
-  core/
-    app/
-      create-app.ts             # 全局中间件组装(requestId/i18n/CORS/限流/审计上下文/errorHandler)
-      create-router.ts          # OpenAPIHono 工厂(defaultHook 统一校验错误)
-      env-validation.ts         # EnvSchema 定义与校验
-      not-found.ts              # 404 兜底
-      openapi.ts                # OpenAPI 文档 + Scalar 挂载(开发环境)
-      register-routes.ts        # Better Auth 路由挂载
+  app/                             # 应用组合与进程生命周期
+    create-application.ts          # 创建 HTTP app；无 server/timer/signal 副作用
+    register-features.ts           # 挂载各 feature router
+    audit-policies.ts              # 注册审计名称、组织范围和资源可见性策略
+    lifecycle.ts                   # catalog sync、serve、retention、signal 与 graceful shutdown
 
-    http/
-      context.ts                # AppBindings 类型
-      pagination.ts             # 通用分页 schema(offset/cursor)+ cursor 编解码
-      rate-limit.ts             # 分级限流(认证严格/业务宽松)
-      request-id-middleware.ts  # requestId 注入与透传
-      response.ts               # envelope 响应 helper(success/error)
-      openapi/
-        components.ts           # envelope 契约 schema
-        helpers.ts              # jsonSuccessResponse/jsonErrorResponse
-        security.ts             # 认证方式声明
+  catalogs/
+    permissions.ts                 # 汇总 feature 权限定义并做覆盖/唯一性校验
 
-    errors/
-      app-error.ts              # 业务错误(AppError,code-only)
-      error-handler.ts          # Hono onError 收口
-      error-mapper.ts           # 异常 -> AppError
-      error-registry.ts         # 错误码注册表(单一真相)
-      zod-error.ts              # zod 校验错误格式化
-
-    logger/
-      index.ts                  # LogLayer 实例
-      config.ts                 # logger 配置
-      fields.ts                 # 请求/错误日志字段
-      redact.ts                 # 敏感字段名单(REDACTED)
-      transports/
-        dev-pretty.ts
-        prod-jsonl.ts
-
-    auth/
-      better-auth.ts            # Better Auth 实例(认证事件审计 hooks)
-      audit-actions.ts          # 认证事件 action descriptor 定义
-      auth-audit-events.ts      # sign-in/sign-out 审计事件解析(纯函数)
-      context.ts                # AuthVariables + requireOrgUser
-      index.ts
-      permissions.ts            # 权限资源定义(permissionResources)
-      require-auth.ts           # 认证中间件(注入审计 ALS)
-      require-permission.ts     # 权限中间件
-      session.ts                # session 获取
-
-    authorization/
-      index.ts                  # PermissionService 导出 + checker holder(ADR-0004)
-      permission-cache.ts       # 请求级权限缓存(ALS)
-      permission-checker.ts     # 权限计算接口
-      permission-service.ts     # 有效权限计算(递归 CTE)
-      sync.ts                   # 权限目录/admin 角色代码同步
-
-    audit/
-      index.ts                  # core/audit 导出
-      action.ts                 # 通用 action descriptor + registry
-      context.ts                # 审计 ALS 上下文
-      audit-context-middleware.ts # 注入 ip/ua/requestId
-      middleware.ts             # audit() 路由中间件工厂(定义期校验 + c.error 失败检测)
-      write-audit.ts            # 入队前组装(脱敏/名称解析/diff)
-      queue.ts                  # 有界队列 + 批量 flush + 退出 flush
-      ports.ts                  # resource ref/relation/resolver port 类型
-      relation-resolvers.ts     # 通用 resolver registry(core 不依赖业务表)
-      retention.ts              # 保留策略(惰性过滤 + 定时删除)
-      sanitize.ts               # before/after 递归脱敏
-      types.ts                  # AuditConfig/AuditEntry/AuditRecord
-
-    i18n/
-      index.ts                  # translate 入口
-      i18n.ts
-      locale.ts                 # Locale 类型
-      messages.ts               # zh 字典(satisfies Record<ErrorCode,string>)
-      middleware.ts             # Accept-Language 检测
-
-  db/
-    client.ts                   # drizzle + postgres 连接池(模块私有)
-    bootstrap.ts                # 启动同步(权限目录/admin 角色)
+  commands/                        # 独立运维命令入口
     migrate.ts
+    seed-development.ts
+    bootstrap-admin.ts
+
+  config/
+    env.ts                         # dotenv 加载与失败收口
+    env-schema.ts                  # EnvSchema、校验和脱敏错误格式化
+
+  core/                            # 跨业务平台能力，不依赖具体 feature
+    app/                           # Hono/OpenAPI app factory 与全局中间件
+    audit/                         # 审计写入、队列、resolver/visibility port、保留策略
+    auth/                          # Better Auth 与认证中间件
+    authorization/                 # PermissionChecker port、缓存、catalog sync
+    errors/                        # 统一错误契约与映射
+    http/                          # response、pagination、requestId、rate limit
+    i18n/
+    logger/
+
+  db/                              # 数据库机械细节
+    client.ts
     run-migrations.ts
-    seed.ts                     # dev 演示数据
-    transaction.ts
     schema/
-      index.ts                  # schema 汇总导出
-      auth-schema.ts            # Better Auth 4 表(CLI 生成,勿手改)
-      authorization-schema.ts   # 组织/角色/权限/授权表
-      projects-schema.ts
-      system-settings-schema.ts
-      audit-schema.ts           # audit_logs 表(含 GIN 索引)
-      shared/
-        ids.ts                  # idColumn(应用层 UUIDv4)
-        timestamps.ts           # createdAtColumn(服务端时间)
-        index.ts
     migrations/
 
   features/
-    health/
-      index.ts
-      routes.ts
-      handlers.ts
-      schemas.ts
-
-    projects/
-      index.ts
-      routes.ts
-      handlers.ts
-      schemas.ts
-      service.ts
-      audit-actions.ts          # projects action descriptor 定义
-      permissions.ts
-
-    iam/
-      index.ts
-      routes.ts
-      handlers.ts
-      schemas.ts
-      service.ts
-      audit-actions.ts          # IAM action descriptor 定义
-      org-tree.ts               # 管理子树(getManagedSubtree)
-      permission-checker.ts     # IAM 权限 checker 实现(递归 CTE)
-      permissions.ts
-
-    me/
-      index.ts
-      routes.ts
-      handlers.ts
-      schemas.ts
-      service.ts
-      audit-actions.ts          # me action descriptor 定义
-
-    system-settings/
-      index.ts
-      routes.ts
-      handlers.ts
-      schemas.ts
-      service.ts
-      audit-actions.ts          # system settings action descriptor 定义
-      permissions.ts
-
     audit/
-      index.ts
-      routes.ts                 # 3 个查询端点
-      handlers.ts
-      schemas.ts                # 查询参数/响应契约
-      service.ts                # 分页查询 + by-resource 可见性分派
-      audit-actions.ts          # action catalog 查询适配层(core registry)
-      permissions.ts
-
-tests/                          # apps/backend/tests/(与 src/ 平级,见 vitest projects)
-  contract/                     # OpenAPI 契约测试
-  helpers/                      # global-setup/db/reset
-  integration/                  # testcontainers + 真实 PG
-    authorization/
+    health/
+    me/
     projects/
     system-settings/
+    iam/
+      index.ts                     # IAM router 与对 application 暴露的公开适配器
+      routes.ts                    # 子能力 route facade
+      handlers.ts                  # 子能力 handler facade
+      service.ts                   # 子能力 service facade
+      schemas.ts                   # IAM 公共 HTTP schema
+      audit-actions.ts
+      permissions.ts
+      org-tree.ts
+      permission-checker.ts
+      permissions/
+      roles/
+      users/
+      assignments/
+      organizations/
+      shared/                      # 仅 IAM 子能力内部共享
+
+tests/
+  contract/
+  helpers/
+  integration/
 ```
 
-## 顶层目录职责
+## 顶层职责
+
+### `src/app`
+
+应用组合层是允许连接 feature、core、db 和 catalog 的位置：
+
+- `create-application.ts` 只创建可安全导入的 Hono app，不启动 timer 或监听进程信号；
+- `register-features.ts` 统一维护 router 挂载顺序；
+- `audit-policies.ts` 将业务 feature 的公开能力适配到 `core/audit` port；
+- `lifecycle.ts` 拥有进程资源的启动与关闭。
+
+graceful shutdown 顺序固定为：停止接收请求 → drain audit queue → 停止 retention timer → 关闭数据库连接池。core 模块不得自行注册 `SIGTERM` / `SIGINT` 或调用 `process.exit()`。
+
+### `src/catalogs`
+
+catalog 是显式的应用级契约汇总点。当前只包含权限目录：
+
+- 各 feature 自己声明权限定义；
+- `catalogs/permissions.ts` 汇总并验证覆盖、未知项、重复 code 和展示字段；
+- feature 可以读取 catalog 生成 OpenAPI enum 或展示引用，但不能借 catalog 调用其他 feature 行为。
+
+### `src/commands`
+
+commands 负责一次性应用编排，不属于数据库基础设施：
+
+- `migrate.ts` 调用 `db/run-migrations.ts`；
+- `seed-development.ts` 创建开发演示组织、账号、授权和项目；
+- `bootstrap-admin.ts` 创建生产首个管理员，用户、credential account 与角色授权在同一事务中完成。
+
+package script 名称继续使用 `db:migrate`、`db:seed`、`db:bootstrap`，调用者不依赖内部文件路径。
+
+### `src/config`
+
+环境加载、schema 和错误格式化统一放在 config。其他层只导入 `config/env.ts`，不直接解析 `process.env`。
 
 ### `src/core`
 
-模板核心基础设施。只能包含跨业务、无业务语义的代码。
+core 是受边界约束的平台层，可以包含跨业务能力，不以“文件少”为目标，但必须：
 
-适合放:
+- 不导入 `features`；
+- 不实现 user/project/role 等业务流程；
+- 通过 port/registry 接收业务策略；
+- 不拥有宿主进程生命周期。
 
-- app 创建与注册
-- OpenAPI helper
-- response helper
-- error mapper
-- logger
-- Better Auth wrapper
-- HTTP 通用中间件(requestId/限流/审计上下文)
-- pagination helper
-- i18n
-- 审计基础设施(core/audit,不依赖业务)
-
-不适合放:
-
-- user / project / billing 等业务代码
-- 业务 service
-- 业务 schema
-- feature 私有工具
-
-### 审计 core 与应用装配边界
-
-- `src/core/audit/` 只依赖通用 HTTP/日志/数据库端口和 JSON 处理,不直接导入 project、user、role、organization、setting 等业务表。
-- `src/audit-resolvers.ts` 注册资源名称解析和资源可见性策略;资源删除后,审计记录仍依赖写入时的名称快照和原始引用展示。
-- `src/features/audit/` 只装配查询路由、错误/响应 schema、分页 service、action catalog 适配层和权限入口;global 列表使用 `audit.read`,资源时间线使用业务资源 read 权限。
-- `src/db/schema/audit-schema.ts` 是数据库结构 source of truth,`src/db/migrations/` 是发布顺序 source of truth;二者都不能被 feature 文档中的手写 schema 替代。
-
-### `src/features`
-
-业务 feature 垂直切片。
-
-每个 feature 默认自包含:
-
-- route 定义
-- handler
-- schema
-- service(按复杂度,见下)
-- permissions
-- tests
+统一错误 registry 和 i18n 字典属于应用级协议目录，是 core 无业务流程原则的明确例外；若规模继续增长，再评估按 feature 汇总，当前不为目录纯度增加复杂注册机制。
 
 ### `src/db`
 
-数据库基础设施。
+db 只保留 Drizzle client、schema、migration 和可复用的 migration runner。seed/bootstrap 已移至 commands，因为它们编排用户、角色和项目等业务数据。
 
-只放:
+不存在真实 repository 时不保留预设的 `DB | Tx` 类型抽象。事务直接由对应 service 或 command 通过 `db.transaction()` 控制。
 
-- Drizzle client
-- Drizzle schema(扁平 pgTable 文件,见 database-drizzle.md)
-- migrations
-- seed / bootstrap
-- transaction helper
+### `src/features`
 
-不放业务规则。
+feature 是业务能力边界，默认自包含 route、handler、schema、service、permission 和测试。
 
-## feature 分层选择
+- 简单 feature 可以没有 service，例如 health；
+- 中等 feature 可以由 service 直接访问 db，例如 projects/me/system-settings/audit；
+- 当一个 feature 内出现多个稳定子能力时，先在 feature 内分包，例如 IAM；
+- 只有出现独立领域模型、多种持久化实现或复杂 use case 时，才引入 repository/完整分层。
 
-按复杂度选择是否 service(见 [开发流程规范](../../conventions/backend/development-workflow.md)):
+IAM 的根 `routes.ts`、`handlers.ts`、`service.ts` 是兼容 facade；具体实现位于 users、roles、assignments、organizations、permissions 子目录。外部只能从 `features/iam/index.ts` 使用公开能力。
 
-- 简单 feature:无 service,handler 直接 `db`(当前:health)
-- 中等 feature:有 service(直接 `db`),无 repository(当前:projects/iam/me/system-settings/audit)
-- 复杂 feature:分层 repository(当前无 feature 采用,保留为演进选项)
+## 审计边界
 
-## 简单 feature 形态
+- `core/audit` 提供 action、middleware、queue、sanitize、resolver 和 visibility port/registry；
+- `app/audit-policies.ts` 注册 org/user/role/project 名称解析、actor 管理组织范围及各资源可见性策略；
+- `features/audit` 只负责查询 API，通过 registry 使用策略，不导入 IAM、Projects 或 Hono `Context` 到 service；
+- 资源删除后优先使用写入时的名称快照，未解析时保留原始 type/id；
+- 数据结构以 `db/schema/audit-schema.ts` 为准，发布顺序以 `db/migrations` 为准。
 
-当前实际:health。
+## 依赖门禁
 
-```txt
-features/health/
-  index.ts
-  routes.ts
-  handlers.ts
-  schemas.ts
-```
+生产源码由 ESLint 强制执行：
 
-## 中等 feature 形态
+1. `core` 只能依赖 core/db/config，不能依赖 feature；
+2. feature 不能导入其他 feature；跨业务协作通过 core port，由 application composition 注册；
+3. catalog 可以聚合 feature 的声明式定义，但不能成为业务调用中介；
+4. commands 可以组合 catalog/config/core/db，但不直接进入 feature 内部；
+5. db 只能依赖 db/core/config；
+6. application 是唯一允许连接具体 feature adapter 的组合层；
+7. feature 内部统一使用相对路径，`@/features/*` import 在 feature 源码中直接报错。
 
-当前实际:projects / iam / me / system-settings / audit(iam 最复杂,含 org-tree 与权限计算,仍是扁平 + service)。
+## 测试布局
 
-```txt
-features/projects/
-  index.ts
-  routes.ts
-  handlers.ts
-  schemas.ts
-  service.ts
-  permissions.ts
-```
+- `src/**/*.test.ts`：与实现共置的单元测试，生产构建排除；
+- `tests/contract`：OpenAPI 契约测试；
+- `tests/integration`：Testcontainers + PostgreSQL；
+- `tests/helpers`：测试专用 app/db/audit helper，不进入生产构建。
 
-## 复杂 feature 形态(可选,当前无采用)
-
-适合真正需要分层的大 feature(billing/工作流类)。当前项目所有 feature 均为扁平形态,此结构保留为演进选项,不鼓励提前分层。
-
-```txt
-features/<feature>/
-  index.ts
-  api/
-    routes.ts
-    handlers.ts
-    schemas.ts
-  application/
-    xxx.use-case.ts
-  domain/
-    xxx.entity.ts
-    xxx.errors.ts
-  infrastructure/
-    xxx.repository.ts
-  lib/
-```
-
-## 关于 `lib` 和 `utils`
-
-强制规范:
-
-- 根目录禁止 `src/lib`。
-- 根目录禁止 `src/utils`。
-- feature 内允许有 `lib/`,表示当前 feature 私有辅助代码。
-- 不建议使用 `utils/`,因为语义太弱,容易变成垃圾桶目录。
-- 跨两个以上 feature 复用、且无业务语义的代码,才能上移到 `core/`。
-
-## feature 依赖边界
-
-强制规范:
-
-1. `core` 不能 import `features`。
-2. `features/<a>` 不能 deep import `features/<b>` 的内部文件。
-3. feature 之间只能通过对方的 `index.ts` 暴露的 public API 交互。
-4. 事务边界由 service 控制。
-5. 审计埋点经 `audit()` 路由中间件声明式接入,feature service 不感知(ADR-0009)。
+测试可以为验证集成边界直接导入目标模块，但生产依赖规则不因此放宽。

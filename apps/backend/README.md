@@ -53,12 +53,14 @@ pnpm --filter backend dev
 
 ```txt
 src/
-├── index.ts                 # 进程入口
-├── app.ts                   # 应用与路由装配
-├── permissions-catalog.ts   # 全项目权限目录
-├── core/                    # 跨业务基础设施
-├── db/                      # Drizzle schema、migration 与数据库任务
-└── features/                # 按业务垂直切片的 API
+├── index.ts                 # 最薄进程入口
+├── app/                     # HTTP 应用组合、审计策略与进程生命周期
+├── catalogs/                # 全项目声明式契约目录
+├── commands/                # migrate、seed、bootstrap 独立命令
+├── config/                  # 环境加载与校验
+├── core/                    # 跨业务平台能力
+├── db/                      # Drizzle client、schema 与 migration
+└── features/                # 按业务垂直切片；IAM 在 feature 内继续分包
 tests/
 ├── contract/                # OpenAPI 契约测试
 ├── integration/             # Testcontainers + PostgreSQL 集成测试
@@ -69,7 +71,8 @@ tests/
 
 - `features/<feature>` 内聚 route、handler、schema、service、权限和测试；
 - `core/` 只放跨业务基础设施，不能依赖具体业务 feature；
-- `db/` 负责数据库连接、schema、migration、seed 和 bootstrap，不承载业务规则；
+- `app/` 是唯一允许组合具体 feature adapter 的位置，并显式拥有 server、timer 和 signal 生命周期；
+- `db/` 只负责数据库机械细节；seed/bootstrap 等业务数据编排位于 `commands/`；
 - 简单 feature 可由 handler 直接访问数据库，中等 feature 使用 service；没有真实复杂度时不要提前引入 repository；
 - `src/db/schema/auth-schema.ts` 由 Better Auth CLI 生成，不要手工修改。
 
@@ -131,6 +134,8 @@ pnpm --filter backend auth:generate
 | 写入开发演示数据 | `pnpm --filter backend db:seed` |
 | 首次部署管理员初始化 | `pnpm --filter backend db:bootstrap` |
 | 打开 Drizzle Studio | `pnpm --filter backend db:studio` |
+
+命令名称保留 `db:*` 便于使用，但实现入口位于 `src/commands/`；`db:bootstrap` 会在同一事务中创建首个用户、credential account 和 admin 角色授权。
 
 ## 相关文档
 

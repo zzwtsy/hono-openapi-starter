@@ -17,7 +17,7 @@ flowchart TD
   E --> F[route middleware]
   F --> G[handler]
   G --> H[use-case]
-  H --> I[repository 或 Better Auth API]
+  H --> I[db / 按需 repository / Better Auth API]
   I --> J[响应构建]
   J --> K[错误映射]
   K --> L[访问日志结束]
@@ -66,7 +66,7 @@ handler 必须保持很薄，只负责：
 - 业务规则
 - 权限策略调用
 - 事务边界
-- 调用 repository
+- 直接调用 `db`，或在真实复杂 feature 中调用 repository
 
 ### Repository
 

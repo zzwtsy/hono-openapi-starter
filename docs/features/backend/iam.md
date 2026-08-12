@@ -78,7 +78,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 ## 6. Auth & Permissions
 
-`features/iam/permissions.ts` 使用 `definePermissionCatalog()` 声明权限目录、组织、角色、授权与用户身份管理的细粒度权限，展开到 `permissions-catalog.ts` 的 `allPermissions`。admin 角色（代码同步）含全部权限；label 只属于 catalog/presenter，不属于授权检查或 DB。
+`features/iam/permissions.ts` 使用 `definePermissionCatalog()` 声明权限目录、组织、角色、授权与用户身份管理的细粒度权限，展开到 `catalogs/permissions.ts` 的 `allPermissions`。admin 角色（代码同步）含全部权限；label 只属于 catalog/presenter，不属于授权检查或 DB。
 
 | Permission | Description |
 | --- | --- |
@@ -173,7 +173,7 @@ sequenceDiagram
 
 ## 11. Test Cases
 
-- unit：`core/auth/permissions.test.ts`（builder 字段、格式与 label 校验）、`permissions-catalog.test.ts`（唯一性与 registry 覆盖）、`core/app/create-router.test.ts`（未知 code 400）、`features/iam/iam.test.ts`（路由鉴权 + 新字段接线）、`features/me/me.test.ts`
+- unit：`core/auth/permissions.test.ts`（builder 字段、格式与 label 校验）、`catalogs/permissions.test.ts`（唯一性与 registry 覆盖）、`core/app/create-router.test.ts`（未知 code 400）、`features/iam/iam.test.ts`（路由鉴权 + 新字段接线）、`features/me/me.test.ts`
 - integration：`tests/integration/authorization/sync.test.ts`（code-only registry、stale code 清理/有引用失败、admin 同步）、`iam-roles.test.ts`（source 保护、cascade、listRoleUsers 子树过滤）、`iam-assignments.test.ts`（授角色/deny/祖先/过期/撤销全语义）、`iam-organizations.test.ts`（建树/防环/删除约束）、`list-effective.test.ts`（全集算法 + 来源链 + deny 抵消 + 多来源聚合）、`iam-users.test.ts`（代创建 409、reset 后旧密码失效、disable 拦登录 + enable 恢复、自禁用 403）
 
 ## 12. Rollout / Migration Notes
@@ -182,5 +182,5 @@ sequenceDiagram
 - migration `0004`：`user` 加 `disabled` 列（经 `auth:generate` 自动生成）；新建 `system_settings` 表。
 - migration `0009_permission_contract_cleanup`：`permissions` 收敛为 code-only；关联列改名为 `permission_code`，权限外键改为 `ON DELETE RESTRICT`。不修改旧 migration，不做双读/双写或历史数据回填。
 - 部署顺序：`db:migrate` -> `db:bootstrap`（造第一个 admin）-> start（sync 同步目录 + admin 角色）。
-- `bootstrap` 幂等：组织已存在跳过；admin email 已存在报错（不覆盖密码）。
-- 用户管理端点复用 `bootstrap.ts` 原语（`hashPassword` from `better-auth/crypto` + `db.insert` user/account），不引 BA admin 插件（ADR-0007）。
+- `commands/bootstrap-admin.ts` 幂等：组织已存在跳过；admin email 已存在报错（不覆盖密码）；首个 user/account/admin grant 在同一事务中，失败不留下半成品账号。
+- 用户管理端点复用 bootstrap 原语（`hashPassword` from `better-auth/crypto` + `db.insert` user/account），不引 BA admin 插件（ADR-0007）。

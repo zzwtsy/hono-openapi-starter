@@ -117,7 +117,7 @@ CLI 使用 `apps/backend/better-auth.config.ts` 这一份仅用于生成 schema 
 - `requirePermission` 的参数类型是 `AppPermissionCode` 字面量 union，不能放宽成 `string` 或仅使用 `` `${string}.${string}` ``。
 - 权限 code 格式为 `<resourceCode>.<actionCode>`，由 `definePermissionCatalog()` builder 校验并自动生成。
 - `core/auth` 只提供通用 `PermissionCode`/`PermissionDefinition`/`PermissionRef` 类型、catalog builder 和 `requirePermission` 中间件，检查逻辑在 `core/authorization/`，不硬编码业务资源和中文 label。
-- 各 feature 以完整权限数组作为一个 registry slot 做 module augmentation；`permissions-catalog.ts` 汇总后执行唯一性、格式和覆盖校验，漏登记编译报错。
+- 各 feature 以完整权限数组作为一个 registry slot 做 module augmentation；`catalogs/permissions.ts` 汇总后执行唯一性、格式和覆盖校验，漏登记编译报错。
 
 `core/auth/permissions.ts` 示例：
 
@@ -150,7 +150,7 @@ export const projectPermissions = definePermissionCatalog({
 export type ProjectPermission = (typeof projectPermissions)[number]["code"];
 ```
 
-`permissions-catalog.ts` 汇总所有 feature 的权限数组为 `allPermissions`（运行时目录，供 `syncAuthorizationCatalog` 同步 code-only registry）。类型层的 `AppPermissionCode` union 从 `AppPermissionRegistry` 推导（各 feature 用 `declare module` 扩展一个数组 slot）。HTTP presenter 从 catalog 把 code 映射成 `PermissionRef`；前端不自行拆分 code 或维护 label 映射。
+`catalogs/permissions.ts` 汇总所有 feature 的权限数组为 `allPermissions`（运行时目录，供 `syncAuthorizationCatalog` 同步 code-only registry）。类型层的 `AppPermissionCode` union 从 `AppPermissionRegistry` 推导（各 feature 用 `declare module` 扩展一个数组 slot）。HTTP presenter 从 catalog 把 code 映射成 `PermissionRef`；前端不自行拆分 code 或维护 label 映射。
 
 `core/auth/require-permission.ts` 示例：
 

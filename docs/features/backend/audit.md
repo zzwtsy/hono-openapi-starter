@@ -144,7 +144,7 @@ sequenceDiagram
 - 0008 当前属于本 feature 分支的发布候选迁移,仓库内没有共享/生产部署记录。对已有审计数据的发布风险尚未消除:未执行时应先改为安全的 expand/backfill/contract 顺序;已执行时不得修改已应用文件,应追加 forward migration 并先完成备份、行数校验和恢复预案。
 - env:`AUDIT_LOG_RETENTION_DAYS`(默认 90,0 = 永久保留;查询时惰性过滤 + 每小时定时物理删除)
 - 埋点接入:写路由 `middleware` 数组追加 `audit({ action: actionDescriptor, resourceType/resourceRefs, before?, after: "response"|"none"|provider, metadata? })` 即可;descriptor 由所属 feature 定义,`audit()` 自动注册到 action registry。非路由事件(如认证 hook)需显式调用 `registerAuditAction`。
-- before/after 支持 `{ capture, transform? }` 业务快照配置;transform 用于业务特定字段投影,通用 password/token 等字段仍由 core `sanitize()` 处理。resource name resolver 在 `apps/backend/src/audit-resolvers.ts` 装配,调用方提供的 `resourceRefs.name` 优先。
+- before/after 支持 `{ capture, transform? }` 业务快照配置;transform 用于业务特定字段投影,通用 password/token 等字段仍由 core `sanitize()` 处理。resource name resolver、actor 组织范围和资源 visibility policy 在 `apps/backend/src/app/audit-policies.ts` 装配,调用方提供的 `resourceRefs.name` 优先。
 
 ## 13. 兼容性与回滚
 

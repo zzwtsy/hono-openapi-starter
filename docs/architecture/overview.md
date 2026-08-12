@@ -10,7 +10,7 @@ lastReviewedAt: 2026-06-03
 
 这套模板采用：
 
-> 业务 feature 垂直切片 + 很薄的 core + 独立 db 基础设施层。
+> 业务 feature 垂直切片 + 受边界约束的 core 平台层 + 显式 application composition + 独立 db 基础设施层。
 
 不建议继续沿用传统的 `routes / lib / middlewares / db` 横向分层。原因是中大型项目里横向目录会逐渐形成共享耦合中心，导致业务边界模糊、目录膨胀、代码难以移动和测试。
 
@@ -43,9 +43,9 @@ src/features/<feature>
 
 而不是散落到全局 `routes/`、`services/`、`repositories/`、`schemas/` 目录。
 
-### 2. core 必须保持无业务语义
+### 2. core 必须保持无业务流程
 
-`core/` 只能放模板级基础设施，例如：
+`core/` 只放跨业务平台能力，例如：
 
 - app factory
 - OpenAPI helper
@@ -58,6 +58,8 @@ src/features/<feature>
 
 `core/` 禁止 import `features/`。
 
+具体 feature adapter、跨 feature 策略和宿主进程生命周期统一由 `src/app/` 装配。统一错误 registry 和 i18n 字典是应用协议目录的显式例外，但不能在 core 中实现业务流程。
+
 ### 3. db 只放数据库机械细节
 
 `db/` 负责：
@@ -65,8 +67,6 @@ src/features/<feature>
 - Drizzle client
 - schema
 - migrations
-- seed
-- transaction helper
 - database test helper
 
 `db/` 不承载业务规则。

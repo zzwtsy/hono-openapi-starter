@@ -40,7 +40,7 @@ sign-up 拦截在 `better-auth.ts` 的 `hooks.before` 配置里声明：BA 用�
 
 ## 6. Auth & Permissions
 
-`features/system-settings/permissions.ts` 声明 `settings.read` / `settings.update`，展开到 `permissions-catalog.ts`。
+`features/system-settings/permissions.ts` 声明 `settings.read` / `settings.update`，展开到 `catalogs/permissions.ts`。
 
 | Permission | Description |
 | --- | --- |

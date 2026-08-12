@@ -13,7 +13,7 @@ lastReviewedAt: 2026-06-03
 3. 定义 Zod schema。
 4. 定义 error codes。
 5. 定义 Drizzle schema / migration。
-6. 编写 repository。
+6. 按复杂度选择数据访问：service 直接使用 `db`；只有真实复杂 feature 才编写 repository。
 7. 编写 service / use-case。
 8. 编写 route。
 9. 编写 handler。
@@ -56,7 +56,7 @@ lastReviewedAt: 2026-06-03
 
 - **简单 feature**(health、profile、settings):无 service/repository,handler 直接用 `db`。
 - **中等 feature**(users、projects):有 service(业务逻辑 + 直接 `db`),无 repository。
-- **复杂 feature**(billing、audit-logs):分层(handler → service → repository),repository 接收 `db | tx` 支持事务。
+- **复杂 feature**(billing、工作流类):分层(handler → service → repository),repository 接收 `db | tx` 支持事务。当前项目尚无此类 feature。
 
 core 基础设施(含权限层)直接用全局 `db`,不传 `exec`。
 

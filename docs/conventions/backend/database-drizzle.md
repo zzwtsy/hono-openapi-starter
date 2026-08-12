@@ -16,59 +16,55 @@ Drizzle schema 是数据库结构的 TypeScript source of truth。
 2. 运行 migration generate
 3. review SQL migration
 4. 部署时执行 migration
-5. repository 和 tests 跟随更新
+5. service/command 和 tests 跟随更新
 
 ## 目录结构
 
 ```txt
 src/db/
   client.ts
-  index.ts
-  transaction.ts
-  migrate.ts
-  seed.ts
-  testing/
-    reset-db.ts
-    factories.ts
+  run-migrations.ts
   schema/
-    auth/
-      user.ts
-      session.ts
-      account.ts
-      verification.ts
-      index.ts
+    auth-schema.ts
+    authorization-schema.ts
+    projects-schema.ts
+    system-settings-schema.ts
+    audit-schema.ts
     shared/
       ids.ts
       timestamps.ts
-    users.ts
-    audit-logs.ts
-    relations.ts
     index.ts
   migrations/
+
+src/commands/
+  migrate.ts
+  seed-development.ts
+  bootstrap-admin.ts
+
+tests/helpers/
+  db.ts
+  global-setup.ts
 ```
 
 ## schema 拆分
 
-推荐按业务或领域拆分：
+按稳定数据库边界拆分：
 
 ```txt
 schema/
-  users.ts
-  audit-logs.ts
-  auth/
-    user.ts
-    session.ts
-    account.ts
-    verification.ts
+  auth-schema.ts
+  authorization-schema.ts
+  projects-schema.ts
+  system-settings-schema.ts
+  audit-schema.ts
 ```
 
 `schema/index.ts` 统一导出：
 
 ```ts
-export * from "./users";
-export * from "./audit-logs";
-export * from "./auth";
-export * from "./relations";
+export * from "./auth-schema.js";
+export * from "./authorization-schema.js";
+export * from "./projects-schema.js";
 ```
 
 ## migration 规范
@@ -80,7 +76,9 @@ export * from "./relations";
 - 生产环境禁止直接 `push` 改库。
 - 破坏性迁移必须使用 expand / contract 策略。
 
-## repository 规范
+## repository 规范（按需）
+
+当前 feature 由 service 直接使用 Drizzle，没有 repository。只有出现多个持久化实现、复杂领域模型或大量可复用查询时才引入 repository，不为形式分层。
 
 repository 只负责数据库 IO。
 
@@ -118,7 +116,7 @@ await db.transaction(async (tx) => {
 });
 ```
 
-repository 方法接收 `db | tx` 执行上下文。
+若实际引入 repository，其方法再按需要接收 `db | tx` 执行上下文；不要预留无使用者的全局类型文件。
 
 ## Drizzle + Zod
 
@@ -133,18 +131,18 @@ repository 方法接收 `db | tx` 执行上下文。
 
 ## Seed 与测试数据
 
-建议保留：
+当前布局：
 
 ```txt
-db/seed.ts
-db/testing/reset-db.ts
-db/testing/factories.ts
+commands/seed-development.ts
+commands/bootstrap-admin.ts
+tests/helpers/db.ts
 ```
 
 用途区分：
 
-- `seed.ts`：本地开发和 demo 数据（dev-only，生产不跑）。
-- `factories.ts`：测试数据工厂。
-- `reset-db.ts`：integration test 前后清理数据库。
+- `seed-development.ts`：本地开发和 demo 数据（dev-only，生产不跑）。
+- `bootstrap-admin.ts`：生产首次部署的管理员数据编排。
+- `tests/helpers/db.ts`：integration test 数据清理。
 
-权限目录（`permissions` 表）与标准 `admin` 角色不归 seed：app 启动时由 `syncAuthorizationCatalog` 从代码同步（见 [权限层规范](./authorization.md) 数据生命周期）。`seed.ts` 复用该同步保证本地目录就位。
+权限目录（`permissions` 表）与标准 `admin` 角色不归 seed：app lifecycle 启动时由 `syncAuthorizationCatalog` 从代码同步（见 [权限层规范](./authorization.md) 数据生命周期）。seed/bootstrap 也复用该同步保证目录就位。

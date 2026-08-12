@@ -7,6 +7,7 @@ relatedADR:
   - docs/adr/0009-audit-log.md
 relatedCode:
   - apps/backend/src/core/audit
+  - apps/backend/src/app/audit-policies.ts
   - apps/backend/src/features/audit
   - apps/backend/src/db/schema/audit-schema.ts
   - apps/frontend/src/features/audit
@@ -34,7 +35,7 @@ ADR-0009 已确定自建 `core/audit`、声明式 `audit()` 中间件、异步 b
 
 - `core/audit` 只提供 descriptor、registry、middleware、snapshot/sanitize、queue、persistence seam 和 resolver/visibility port，不直接依赖 project、user、role、organization 或 setting 业务表。
 - 各 feature 自己定义 `AuditActionDefinition`；路由通过 `audit({ action: descriptor })` 自动注册，认证 hook 等非路由事件显式注册。
-- `apps/backend/src/audit-resolvers.ts` 是应用装配入口，负责注册资源名称解析和资源可见性策略。
+- `apps/backend/src/app/audit-policies.ts` 是应用装配入口，负责注册资源名称解析、actor 组织范围和资源可见性策略。
 - `features/audit` 只通过 registry、service 和装配的 checker 查询，不反向 deep import 业务 feature 的内部实现。
 
 ### 2. 固化事件和查询契约
