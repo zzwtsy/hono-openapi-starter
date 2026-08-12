@@ -25,7 +25,7 @@ createRoot(document.getElementById("root")!).render(
           options={{ showSpinner: false, trickle: false }}
         >
           <App />
-          <Toaster />
+          <Toaster position="top-right" />
         </ProgressProvider>
       </ErrorBoundary>
     </ThemeProvider>
