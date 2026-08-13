@@ -77,38 +77,40 @@ vi.mock("../../core/authorization/index.js", () => ({ PermissionService: { check
 vi.mock("../../core/audit/index.js", async () => ({
   audit: (await import("../../../tests/helpers/audit-passthrough.js")).auditPassthrough,
 }));
+/* eslint-disable ts/no-unsafe-return -- vi.fn service adapters intentionally preserve each test's configured return value. */
 vi.mock("./service.js", () => ({
   IamService: {
     listPermissions: mockListPermissions,
     listRoles: mockListRoles,
     listUsers: mockListUsers,
-    createUser: mockCreateUser,
-    updateUser: mockUpdateUser,
-    resetPassword: mockResetPassword,
-    disableUser: mockDisableUser,
-    enableUser: mockEnableUser,
-    transferUserOrganization: mockTransferUserOrganization,
-    createRole: mockCreateRole,
-    updateRole: mockUpdateRole,
-    deleteRole: mockDeleteRole,
+    createUser: (_actor: unknown, input: unknown) => mockCreateUser("org-1", input),
+    updateUser: (_actor: unknown, userId: string, input: unknown) => mockUpdateUser("org-1", userId, input),
+    resetPassword: (_actor: unknown, userId: string, password: string) => mockResetPassword("org-1", userId, password),
+    disableUser: (_actor: unknown, userId: string) => mockDisableUser("org-1", "u-1", userId),
+    enableUser: (_actor: unknown, userId: string) => mockEnableUser("org-1", userId),
+    transferUserOrganization: (_actor: unknown, userId: string, orgId: string, clearAllGrants?: boolean) => mockTransferUserOrganization("org-1", "u-1", userId, orgId, clearAllGrants),
+    createRole: (_actor: unknown, input: unknown) => mockCreateRole(input),
+    updateRole: (_actor: unknown, roleId: string, input: unknown) => mockUpdateRole(roleId, input),
+    deleteRole: (_actor: unknown, roleId: string) => mockDeleteRole(roleId),
     listRolePermissions: mockListRolePermissions,
-    assignRolePermissions: mockAssignRolePermissions,
-    updateRolePermissions: mockUpdateRolePermissions,
-    deleteRolePermission: mockDeleteRolePermission,
-    assignUserRole: mockAssignUserRole,
-    deleteUserRole: mockDeleteUserRole,
-    assignUserPermission: mockAssignUserPermission,
-    deleteUserPermission: mockDeleteUserPermission,
-    listUserEffectivePermissions: mockListUserEffectivePermissions,
-    listUserRoles: mockListUserRoles,
-    listUserDirectPermissions: mockListUserDirectPermissions,
-    listOrganizations: mockListOrganizations,
-    createOrganization: mockCreateOrganization,
-    getOrganizationById: mockGetOrganizationById,
-    updateOrganization: mockUpdateOrganization,
-    deleteOrganization: mockDeleteOrganization,
+    assignRolePermissions: (_actor: unknown, roleId: string, codes: string[]) => mockAssignRolePermissions(roleId, codes),
+    updateRolePermissions: (_actor: unknown, roleId: string, add: string[], remove: string[]) => mockUpdateRolePermissions(roleId, add, remove),
+    deleteRolePermission: (_actor: unknown, roleId: string, code: string) => mockDeleteRolePermission(roleId, code),
+    assignUserRole: (_actor: unknown, userId: string, roleId: string, input: unknown) => mockAssignUserRole("org-1", userId, roleId, input),
+    deleteUserRole: (_actor: unknown, userId: string, roleId: string, orgId: string) => mockDeleteUserRole("org-1", "u-1", userId, roleId, orgId),
+    assignUserPermission: (_actor: unknown, userId: string, code: string, input: unknown) => mockAssignUserPermission("org-1", userId, code, input),
+    deleteUserPermission: (_actor: unknown, userId: string, code: string, orgId: string) => mockDeleteUserPermission("org-1", "u-1", userId, code, orgId),
+    listUserEffectivePermissions: (_actor: unknown, userId: string, orgId: string) => mockListUserEffectivePermissions("org-1", userId, orgId),
+    listUserRoles: (_actor: unknown, userId: string, orgId: string) => mockListUserRoles("org-1", userId, orgId),
+    listUserDirectPermissions: (_actor: unknown, userId: string, orgId: string) => mockListUserDirectPermissions("org-1", userId, orgId),
+    listOrganizations: (_orgId: string) => mockListOrganizations(),
+    createOrganization: (_actor: unknown, input: unknown) => mockCreateOrganization(input),
+    getOrganizationById: (orgId: string, _actorOrgId?: string) => mockGetOrganizationById(orgId),
+    updateOrganization: (_actor: unknown, orgId: string, input: unknown) => mockUpdateOrganization(orgId, input),
+    deleteOrganization: (_actor: unknown, orgId: string) => mockDeleteOrganization(orgId),
   },
 }));
+/* eslint-enable ts/no-unsafe-return */
 
 const mockUser = { id: "u-1", orgId: "org-1", email: "a@b.c", name: "a" };
 const mockSession = { id: "s-1", userId: "u-1", token: "t" };
@@ -180,6 +182,39 @@ function authed() {
 describe("iam routes", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    const requirePermission = async (permissionCode: string) => {
+      const allowed = await mockCheck("u-1", permissionCode, "org-1") as boolean;
+      if (!allowed) {
+        throw new AppError("COMMON_FORBIDDEN");
+      }
+    };
+    mockCreateRole.mockImplementation(async () => requirePermission("roles.create"));
+    mockUpdateRole.mockImplementation(async () => requirePermission("roles.update"));
+    mockDeleteRole.mockImplementation(async () => requirePermission("roles.delete"));
+    mockAssignRolePermissions.mockImplementation(async () => requirePermission("roles.assign-permissions"));
+    mockUpdateRolePermissions.mockImplementation(async (_id, add: string[], remove: string[]) => {
+      if (add.length > 0)
+        await requirePermission("roles.assign-permissions");
+      if (remove.length > 0)
+        await requirePermission("roles.revoke-permissions");
+    });
+    mockDeleteRolePermission.mockImplementation(async () => requirePermission("roles.revoke-permissions"));
+    mockCreateUser.mockImplementation(async () => requirePermission("users.create"));
+    mockUpdateUser.mockImplementation(async () => requirePermission("users.update"));
+    mockResetPassword.mockImplementation(async () => requirePermission("users.reset-password"));
+    mockDisableUser.mockImplementation(async () => requirePermission("users.disable"));
+    mockEnableUser.mockImplementation(async () => requirePermission("users.enable"));
+    mockTransferUserOrganization.mockImplementation(async () => requirePermission("users.update"));
+    mockAssignUserRole.mockImplementation(async () => requirePermission("assignments.grant"));
+    mockDeleteUserRole.mockImplementation(async () => requirePermission("assignments.revoke"));
+    mockAssignUserPermission.mockImplementation(async () => requirePermission("assignments.grant"));
+    mockDeleteUserPermission.mockImplementation(async () => requirePermission("assignments.revoke"));
+    mockListUserEffectivePermissions.mockImplementation(async () => requirePermission("assignments.read"));
+    mockListUserRoles.mockImplementation(async () => requirePermission("assignments.read"));
+    mockListUserDirectPermissions.mockImplementation(async () => requirePermission("assignments.read"));
+    mockCreateOrganization.mockImplementation(async () => requirePermission("organizations.create"));
+    mockUpdateOrganization.mockImplementation(async () => requirePermission("organizations.update"));
+    mockDeleteOrganization.mockImplementation(async () => requirePermission("organizations.delete"));
   });
 
   // --- 权限目录 ---
@@ -364,7 +399,7 @@ describe("iam routes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("updateRolePermissions 只有撤销时只检查撤销权限", async () => {
+  it("updateRolePermissions 只有撤销时把差量交给 service", async () => {
     authed();
     mockUpdateRolePermissions.mockResolvedValue([mockPermission]);
 
@@ -376,7 +411,6 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: typeof mockPermission[] };
     expect(body.data).toEqual([mockPermission]);
-    expect(mockCheck).toHaveBeenCalledWith("u-1", "roles.revoke-permissions", "org-1");
     expect(mockUpdateRolePermissions).toHaveBeenCalledWith("r-1", [], ["projects.read"]);
   });
 
@@ -390,7 +424,7 @@ describe("iam routes", () => {
       body: JSON.stringify({ addPermissionCodes: ["projects.read"], removePermissionCodes: ["permissions.read"] }),
     });
     expect(res.status).toBe(403);
-    expect(mockUpdateRolePermissions).not.toHaveBeenCalled();
+    expect(mockUpdateRolePermissions).toHaveBeenCalledWith("r-1", ["projects.read"], ["permissions.read"]);
   });
 
   it("updateRolePermissions 返回角色当前权限列表", async () => {
@@ -492,7 +526,7 @@ describe("iam routes", () => {
     const res = await buildApp().request("/users", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "new@example.com", password: "password-123", name: "b" }),
+      body: JSON.stringify({ email: "new@example.com", password: "password-123", name: "b", orgId: "org-1" }),
     });
     expect(res.status).toBe(403);
   });
@@ -970,7 +1004,7 @@ describe("iam routes", () => {
     const res = await buildApp().request("/organizations", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: "华南" }),
+      body: JSON.stringify({ name: "华南", parentId: "org-1" }),
     });
     expect(res.status).toBe(403);
   });
@@ -982,10 +1016,10 @@ describe("iam routes", () => {
     const res = await buildApp().request("/organizations", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: "Root" }),
+      body: JSON.stringify({ name: "Child", parentId: "org-1" }),
     });
     expect(res.status).toBe(200);
-    expect(mockCreateOrganization).toHaveBeenCalledWith({ name: "Root" });
+    expect(mockCreateOrganization).toHaveBeenCalledWith({ name: "Child", parentId: "org-1" });
   });
 
   it("createOrganization service 抛 NOT_FOUND(父组织) 返回 404", async () => {

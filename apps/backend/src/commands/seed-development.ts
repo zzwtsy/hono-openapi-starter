@@ -10,7 +10,7 @@ import { closeDb, db } from "@/db/client.js";
 import { account, organizations, projects, user, userRoles } from "@/db/schema/index.js";
 
 /**
- * dev 环境演示数据:dev 组织 + 可登录的 dev 用户(授标准 admin 角色)+ 样例项目。
+ * dev 环境演示数据:唯一 dev 根组织 + 可登录的 dev 用户(授标准 admin 角色)+ 样例项目。
  * 仅供本地端到端调试(`pnpm db:seed`),生产环境拒绝执行。
  *
  * 权限目录 + 标准 admin 角色由 `syncAuthorizationCatalog` 保证就位(复用启动同步逻辑)。

@@ -25,6 +25,18 @@ export const $$userConfigMap = withConfigType({
     hitSource: ["IAM.createRole", "IAM.updateRole", "IAM.deleteRole"],
   },
   "IAM.listPermissions": { cacheFor: 10 * 60_000 },
+  "IAM.getTargetCapabilities": {
+    cacheFor: 60_000,
+    hitSource: [
+      "IAM.assignUserRole",
+      "IAM.deleteUserRole",
+      "IAM.assignUserPermission",
+      "IAM.deleteUserPermission",
+      "IAM.assignRolePermissions",
+      "IAM.updateRolePermissions",
+      "IAM.deleteRolePermission",
+    ],
+  },
   "IAM.listRolePermissions": {
     hitSource: ["IAM.assignRolePermissions", "IAM.updateRolePermissions", "IAM.deleteRolePermission"],
   },

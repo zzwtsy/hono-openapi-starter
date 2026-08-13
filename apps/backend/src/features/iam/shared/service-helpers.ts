@@ -24,7 +24,7 @@ export async function requireInstanceRole(id: string) {
 export function assertNotSelf(
   actorUserId: string,
   targetUserId: string,
-  code: "USER_CANNOT_DISABLE_SELF" | "USER_CANNOT_REVOKE_OWN_AUTH" | "USER_CANNOT_TRANSFER_SELF",
+  code: "USER_CANNOT_DISABLE_SELF" | "USER_CANNOT_MODIFY_OWN_AUTH" | "USER_CANNOT_REVOKE_OWN_AUTH" | "USER_CANNOT_TRANSFER_SELF",
 ): void {
   if (targetUserId === actorUserId) {
     throw new AppError(code);

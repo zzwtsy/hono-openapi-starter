@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "organizations_single_root_idx" ON "organizations" USING btree (((parent_id IS NULL))) WHERE "organizations"."parent_id" IS NULL;

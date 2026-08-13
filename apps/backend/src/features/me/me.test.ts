@@ -9,9 +9,10 @@ import * as handlers from "./handlers.js";
 import * as routes from "./routes.js";
 
 // mock 依赖:session(requireAuth)、PermissionService.listEffectivePermissions(handler)、MeService(updateMe/changeMyPassword)
-const { mockGetSession, mockListEffective, mockUpdateMe, mockChangeMyPassword } = vi.hoisted(() => ({
+const { mockGetSession, mockListEffective, mockIsSystemRootOrg, mockUpdateMe, mockChangeMyPassword } = vi.hoisted(() => ({
   mockGetSession: vi.fn(),
   mockListEffective: vi.fn(),
+  mockIsSystemRootOrg: vi.fn(),
   mockUpdateMe: vi.fn(),
   mockChangeMyPassword: vi.fn(),
 }));
@@ -24,7 +25,7 @@ vi.mock("../../core/audit/index.js", async () => ({
   audit: (await import("../../../tests/helpers/audit-passthrough.js")).auditPassthrough,
 }));
 vi.mock("./service.js", () => ({
-  MeService: { updateMe: mockUpdateMe, changeMyPassword: mockChangeMyPassword },
+  MeService: { isSystemRootOrg: mockIsSystemRootOrg, updateMe: mockUpdateMe, changeMyPassword: mockChangeMyPassword },
 }));
 
 const mockUser = { id: "u-1", orgId: "org-1", email: "a@b.c", name: "a" };
@@ -49,6 +50,7 @@ function authed(user: { id: string; name: string; email: string; orgId: string |
 describe("me routes", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockIsSystemRootOrg.mockResolvedValue(false);
   });
 
   it("无 session 时返回 401", async () => {
@@ -74,6 +76,7 @@ describe("me routes", () => {
     expect(body.data.user.id).toBe("u-1");
     expect(body.data.user.orgId).toBe("org-1");
     expect(body.data.permissionCodes).toEqual(["projects.read", "organizations.read"]);
+    expect(mockIsSystemRootOrg).toHaveBeenCalledWith("org-1");
     expect(mockListEffective).toHaveBeenCalledWith("u-1", "org-1");
   });
 

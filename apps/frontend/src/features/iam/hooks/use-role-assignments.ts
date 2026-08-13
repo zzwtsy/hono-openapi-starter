@@ -8,17 +8,18 @@ import { useIamUserCapabilities } from "./use-iam-capabilities";
 
 interface UseRoleAssignmentsArgs {
   userId: string;
+  userHomeOrgId: string;
   orgId: string;
   roles: Role[];
   currentUserId: string;
 }
 
-export function useRoleAssignments({ userId, orgId, roles, currentUserId }: UseRoleAssignmentsArgs) {
+export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, currentUserId }: UseRoleAssignmentsArgs) {
   const {
     canReadAssignments,
     canGrantRoleAssignments: canGrant,
     canRevokeAssignments: canRevoke,
-  } = useIamUserCapabilities(currentUserId, userId);
+  } = useIamUserCapabilities(currentUserId, userId, userHomeOrgId, orgId);
   const {
     data: assignments,
     loading,

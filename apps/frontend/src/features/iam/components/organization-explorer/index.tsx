@@ -1,13 +1,11 @@
 import type { Organization } from "@/api/globals";
 import { useRequest } from "alova/client";
-import { Building2, Plus } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Apis from "@/api";
 import { AsyncListState } from "@/components/shared/async-list";
-import { Can } from "@/components/shared/can";
-import { Button } from "@/components/ui/button";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { buildOrganizationTree } from "../../lib/organization-tree";
 import { IamDetailSurface } from "../iam-detail-surface";
@@ -22,22 +20,14 @@ interface OrganizationExplorerProps {
   onSelectedOrganizationChange: (id?: string) => void;
 }
 
-function EmptyOrganizations({ onCreate }: { onCreate: () => void }) {
+function EmptyOrganizations() {
   return (
     <Empty className="h-full min-h-80 border">
       <EmptyMedia variant="icon"><Building2 /></EmptyMedia>
       <EmptyHeader>
         <EmptyTitle>暂无组织</EmptyTitle>
-        <EmptyDescription>创建第一个根组织，开始搭建组织结构。</EmptyDescription>
+        <EmptyDescription>未找到系统根组织，请先执行 bootstrap 或 development seed。</EmptyDescription>
       </EmptyHeader>
-      <Can permission="organizations.create">
-        <EmptyContent>
-          <Button onClick={onCreate}>
-            <Plus data-icon="inline-start" />
-            新建根组织
-          </Button>
-        </EmptyContent>
-      </Can>
     </Empty>
   );
 }
@@ -110,14 +100,6 @@ export function OrganizationExplorer({
       <IamWorkbench
         title="组织管理"
         description="浏览和维护组织层级。"
-        actions={(
-          <Can permission="organizations.create">
-            <Button onClick={() => { setCreatingParentId(null); }}>
-              <Plus data-icon="inline-start" />
-              新建根组织
-            </Button>
-          </Can>
-        )}
         navigation={(
           <AsyncListState
             loading={loading}
@@ -128,7 +110,7 @@ export function OrganizationExplorer({
             errorDescription="无法获取组织列表，请检查网络连接后重试。"
           >
             {data?.length === 0
-              ? <EmptyOrganizations onCreate={() => { setCreatingParentId(null); }} />
+              ? <EmptyOrganizations />
               : (
                   <OrganizationNavigationPanel
                     index={index}

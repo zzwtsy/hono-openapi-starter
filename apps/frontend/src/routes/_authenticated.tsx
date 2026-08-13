@@ -16,7 +16,12 @@ export const Route = createFileRoute("/_authenticated")({
     // session 在手,取 permissionCodes;cacheFor 5min 在 api/index.ts $$userConfigMap 集中配置,此处纯调用命中 cache
     const me = await Apis.Me.getMe();
     return {
-      auth: { ...context.auth, user: me.user, permissionCodes: me.permissionCodes },
+      auth: {
+        ...context.auth,
+        user: me.user,
+        isSystemRootUser: me.isSystemRootUser,
+        permissionCodes: me.permissionCodes,
+      },
     };
   },
   component: AuthenticatedRoute,

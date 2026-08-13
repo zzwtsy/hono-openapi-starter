@@ -62,12 +62,14 @@ export const errorRegistry = {
   USER_NO_CREDENTIAL_ACCOUNT: { status: 404, defaultMessage: "User has no credential account", expose: true },
   USER_CANNOT_DISABLE_SELF: { status: 403, defaultMessage: "Cannot disable yourself", expose: true },
   USER_CANNOT_REVOKE_OWN_AUTH: { status: 403, defaultMessage: "Cannot revoke your own authorization", expose: true },
+  USER_CANNOT_MODIFY_OWN_AUTH: { status: 403, defaultMessage: "Cannot modify your own authorization", expose: true },
   USER_CANNOT_TRANSFER_SELF: { status: 403, defaultMessage: "Cannot transfer yourself to another organization", expose: true },
   USER_TRANSFER_CONFLICT: { status: 409, defaultMessage: "User organization was changed concurrently", expose: true },
   USER_INVALID_PASSWORD: { status: 401, defaultMessage: "Current password is incorrect", expose: true },
   // ROLE
   ROLE_NOT_FOUND: { status: 404, defaultMessage: "Role not found", expose: true },
   ROLE_NAME_CONFLICT: { status: 409, defaultMessage: "Role name already exists", expose: true },
+  ROLE_REQUIRES_SYSTEM_ROOT: { status: 403, defaultMessage: "Global role management requires a system root administrator", expose: true },
   // PERMISSION
   PERMISSION_CODE_INVALID: { status: 400, defaultMessage: "Invalid permission code", expose: true },
   PERMISSION_NOT_FOUND: { status: 404, defaultMessage: "Permission not found: {permissionCode}", expose: true },
@@ -77,6 +79,8 @@ export const errorRegistry = {
   ORG_HAS_CHILDREN: { status: 409, defaultMessage: "Organization has children", expose: true },
   ORG_HAS_USERS: { status: 409, defaultMessage: "Organization still has users", expose: true },
   ORG_SAME_AS_CURRENT: { status: 409, defaultMessage: "Target organization is the same as current", expose: true },
+  ORG_ROOT_IMMUTABLE: { status: 409, defaultMessage: "System root organization topology is immutable", expose: true },
+  ASSIGNMENT_EXCEEDS_ACTOR_PERMISSION: { status: 403, defaultMessage: "Cannot delegate a permission beyond the actor's authority", expose: true },
   // PROJECT
   PROJECT_NOT_FOUND: { status: 404, defaultMessage: "Project not found", expose: true },
   PROJECT_NAME_CONFLICT: { status: 409, defaultMessage: "Project name already exists", expose: true },

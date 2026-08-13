@@ -1,6 +1,7 @@
+import type { IamActor } from "../access-policy.js";
 import { hashPassword } from "better-auth/crypto";
-import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
 import {
@@ -12,8 +13,10 @@ import {
   userPermissions,
   userRoles,
 } from "@/db/schema/index.js";
-import { assertOrgInSubtree, getManagedSubtree } from "../org-tree.js";
+import { assertTargetPermission } from "../access-policy.js";
+import { getManagedSubtree } from "../org-tree.js";
 import { assertNotSelf, requireUserInSubtree } from "../shared/service-helpers.js";
+import { acquireSharedTopologyLock } from "../topology-lock.js";
 
 /** IAM 用户生命周期管理子能力。 */
 export const UserService = {
@@ -38,15 +41,15 @@ export const UserService = {
    * 目标 org 越权或不存在 -> 404(不暴露树外 org)。同 email -> 409。
    * 复用 bootstrap 原语(hashPassword + insert user/account)。
    */
-  async createUser(actorOrgId: string, input: { email: string; password: string; name: string; orgId: string }) {
-    // 目标 org 须在操作者管理子树(自身+子孙);不在或不存在 -> 404
-    await assertOrgInSubtree(actorOrgId, input.orgId);
+  async createUser(actor: IamActor, input: { email: string; password: string; name: string; orgId: string }) {
     const userId = generateId();
     const passwordHash = await hashPassword(input.password);
     // user + account 原子写入:account 失败不留孤儿 user(可见不可登录,重试 409)。
     // email 查重在事务内用 onConflictDoNothing 兜底,根除并发 TOCTOU:并发同邮箱第二次不再撞 DB 唯一约束返 500,
     // 而是 returning 空 -> 抛 COMMON_CONFLICT(409),与 OpenAPI 契约一致。
-    await db.transaction(async (tx) => {
+    const created = await db.transaction(async (tx) => {
+      await tx.execute(acquireSharedTopologyLock());
+      await assertTargetPermission(actor, "users.create", input.orgId);
       // 与组织删除统一锁顺序：先锁目标组织，再写 user。FK 虽能阻止孤儿行，
       // KEY SHARE 还能让并发删除稳定地落到业务错误，而不是暴露约束异常。
       const [lockedOrg] = await tx
@@ -77,22 +80,15 @@ export const UserService = {
         userId,
         password: passwordHash,
       });
+      return {
+        id: inserted.id,
+        name: inserted.name,
+        email: inserted.email,
+        orgId: inserted.orgId,
+        disabled: inserted.disabled,
+        createdAt: inserted.createdAt,
+      };
     });
-    const [created] = await db
-      .select({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        orgId: user.orgId,
-        disabled: user.disabled,
-        createdAt: user.createdAt,
-      })
-      .from(user)
-      .where(eq(user.id, userId));
-    // 事务已提交,理论上 user 必存在;兜底防异常场景(如并发硬删)返回 null 破坏 UserSummary 契约。
-    if (created == null) {
-      throw new AppError("COMMON_INTERNAL_ERROR");
-    }
     return created;
   },
 
@@ -101,11 +97,10 @@ export const UserService = {
    * email 冲突 → 409。
    */
   async updateUser(
-    actorOrgId: string,
+    actor: IamActor,
     userId: string,
     input: { name?: string; email?: string },
   ) {
-    await requireUserInSubtree(actorOrgId, userId);
     const patch: { name?: string; email?: string } = {};
     if (input.name !== undefined) {
       patch.name = input.name;
@@ -114,12 +109,15 @@ export const UserService = {
       patch.email = input.email;
     }
     if (Object.keys(patch).length === 0) {
-      return requireUserInSubtree(actorOrgId, userId);
+      return requireUserInSubtree(actor.orgId, userId);
     }
     // 事务内 select 查重 + update + returning:email 改名查重排除自身,压窄 TOCTOU 窗口,
     // unique 约束兜底(B2 D4,对齐 createRole/projects.update)。returning 拿更新后数据,
     // 不在事务内用全局 db 重查(读不到未提交更改)。
     const [updated] = await db.transaction(async (tx) => {
+      await tx.execute(acquireSharedTopologyLock());
+      const target = await requireUserInSubtree(actor.orgId, userId);
+      await assertTargetPermission(actor, "users.update", target.orgId);
       if (patch.email !== undefined) {
         const [clash] = await tx
           .select({ id: user.id })
@@ -153,12 +151,14 @@ export const UserService = {
    * 重置密码:hashPassword + update credential account;删该用户全部 session 立即下线。
    * 无 credential account → 404。
    */
-  async resetPassword(actorOrgId: string, userId: string, newPassword: string) {
-    await requireUserInSubtree(actorOrgId, userId);
+  async resetPassword(actor: IamActor, userId: string, newPassword: string) {
     const passwordHash = await hashPassword(newPassword);
     // 事务保证 update password + delete session 原子:delete 失败则 password 回滚,
     // 避免密码已改但旧 session 仍有效(B2 D1,与 disableUser 同构)。
     await db.transaction(async (tx) => {
+      await tx.execute(acquireSharedTopologyLock());
+      const target = await requireUserInSubtree(actor.orgId, userId);
+      await assertTargetPermission(actor, "users.reset-password", target.orgId);
       const [updated] = await tx
         .update(account)
         .set({ password: passwordHash })
@@ -175,13 +175,15 @@ export const UserService = {
    * 禁用用户:set disabled=true + 删全部 session。
    * 禁止禁用自己 → 403。
    */
-  async disableUser(actorOrgId: string, actorUserId: string, userId: string) {
-    assertNotSelf(actorUserId, userId, "USER_CANNOT_DISABLE_SELF");
-    await requireUserInSubtree(actorOrgId, userId);
+  async disableUser(actor: IamActor, userId: string) {
+    assertNotSelf(actor.id, userId, "USER_CANNOT_DISABLE_SELF");
     // 事务保证 update disabled + delete session 原子:delete 失败则 disabled 回滚,
     // 避免"disabled=true 但旧 session 仍有效"的安全语义破坏(B2 D1)。
     // returning 拿更新后数据,省一次 requireUserInSubtree 查询。
     const updated = await db.transaction(async (tx) => {
+      await tx.execute(acquireSharedTopologyLock());
+      const target = await requireUserInSubtree(actor.orgId, userId);
+      await assertTargetPermission(actor, "users.disable", target.orgId);
       const [row] = await tx.update(user)
         .set({ disabled: true })
         .where(eq(user.id, userId))
@@ -205,10 +207,24 @@ export const UserService = {
   },
 
   /** 启用用户:清 disabled。 */
-  async enableUser(actorOrgId: string, userId: string) {
-    await requireUserInSubtree(actorOrgId, userId);
-    await db.update(user).set({ disabled: false }).where(eq(user.id, userId));
-    return requireUserInSubtree(actorOrgId, userId);
+  async enableUser(actor: IamActor, userId: string) {
+    return db.transaction(async (tx) => {
+      await tx.execute(acquireSharedTopologyLock());
+      const target = await requireUserInSubtree(actor.orgId, userId);
+      await assertTargetPermission(actor, "users.enable", target.orgId);
+      const [updated] = await tx.update(user).set({ disabled: false }).where(eq(user.id, userId)).returning({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        orgId: user.orgId,
+        disabled: user.disabled,
+        createdAt: user.createdAt,
+      });
+      if (updated == null) {
+        throw new AppError("USER_NOT_FOUND");
+      }
+      return updated;
+    });
   },
 
   /**
@@ -225,23 +241,21 @@ export const UserService = {
    * 目标组织先取 KEY SHARE 锁，与组织删除的 UPDATE 锁互斥；数据库 FK 最终兜底。
    */
   async transferUserOrganization(
-    actorOrgId: string,
-    actorUserId: string,
+    actor: IamActor,
     userId: string,
     newOrgId: string,
     clearAllGrants = false,
   ) {
-    assertNotSelf(actorUserId, userId, "USER_CANNOT_TRANSFER_SELF");
-    // 事务外快速失败:用户在子树 + 取 oldOrgId
-    const target = await requireUserInSubtree(actorOrgId, userId);
-    const oldOrgId = target.orgId;
-    // 目标 org 须在操作者管理子树(不能把人调到自己管不了的地方)
-    await assertOrgInSubtree(actorOrgId, newOrgId);
-    if (newOrgId === oldOrgId) {
-      throw new AppError("ORG_SAME_AS_CURRENT");
-    }
-
+    assertNotSelf(actor.id, userId, "USER_CANNOT_TRANSFER_SELF");
     return db.transaction(async (tx) => {
+      await tx.execute(acquireSharedTopologyLock());
+      const target = await requireUserInSubtree(actor.orgId, userId);
+      const oldOrgId = target.orgId;
+      await assertTargetPermission(actor, "users.update", oldOrgId);
+      await assertTargetPermission(actor, "users.update", newOrgId);
+      if (newOrgId === oldOrgId) {
+        throw new AppError("ORG_SAME_AS_CURRENT");
+      }
       const [lockedOrg] = await tx
         .select({ id: organizations.id })
         .from(organizations)

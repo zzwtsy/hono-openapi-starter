@@ -23,7 +23,7 @@ interface GrantPermissionQueryRow extends Record<string, unknown> {
   role_id: string | null;
   role_name: string | null;
   org_id: string;
-  expires_at: Date | null;
+  expires_at: Date | string | null;
 }
 
 interface DenyPermissionQueryRow extends Record<string, unknown> {
@@ -33,7 +33,7 @@ interface DenyPermissionQueryRow extends Record<string, unknown> {
   role_id: null;
   role_name: null;
   org_id: string;
-  expires_at: Date | null;
+  expires_at: Date | string | null;
 }
 
 type PermissionQueryRow = GrantPermissionQueryRow | DenyPermissionQueryRow;
@@ -164,7 +164,7 @@ function aggregatePermissionSources(rows: readonly PermissionQueryRow[]): UserPe
         roleId: row.role_id,
         roleName: row.role_name,
         orgId: row.org_id,
-        expiresAt: row.expires_at,
+        expiresAt: toDate(row.expires_at),
       };
       let list = grantMap.get(permissionCode);
       if (list === undefined) {
@@ -178,7 +178,7 @@ function aggregatePermissionSources(rows: readonly PermissionQueryRow[]): UserPe
         list = [];
         denyByPerm.set(permissionCode, list);
       }
-      list.push({ orgId: row.org_id, expiresAt: row.expires_at });
+      list.push({ orgId: row.org_id, expiresAt: toDate(row.expires_at) });
     }
   }
 
@@ -198,4 +198,8 @@ function aggregatePermissionSources(rows: readonly PermissionQueryRow[]): UserPe
     }
   }
   return { effective, denied };
+}
+
+function toDate(value: Date | string | null): Date | null {
+  return value == null || value instanceof Date ? value : new Date(value);
 }

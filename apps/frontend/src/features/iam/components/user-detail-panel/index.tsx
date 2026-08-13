@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCan } from "@/hooks/use-permissions";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { useIamUserCapabilities } from "../../hooks/use-iam-capabilities";
+import { hasPermission } from "@/lib/permissions";
+import { useIamUserCapabilities, useTargetCapabilities } from "../../hooks/use-iam-capabilities";
 import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
 import { IamDetailSurface } from "../iam-detail-surface";
 import { DirectPermissionsTab } from "./direct-permissions-tab";
@@ -95,6 +95,7 @@ function UserDetailTabs({
             <div className="max-w-3xl">
               <RoleAssignmentsTab
                 userId={user.id}
+                userHomeOrgId={user.orgId}
                 orgId={orgId}
                 roles={roles}
                 currentUserId={currentUserId}
@@ -104,7 +105,7 @@ function UserDetailTabs({
           </TabsContent>
           <TabsContent value="direct" className="min-h-0 flex-1 overflow-y-auto pt-3">
             <div className="max-w-3xl">
-              <DirectPermissionsTab userId={user.id} orgId={orgId} currentUserId={currentUserId} />
+              <DirectPermissionsTab userId={user.id} userHomeOrgId={user.orgId} orgId={orgId} currentUserId={currentUserId} />
             </div>
           </TabsContent>
           <TabsContent value="effective" className="min-h-0 flex-1 overflow-y-auto pt-3">
@@ -140,11 +141,12 @@ export function UserDetailPanel({
   onTransferred,
   auditTabContent,
 }: UserDetailPanelProps) {
-  const canUpdate = useCan("users.update");
-  const canReset = useCan("users.reset-password");
-  const canDisable = useCan("users.disable");
-  const canEnable = useCan("users.enable");
-  const { canReadAssignments } = useIamUserCapabilities(currentUserId, user.id);
+  const targetCapabilities = useTargetCapabilities(user.orgId).data?.permissionCodes;
+  const canUpdate = hasPermission(targetCapabilities, "users.update");
+  const canReset = hasPermission(targetCapabilities, "users.reset-password");
+  const canDisable = hasPermission(targetCapabilities, "users.disable");
+  const canEnable = hasPermission(targetCapabilities, "users.enable");
+  const { canReadAssignments } = useIamUserCapabilities(currentUserId, user.id, user.orgId, orgId);
 
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);

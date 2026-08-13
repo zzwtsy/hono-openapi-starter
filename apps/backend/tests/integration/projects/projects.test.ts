@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -5,8 +6,7 @@ import { allPermissions } from "@/catalogs/permissions.js";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
-import { projects } from "@/db/schema/index.js";
-import { IamService } from "@/features/iam/service.js";
+import { organizations, projects } from "@/db/schema/index.js";
 import { ProjectService } from "@/features/projects/service.js";
 import { resetDb } from "../../helpers/db.js";
 
@@ -20,7 +20,19 @@ import { resetDb } from "../../helpers/db.js";
 beforeEach(async () => {
   await resetDb();
   await syncAuthorizationCatalog(allPermissions);
+  await db.insert(organizations).values({ id: "org-test-root", name: "Test Root" });
 });
+
+const IamService = {
+  async createOrganization(input: { name: string }) {
+    const [org] = await db.insert(organizations).values({
+      id: randomUUID(),
+      name: input.name,
+      parentId: "org-test-root",
+    }).returning();
+    return org;
+  },
+};
 
 /** 断言 promise 以指定 code 的 AppError reject(instanceof + 属性访问,不依赖可枚举性)。 */
 async function expectAppError(promise: Promise<unknown>, code: string) {

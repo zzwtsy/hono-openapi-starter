@@ -9,7 +9,7 @@ import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
 import { account, organizations, session, user, userPermissions, userRoles } from "@/db/schema/index.js";
 import { IamPermissionChecker } from "@/features/iam/permission-checker.js";
-import { IamService } from "@/features/iam/service.js";
+import { IamService as CurrentIamService } from "@/features/iam/service.js";
 import { resetDb } from "../../helpers/db.js";
 
 /**
@@ -17,11 +17,24 @@ import { resetDb } from "../../helpers/db.js";
  * 登录侧用 auth.api.signInEmail 触发 databaseHooks.session.create.before。
  */
 
+const actor = (orgId: string, id = orgId === "org-other" ? "actor-other" : "actor-1") => ({ id, orgId });
+const IamService = {
+  ...CurrentIamService,
+  createUser: async (orgId: string, input: Parameters<typeof CurrentIamService.createUser>[1]) => CurrentIamService.createUser(actor(orgId), input),
+  updateUser: async (orgId: string, userId: string, input: Parameters<typeof CurrentIamService.updateUser>[2]) => CurrentIamService.updateUser(actor(orgId), userId, input),
+  resetPassword: async (orgId: string, userId: string, password: string) => CurrentIamService.resetPassword(actor(orgId), userId, password),
+  disableUser: async (orgId: string, actorUserId: string, userId: string) => CurrentIamService.disableUser(actor(orgId, actorUserId), userId),
+  enableUser: async (orgId: string, userId: string) => CurrentIamService.enableUser(actor(orgId), userId),
+  transferUserOrganization: async (orgId: string, actorUserId: string, userId: string, newOrgId: string, clearAllGrants?: boolean) => CurrentIamService.transferUserOrganization(actor(orgId, actorUserId), userId, newOrgId, clearAllGrants),
+  listUserEffectivePermissions: async (orgId: string, userId: string, targetOrgId: string) => CurrentIamService.listUserEffectivePermissions(actor(orgId), userId, targetOrgId),
+};
+
 beforeEach(async () => {
   await resetDb();
   await syncAuthorizationCatalog(allPermissions);
-  await db.insert(organizations).values({ id: "org-root", name: "Root" });
-  await db.insert(organizations).values({ id: "org-other", name: "Other" });
+  await db.insert(organizations).values({ id: "org-system", name: "System Root" });
+  await db.insert(organizations).values({ id: "org-root", name: "Root", parentId: "org-system" });
+  await db.insert(organizations).values({ id: "org-other", name: "Other", parentId: "org-system" });
   await db.insert(organizations).values({ id: "org-child", name: "Child", parentId: "org-root" });
   // 操作者(管理员身份)在 org-root;不经 createUser,避免测自身路径。
   await db.insert(user).values({
@@ -30,6 +43,12 @@ beforeEach(async () => {
     email: "actor@example.com",
     orgId: "org-root",
   });
+  await db.insert(user).values({ id: "actor-other", name: "Other Actor", email: "other-actor@example.com", orgId: "org-other" });
+  await db.insert(userRoles).values([
+    { userId: "actor-1", roleId: "role-admin", orgId: "org-root" },
+    { userId: "actor-other", roleId: "role-admin", orgId: "org-other" },
+  ]);
+  setPermissionChecker(new IamPermissionChecker());
 });
 
 describe("iam user management", () => {
@@ -79,6 +98,25 @@ describe("iam user management", () => {
     const list = await IamService.listUsers("org-root");
     expect(list.some(u => u.id === created.id)).toBe(true);
     expect(list.some(u => u.id === "actor-1")).toBe(true);
+  });
+
+  it("home 有权限但目标组织显式 deny 时按目标 PEP 返回 403", async () => {
+    const created = await IamService.createUser("org-root", {
+      email: "target-deny@example.com",
+      password: "password-123",
+      name: "Target Deny",
+      orgId: "org-child",
+    });
+    await db.insert(userPermissions).values({
+      userId: "actor-1",
+      permissionCode: "users.disable",
+      orgId: "org-child",
+      effect: "deny",
+    });
+
+    await expect(IamService.disableUser("org-root", "actor-1", created.id))
+      .rejects
+      .toMatchObject({ code: "COMMON_FORBIDDEN" });
   });
 
   it("createUser 目标 org 在子树外 -> 404(不暴露)", async () => {
@@ -338,13 +376,7 @@ describe("iam user transfer (调岗 + grant 清理)", () => {
   });
 
   it("用户不在操作者管理子树 -> 404", async () => {
-    // 把 actor-1 换成 org-other 子树的用户做操作者:先建一个 org-other 的用户
-    await db.insert(user).values({
-      id: "actor-other",
-      name: "ActorOther",
-      email: "actorother@example.com",
-      orgId: "org-other",
-    });
+    // 使用 org-other 子树的管理员作为操作者。
     const created = await IamService.createUser("org-root", {
       email: "victim@example.com",
       password: "password-123",

@@ -1,12 +1,15 @@
+import type { IamActor } from "../access-policy.js";
+
 import { randomUUID } from "node:crypto";
 
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
-
-import { allPermissions, toPermissionRefs } from "@/catalogs/permissions.js";
+import { allPermissions, toAppPermissionCodes, toPermissionRefs } from "@/catalogs/permissions.js";
+import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
 import { permissions, rolePermissions, roles, user, userRoles } from "@/db/schema/index.js";
-import { getManagedSubtree } from "../org-tree.js";
+import { assertSystemRootPermission, assertTargetPermission } from "../access-policy.js";
+import { assertOrgInSubtree, getManagedSubtree } from "../org-tree.js";
 import {
   assertPermissionCodeInCatalog,
   getRole,
@@ -17,6 +20,15 @@ import {
 
 /** IAM 权限目录与角色管理子能力。 */
 export const RoleService = {
+  async getTargetCapabilities(actor: IamActor, orgId: string) {
+    await assertOrgInSubtree(actor.orgId, orgId);
+    const result = await PermissionService.listEffectivePermissions(actor.id, orgId);
+    return {
+      orgId,
+      permissionCodes: toAppPermissionCodes(result.effective.map(item => item.permissionCode)),
+    };
+  },
+
   async listPermissions() {
     return toPermissionRefs(allPermissions.map(permission => permission.code));
   },
@@ -30,7 +42,8 @@ export const RoleService = {
     return getRole(id);
   },
 
-  async createRole(input: { name: string; description?: string }) {
+  async createRole(actor: IamActor, input: { name: string; description?: string }) {
+    await assertSystemRootPermission(actor, "roles.create");
     // 事务 + onConflictDoNothing + returning 判空:并发同名第二次 insert 冲突返回空,
     // 抛 COMMON_CONFLICT 而非撞 DB unique 转 500(照 createUser 范本,B2 D4)。
     const [role] = await db.transaction(async (tx) => {
@@ -47,7 +60,8 @@ export const RoleService = {
     return role;
   },
 
-  async updateRole(id: string, input: { name?: string; description?: string | null }) {
+  async updateRole(actor: IamActor, id: string, input: { name?: string; description?: string | null }) {
+    await assertSystemRootPermission(actor, "roles.update");
     await requireInstanceRole(id);
     if (input.name === undefined && input.description === undefined) {
       return getRole(id);
@@ -69,7 +83,8 @@ export const RoleService = {
     });
   },
 
-  async deleteRole(id: string) {
+  async deleteRole(actor: IamActor, id: string) {
+    await assertSystemRootPermission(actor, "roles.delete");
     const [role] = await db
       .delete(roles)
       .where(and(eq(roles.id, id), eq(roles.source, "instance")))
@@ -88,7 +103,8 @@ export const RoleService = {
     return toPermissionRefs(rows.map(r => r.permissionCode));
   },
 
-  async assignRolePermissions(id: string, permissionCodes: string[]) {
+  async assignRolePermissions(actor: IamActor, id: string, permissionCodes: string[]) {
+    await assertSystemRootPermission(actor, "roles.assign-permissions");
     await requireInstanceRole(id);
     if (permissionCodes.length === 0) {
       return;
@@ -119,7 +135,13 @@ export const RoleService = {
    * 原子批量更新实例角色权限差量。所有 code 和角色校验完成后才进入事务,
    * 避免新增成功、逐项删除失败造成角色处于部分状态。
    */
-  async updateRolePermissions(id: string, addPermissionCodes: string[], removePermissionCodes: string[]) {
+  async updateRolePermissions(actor: IamActor, id: string, addPermissionCodes: string[], removePermissionCodes: string[]) {
+    if (addPermissionCodes.length > 0) {
+      await assertSystemRootPermission(actor, "roles.assign-permissions");
+    }
+    if (removePermissionCodes.length > 0) {
+      await assertSystemRootPermission(actor, "roles.revoke-permissions");
+    }
     await requireInstanceRole(id);
     const uniqueAddPermissionCodes = [...new Set(addPermissionCodes)];
     const uniqueRemovePermissionCodes = [...new Set(removePermissionCodes)];
@@ -161,10 +183,11 @@ export const RoleService = {
       }
     });
 
-    return this.listRolePermissions(id);
+    return RoleService.listRolePermissions(id);
   },
 
-  async deleteRolePermission(id: string, permissionCode: string) {
+  async deleteRolePermission(actor: IamActor, id: string, permissionCode: string) {
+    await assertSystemRootPermission(actor, "roles.revoke-permissions");
     await requireInstanceRole(id);
     await requireExistingPermission(permissionCode);
     await db
@@ -173,9 +196,10 @@ export const RoleService = {
   },
 
   /** 列出操作者管理子树内,直接授予某角色的 (user, org) 记录(含过期)。角色不存在 404;code/instance 均可查。 */
-  async listRoleUsers(actorOrgId: string, roleId: string) {
+  async listRoleUsers(actor: IamActor, roleId: string) {
+    await assertTargetPermission(actor, "assignments.read", actor.orgId);
     await requireExistingRole(roleId);
-    const subtree = await getManagedSubtree(actorOrgId);
+    const subtree = await getManagedSubtree(actor.orgId);
     return db
       .select({
         userId: user.id,

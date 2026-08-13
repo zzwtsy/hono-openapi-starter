@@ -23,9 +23,11 @@ export const getMeHandler: AppRouteHandler<GetMeRoute> = async (c) => {
   const result: UserPermissionsResult = await PermissionService.listEffectivePermissions(user.id, orgId);
   // listEffectivePermissions 现返回带来源链结构;me 只需 code 做门控。
   const permissionCodes = toAppPermissionCodes(result.effective.map(p => p.permissionCode));
+  const isSystemRootUser = await MeService.isSystemRootOrg(orgId);
 
   return successResponse(c, {
     user: { id: user.id, name: user.name, email: user.email, orgId },
+    isSystemRootUser,
     permissionCodes,
   });
 };

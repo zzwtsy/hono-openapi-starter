@@ -28,6 +28,7 @@ export default {
   'Projects.updateProject': ['PATCH', '/api/v1/projects/{projectId}'],
   'Projects.deleteProject': ['DELETE', '/api/v1/projects/{projectId}'],
   'IAM.listPermissions': ['GET', '/api/v1/permissions'],
+  'IAM.getTargetCapabilities': ['GET', '/api/v1/me/capabilities'],
   'IAM.listUsers': ['GET', '/api/v1/users'],
   'IAM.createUser': ['POST', '/api/v1/users'],
   'IAM.updateUser': ['PATCH', '/api/v1/users/{userId}'],

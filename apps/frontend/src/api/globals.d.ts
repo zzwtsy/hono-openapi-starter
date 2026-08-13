@@ -128,9 +128,9 @@ export interface CreateOrganization {
    */
   name: string;
   /**
-   * 父组织 ID,不填为根组织
+   * 父组织 ID；系统根仅由 bootstrap/seed 创建
    */
-  parentId?: string;
+  parentId: string;
 }
 export interface HealthzStatus {
   /**
@@ -170,6 +170,10 @@ export interface User {
 }
 export interface Me {
   user: User;
+  /**
+   * 用户 Home org 是否为唯一系统根；仅用于前端 UX 门控
+   */
+  isSystemRootUser: boolean;
   /**
    * 当前组织下的有效权限 code 列表(空数组表示无权限)
    */
@@ -483,15 +487,50 @@ export interface UpdateRolePermissions {
 export interface UpdateOrganization {
   name?: string;
   /**
-   * 新父组织 ID,null 表示改为根组织
+   * 新父组织 ID；不能把组织提升为系统根
    */
-  parentId?: string | null;
+  parentId?: string;
 }
 export interface UpdateSetting {
   /**
    * 配置值(JSON)
    */
   value?: null;
+}
+export interface TargetCapabilities {
+  orgId: string;
+  /**
+   * 当前用户在目标组织的有效权限
+   */
+  permissionCodes: (
+    | 'projects.read'
+    | 'projects.create'
+    | 'projects.update'
+    | 'projects.delete'
+    | 'permissions.read'
+    | 'organizations.read'
+    | 'organizations.create'
+    | 'organizations.update'
+    | 'organizations.delete'
+    | 'roles.read'
+    | 'roles.create'
+    | 'roles.update'
+    | 'roles.delete'
+    | 'roles.assign-permissions'
+    | 'roles.revoke-permissions'
+    | 'assignments.read'
+    | 'assignments.grant'
+    | 'assignments.revoke'
+    | 'users.read'
+    | 'users.create'
+    | 'users.update'
+    | 'users.reset-password'
+    | 'users.disable'
+    | 'users.enable'
+    | 'settings.read'
+    | 'settings.update'
+    | 'audit.read'
+  )[];
 }
 export interface RoleUserAssignment {
   /**
@@ -846,6 +885,8 @@ declare global {
        *     // 归属组织 ID
        *     orgId: string
        *   }
+       *   // 用户 Home org 是否为唯一系统根；仅用于前端 UX 门控
+       *   isSystemRootUser: boolean
        *   // 当前组织下的有效权限 code 列表(空数组表示无权限)
        *   // [items] start
        *   // [items] end
@@ -1254,6 +1295,77 @@ declare global {
       listPermissions<Config extends Alova2MethodConfig<PermissionRef[]>>(
         config?: Config
       ): Alova2Method<PermissionRef[], 'IAM.listPermissions', Config>;
+      /**
+       * ---
+       *
+       * [GET] 获取目标组织能力
+       *
+       * **path:** /api/v1/me/capabilities
+       *
+       * ---
+       *
+       * **Query Parameters**
+       * ```ts
+       * type QueryParameters = {
+       *   // 目标组织 ID
+       *   orgId: string
+       * }
+       * ```
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   orgId: string
+       *   // 当前用户在目标组织的有效权限
+       *   // [items] start
+       *   // 权限机器身份 <resourceCode>.<actionCode>
+       *   // [items] end
+       *   permissionCodes: (
+       *     | 'projects.read'
+       *     | 'projects.create'
+       *     | 'projects.update'
+       *     | 'projects.delete'
+       *     | 'permissions.read'
+       *     | 'organizations.read'
+       *     | 'organizations.create'
+       *     | 'organizations.update'
+       *     | 'organizations.delete'
+       *     | 'roles.read'
+       *     | 'roles.create'
+       *     | 'roles.update'
+       *     | 'roles.delete'
+       *     | 'roles.assign-permissions'
+       *     | 'roles.revoke-permissions'
+       *     | 'assignments.read'
+       *     | 'assignments.grant'
+       *     | 'assignments.revoke'
+       *     | 'users.read'
+       *     | 'users.create'
+       *     | 'users.update'
+       *     | 'users.reset-password'
+       *     | 'users.disable'
+       *     | 'users.enable'
+       *     | 'settings.read'
+       *     | 'settings.update'
+       *     | 'audit.read'
+       *   )[]
+       * }
+       * ```
+       */
+      getTargetCapabilities<
+        Config extends Alova2MethodConfig<TargetCapabilities> & {
+          params: {
+            /**
+             * 目标组织 ID
+             */
+            orgId: string;
+          };
+        }
+      >(
+        config: Config
+      ): Alova2Method<TargetCapabilities, 'IAM.getTargetCapabilities', Config>;
       /**
        * ---
        *
@@ -3371,8 +3483,8 @@ declare global {
        * type RequestBody = {
        *   // 组织名
        *   name: string
-       *   // 父组织 ID,不填为根组织
-       *   parentId?: string
+       *   // 父组织 ID；系统根仅由 bootstrap/seed 创建
+       *   parentId: string
        * }
        * ```
        *
@@ -3471,8 +3583,8 @@ declare global {
        * ```ts
        * type RequestBody = {
        *   name?: string
-       *   // 新父组织 ID,null 表示改为根组织
-       *   parentId?: string | null
+       *   // 新父组织 ID；不能把组织提升为系统根
+       *   parentId?: string
        * }
        * ```
        *

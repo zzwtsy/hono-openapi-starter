@@ -25,11 +25,14 @@ interface RoleDetailPanelProps {
   onTabChange: (tab: string) => void;
   onNavigateUser: (userId: string, orgId: string) => void;
   getOrgPath: (orgId: string) => string;
+  isSystemRootUser: boolean;
 }
 
-export function RoleDetailPanel({ mode, role, tab, onTabChange, onNavigateUser, getOrgPath }: RoleDetailPanelProps) {
-  const canUpdate = useCan("roles.update");
-  const canDelete = useCan("roles.delete");
+export function RoleDetailPanel({ mode, role, tab, onTabChange, onNavigateUser, getOrgPath, isSystemRootUser }: RoleDetailPanelProps) {
+  const hasUpdatePermission = useCan("roles.update");
+  const hasDeletePermission = useCan("roles.delete");
+  const canUpdate = isSystemRootUser && hasUpdatePermission;
+  const canDelete = isSystemRootUser && hasDeletePermission;
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { mutate: runWithToast, busy: deletingBusy } = useToastMutation();
@@ -96,7 +99,7 @@ export function RoleDetailPanel({ mode, role, tab, onTabChange, onNavigateUser, 
           </div>
         </TabsContent>
         <TabsContent value="permissions" className="min-h-0 flex-1 pt-3">
-          <RolePermissionsTab key={role.id} role={role} />
+          <RolePermissionsTab key={role.id} role={role} isSystemRootUser={isSystemRootUser} />
         </TabsContent>
         <TabsContent value="users" className="min-h-0 flex-1 overflow-y-auto pt-3">
           <div className="max-w-4xl">

@@ -49,13 +49,17 @@ async function persistOrganization(
   value: OrganizationFormValues,
 ): Promise<boolean> {
   try {
-    const parentId = value.parentId === "" ? undefined : value.parentId;
+    const keepsCurrentParent = organization !== undefined && value.parentId === "";
+    if (organization === undefined && value.parentId === "") {
+      toast.error("请选择父组织");
+      return false;
+    }
     const savedOrganization = organization
       ? await Apis.IAM.updateOrganization({
           pathParams: { orgId: organization.id },
-          data: { name: value.name, parentId: parentId ?? null },
+          data: keepsCurrentParent ? { name: value.name } : { name: value.name, parentId: value.parentId },
         })
-      : await Apis.IAM.createOrganization({ data: { name: value.name, parentId } });
+      : await Apis.IAM.createOrganization({ data: { name: value.name, parentId: value.parentId } });
     toast.success(organization ? "组织已更新" : "组织已创建");
     await onSuccess(savedOrganization);
     return true;
@@ -122,13 +126,15 @@ export function OrganizationForm({
   const [reparentConfirming, setReparentConfirming] = useState(false);
   const [reparentBusy, setReparentBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const isTopologyLocked = organization !== undefined
+    && (organization.parentId == null || !organizations.some(item => item.id === organization.parentId));
   const saveOrganization = (value: OrganizationFormValues) =>
     persistOrganization(organization, onSuccess, value);
 
   const form = useForm({
     defaultValues: {
       name: organization?.name ?? "",
-      parentId: organization?.parentId ?? defaultParentId ?? "",
+      parentId: isTopologyLocked ? "" : (organization?.parentId ?? defaultParentId ?? ""),
     },
     validators: {
       onBlur: organizationSchema,
@@ -138,7 +144,7 @@ export function OrganizationForm({
     onSubmit: async ({ value }) => {
       const nextParentId = value.parentId === "" ? null : value.parentId;
       const currentParentId = organization?.parentId ?? null;
-      if (organization && nextParentId !== currentParentId) {
+      if (organization && !isTopologyLocked && nextParentId !== currentParentId) {
         setPendingValues(value);
         setReparentConfirming(true);
         return;
@@ -147,8 +153,8 @@ export function OrganizationForm({
     },
   });
 
-  const parentItems = organizationTree.getParentOptions(organization?.id);
-  let pendingParentLabel = "根组织";
+  const parentItems = organizationTree.getParentOptions(organization?.id).filter(item => item.value != null);
+  let pendingParentLabel = "管理范围根";
   if (pendingValues?.parentId != null && pendingValues.parentId !== "") {
     pendingParentLabel = organizationTree.getDisplayPath(pendingValues.parentId);
   }
@@ -192,32 +198,34 @@ export function OrganizationForm({
                   );
                 }}
               </form.Field>
-              <form.Field name="parentId">
-                {field => (
-                  <Field>
-                    <FieldLabel htmlFor="org-parent">父组织</FieldLabel>
-                    <Select
-                      items={parentItems}
-                      name={field.name}
-                      value={field.state.value === "" ? null : field.state.value}
-                      onValueChange={(val) => { field.handleChange(val ?? ""); }}
-                    >
-                      <SelectTrigger id="org-parent" className="w-full" onBlur={field.handleBlur}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {parentItems.map(item => (
-                            <SelectItem key={item.value ?? "root"} value={item.value}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                )}
-              </form.Field>
+              {!isTopologyLocked && (
+                <form.Field name="parentId">
+                  {field => (
+                    <Field>
+                      <FieldLabel htmlFor="org-parent">父组织</FieldLabel>
+                      <Select
+                        items={parentItems}
+                        name={field.name}
+                        value={field.state.value === "" ? null : field.state.value}
+                        onValueChange={(val) => { field.handleChange(val ?? ""); }}
+                      >
+                        <SelectTrigger id="org-parent" className="w-full" onBlur={field.handleBlur}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {parentItems.map(item => (
+                              <SelectItem key={item.value ?? "root"} value={item.value}>
+                                {item.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
+                </form.Field>
+              )}
             </FieldGroup>
           )}
         </form.Subscribe>

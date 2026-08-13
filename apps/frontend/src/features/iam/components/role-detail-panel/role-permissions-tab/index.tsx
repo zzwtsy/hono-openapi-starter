@@ -19,6 +19,7 @@ import { useRolePermissions } from "./use-role-permissions";
 
 interface RolePermissionsTabProps {
   role: Role;
+  isSystemRootUser: boolean;
 }
 
 // 加载态骨架(组合:搜索栏 + 3 个分组占位),模块级常量避免每次 render 重建。
@@ -94,7 +95,7 @@ function PermissionGroup({
   );
 }
 
-export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
+export function RolePermissionsTab({ role, isSystemRootUser }: RolePermissionsTabProps) {
   const {
     canRead,
     canEdit,
@@ -117,7 +118,7 @@ export function RolePermissionsTab({ role }: RolePermissionsTabProps) {
     retry,
     submit,
     submitting,
-  } = useRolePermissions(role);
+  } = useRolePermissions(role, isSystemRootUser);
 
   if (!canRead) {
     return (

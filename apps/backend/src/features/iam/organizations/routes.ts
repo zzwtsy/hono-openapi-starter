@@ -25,7 +25,7 @@ export const listOrganizationsRoute = createRoute({
   tags: ["IAM"],
   operationId: "listOrganizations",
   summary: "列出组织",
-  description: "返回所有组织(扁平,带 parentId,前端构建树)。需 organizations.read。",
+  description: "返回当前用户管理子树内组织(扁平,带 parentId,前端构建树)。需 organizations.read。",
   middleware: organizationsReadMiddleware,
   security: authedSecurity,
   responses: {
@@ -40,7 +40,7 @@ export const createOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "createOrganization",
   summary: "创建组织",
-  description: "创建组织,可指定 parentId 挂到父组织下。需 organizations.create。",
+  description: "在指定父组织下创建子组织；系统根仅由 bootstrap/seed 创建。需在父组织具备 organizations.create。",
   middleware: [...organizationsCreateMiddleware, audit({
     action: iamAuditActions.orgCreate,
     resourceType: "org",
@@ -82,7 +82,7 @@ export const updateOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "updateOrganization",
   summary: "修改组织",
-  description: "修改组织 name 或 parentId。改 parentId 时防环。需 organizations.update。",
+  description: "修改组织 name 或 parentId。系统根只能改名，改 parentId 时防环并校验当前与新父组织权限。",
   middleware: [...organizationsUpdateMiddleware, audit({
     action: iamAuditActions.orgUpdate,
     resourceType: "org",
@@ -109,7 +109,7 @@ export const deleteOrganizationRoute = createRoute({
   tags: ["IAM"],
   operationId: "deleteOrganization",
   summary: "删除组织",
-  description: "删除组织。有子组织或有用户时拒绝删除。需 organizations.delete。",
+  description: "删除非根组织。有子组织或有用户时拒绝删除。需在目标组织具备 organizations.delete。",
   middleware: [...organizationsDeleteMiddleware, audit({
     action: iamAuditActions.orgDelete,
     resourceType: "org",
@@ -123,7 +123,7 @@ export const deleteOrganizationRoute = createRoute({
     200: jsonSuccessResponse(z.object({ id: z.string() }), "删除成功"),
     ...authErrorResponses,
     404: jsonErrorResponse("组织不存在", "ORG_NOT_FOUND"),
-    409: jsonErrorResponses("有子组织或有用户", ["ORG_HAS_CHILDREN", "ORG_HAS_USERS"]),
+    409: jsonErrorResponses("系统根不可删除，或组织仍有子组织/用户", ["ORG_ROOT_IMMUTABLE", "ORG_HAS_CHILDREN", "ORG_HAS_USERS"]),
   },
 });
 

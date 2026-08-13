@@ -1,5 +1,6 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { index, pgTable, text } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { index, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 
 import { createdAtColumn, idColumn, updatedAtColumn } from "./shared/index.js";
 
@@ -15,4 +16,7 @@ export const organizations = pgTable("organizations", {
   updatedAt: updatedAtColumn(),
 }, table => [
   index("organizations_parent_id_idx").on(table.parentId),
+  uniqueIndex("organizations_single_root_idx")
+    .on(sql`((parent_id IS NULL))`)
+    .where(sql`${table.parentId} IS NULL`),
 ]);

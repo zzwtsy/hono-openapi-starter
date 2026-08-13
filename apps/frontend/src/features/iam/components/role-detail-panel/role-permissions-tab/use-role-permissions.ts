@@ -15,10 +15,12 @@ import { IAM_ACTIONS, refreshIam } from "../../../lib/iam-actions";
  * prevInitial 保留:granted 刷新(submit 成功 / refresh)后重置 working 编辑态
  * (role 切换由容器 key={role.id} remount 处理),React 官方 adjusting-state 模式。
  */
-export function useRolePermissions(role: Role) {
+export function useRolePermissions(role: Role, isSystemRootUser: boolean) {
   const canRead = useCanAll(["permissions.read", "roles.read"]);
-  const canAssign = useCan("roles.assign-permissions");
-  const canRevoke = useCan("roles.revoke-permissions");
+  const hasAssignPermission = useCan("roles.assign-permissions");
+  const hasRevokePermission = useCan("roles.revoke-permissions");
+  const canAssign = isSystemRootUser && hasAssignPermission;
+  const canRevoke = isSystemRootUser && hasRevokePermission;
   const canEdit = role.source === "instance" && (canAssign || canRevoke);
   const { data: allPerms, loading: permsLoading, error: permsError, send: sendPerms } = useRequest(() => Apis.IAM.listPermissions(), { immediate: canRead });
   const {

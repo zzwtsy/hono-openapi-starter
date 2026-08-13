@@ -1,4 +1,6 @@
 import type { PermissionCode } from "@/types/permissions";
+import { useWatcher } from "alova/client";
+import Apis from "@/api";
 import { usePermissions } from "@/hooks/use-permissions";
 import { hasPermission } from "@/lib/permissions";
 
@@ -16,7 +18,6 @@ export interface IamUserCapabilities {
   canReadPermissions: boolean;
 }
 
-/** 用户 IAM 页面能力矩阵的纯函数；后端仍是最终授权边界。 */
 export function getIamUserCapabilities(
   permissionCodes: readonly PermissionCode[] | undefined,
   { currentUserId, targetUserId }: IamUserCapabilityArgs,
@@ -37,6 +38,32 @@ export function getIamUserCapabilities(
   };
 }
 
-export function useIamUserCapabilities(currentUserId: string, targetUserId: string): IamUserCapabilities {
-  return getIamUserCapabilities(usePermissions(), { currentUserId, targetUserId });
+export function useTargetCapabilities(orgId: string) {
+  return useWatcher(
+    () => Apis.IAM.getTargetCapabilities({ params: { orgId } }),
+    [orgId],
+    { immediate: orgId !== "" },
+  );
+}
+
+export function useIamUserCapabilities(
+  currentUserId: string,
+  targetUserId: string,
+  homeOrgId: string,
+  grantOrgId: string,
+): IamUserCapabilities {
+  const home = useTargetCapabilities(homeOrgId).data?.permissionCodes;
+  const grant = useTargetCapabilities(grantOrgId).data?.permissionCodes;
+  const global = usePermissions();
+  const atBoth = (permissionCode: PermissionCode) =>
+    hasPermission(home, permissionCode) && hasPermission(grant, permissionCode);
+
+  return {
+    canReadAssignments: atBoth("assignments.read"),
+    canGrantRoleAssignments: atBoth("assignments.grant") && hasPermission(global, "roles.read"),
+    canGrantDirectPermissions: atBoth("assignments.grant") && hasPermission(global, "permissions.read"),
+    canRevokeAssignments: atBoth("assignments.revoke") && currentUserId !== targetUserId,
+    canReadRoles: hasPermission(global, "roles.read"),
+    canReadPermissions: hasPermission(global, "permissions.read"),
+  };
 }

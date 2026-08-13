@@ -103,14 +103,23 @@ export const OrganizationSchema = z.object({
 /** 建组织入参。 */
 export const CreateOrganizationSchema = z.object({
   name: z.string().min(1).openapi({ description: "组织名", example: "华南" }),
-  parentId: z.string().optional().openapi({ description: "父组织 ID,不填为根组织", example: "org-root" }),
+  parentId: z.string().min(1).openapi({ description: "父组织 ID；系统根仅由 bootstrap/seed 创建", example: "org-root" }),
 }).openapi("CreateOrganization");
 
 /** 改组织入参(改 parentId 时防环)。 */
 export const UpdateOrganizationSchema = z.object({
   name: z.string().min(1).optional(),
-  parentId: z.string().nullable().optional().openapi({ description: "新父组织 ID,null 表示改为根组织" }),
+  parentId: z.string().min(1).optional().openapi({ description: "新父组织 ID；不能把组织提升为系统根" }),
 }).openapi("UpdateOrganization");
+
+export const TargetCapabilitiesQuerySchema = z.object({
+  orgId: z.string().min(1).openapi({ description: "目标组织 ID", example: "org-south" }),
+});
+
+export const TargetCapabilitiesSchema = z.object({
+  orgId: z.string(),
+  permissionCodes: z.array(PermissionCodeSchema).openapi({ description: "当前用户在目标组织的有效权限" }),
+}).openapi("TargetCapabilities");
 
 /** 组织 ID 路径参数。 */
 export const OrganizationIdParamSchema = z.object({

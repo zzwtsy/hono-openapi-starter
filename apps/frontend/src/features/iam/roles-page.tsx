@@ -23,6 +23,7 @@ interface RolesPageProps {
   onSelectedRoleChange: (roleId: string) => void;
   onTabChange: (tab: string) => void;
   onNavigateUser: (userId: string, orgId: string) => void;
+  isSystemRootUser?: boolean;
 }
 
 export function RolesPage({
@@ -32,6 +33,7 @@ export function RolesPage({
   onSelectedRoleChange,
   onTabChange,
   onNavigateUser,
+  isSystemRootUser = false,
 }: RolesPageProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -54,11 +56,13 @@ export function RolesPage({
         title="角色管理"
         description="管理实例角色及其权限。"
         actions={(
-          <Can permission="roles.create">
-            <Button onClick={() => { setCreateOpen(true); }}>
-              <Plus data-icon="inline-start" />
-              新建角色
-            </Button>
+          <Can permission="roles.create" fallback={null}>
+            {isSystemRootUser && (
+              <Button onClick={() => { setCreateOpen(true); }}>
+                <Plus data-icon="inline-start" />
+                新建角色
+              </Button>
+            )}
           </Can>
         )}
         navigation={(
@@ -85,6 +89,7 @@ export function RolesPage({
                 onTabChange={onTabChange}
                 onNavigateUser={onNavigateUser}
                 getOrgPath={getOrgPath}
+                isSystemRootUser={isSystemRootUser}
               />
             )
           : (

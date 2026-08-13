@@ -29,6 +29,7 @@ export const ChangeMyPasswordSchema = z.object({
  */
 export const MeSchema = z.object({
   user: UserSchema,
+  isSystemRootUser: z.boolean().openapi({ description: "用户 Home org 是否为唯一系统根；仅用于前端 UX 门控" }),
   permissionCodes: z.array(z.enum(allPermissionCodes)).openapi({
     description: "当前组织下的有效权限 code 列表(空数组表示无权限)",
     example: ["projects.read", "organizations.read", "users.read"],

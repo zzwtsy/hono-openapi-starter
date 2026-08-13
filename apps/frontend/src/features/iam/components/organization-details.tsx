@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Item, ItemContent, ItemGroup, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
-import { useCan } from "@/hooks/use-permissions";
+import { hasPermission } from "@/lib/permissions";
+import { useTargetCapabilities } from "../hooks/use-iam-capabilities";
 import { IamDetailSurface } from "./iam-detail-surface";
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" });
@@ -33,10 +34,7 @@ export function OrganizationDetails({
   onSelect,
 }: OrganizationDetailsProps) {
   const childOrganizationsTitleId = useId();
-  const canCreate = useCan("organizations.create");
-  const canUpdate = useCan("organizations.update");
-  const canDelete = useCan("organizations.delete");
-
+  const targetCapabilities = useTargetCapabilities(organization?.id ?? "").data?.permissionCodes;
   if (organization === undefined) {
     return (
       <IamDetailSurface mode={mode} title="组织详情">
@@ -53,6 +51,10 @@ export function OrganizationDetails({
 
   const parent = index.getParent(organization.id);
   const children = index.getChildren(organization.id);
+  const isSystemRoot = organization.parentId == null;
+  const canCreate = hasPermission(targetCapabilities, "organizations.create");
+  const canUpdate = hasPermission(targetCapabilities, "organizations.update");
+  const canDelete = !isSystemRoot && hasPermission(targetCapabilities, "organizations.delete");
   const secondaryActions = [
     { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { onEdit(organization); } },
     {
@@ -90,7 +92,9 @@ export function OrganizationDetails({
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <dt className="text-xs text-muted-foreground">上级组织</dt>
-            <dd className="wrap-break-word font-medium">{parent?.name ?? "无（根组织）"}</dd>
+            <dd className="wrap-break-word font-medium">
+              {parent?.name ?? (isSystemRoot ? "无（系统根）" : "管理范围根")}
+            </dd>
           </div>
           <div className="flex flex-col gap-1">
             <dt className="text-xs text-muted-foreground">直接子组织</dt>

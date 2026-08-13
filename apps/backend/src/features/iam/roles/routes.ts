@@ -64,6 +64,7 @@ export const createRoleRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(RoleSchema, "创建成功"),
     ...authErrorResponses,
+    403: jsonErrorResponses("仅系统根管理员可创建全局角色", ["COMMON_FORBIDDEN", "ROLE_REQUIRES_SYSTEM_ROOT"]),
     409: jsonErrorResponse("角色名已存在", "ROLE_NAME_CONFLICT"),
   },
 });

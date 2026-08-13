@@ -19,6 +19,7 @@ export const Route = createFileRoute("/_authenticated/iam/roles")({
 });
 
 function RolesRouteComponent() {
+  const { auth } = Route.useRouteContext();
   const { role, org, tab } = Route.useSearch();
   const navigate = Route.useNavigate();
   const routerNavigate = useNavigate();
@@ -31,6 +32,7 @@ function RolesRouteComponent() {
       onSelectedRoleChange={(roleId) => { void navigate({ search: { role: roleId } }); }}
       onTabChange={(nextTab) => { void navigate({ search: { role, org, tab: nextTab } }); }}
       onNavigateUser={(userId, orgId) => { void routerNavigate({ to: "/iam/users", search: { user: userId, org: orgId, tab: "roles" } }); }}
+      isSystemRootUser={auth.isSystemRootUser === true}
     />
   );
 }

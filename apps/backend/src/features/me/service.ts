@@ -1,10 +1,10 @@
 import { hashPassword } from "better-auth/crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { auth } from "@/core/auth/better-auth.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
-import { account, session, user } from "@/db/schema/index.js";
+import { account, organizations, session, user } from "@/db/schema/index.js";
 
 /**
  * me feature service:当前用户自助修改自己的资料(name)和密码。
@@ -16,6 +16,13 @@ import { account, session, user } from "@/db/schema/index.js";
  * 改密码后删全部 session 强制重新登录(与 resetPassword/disableUser 同构,见 iam.md §7)。
  */
 export const MeService = {
+  async isSystemRootOrg(orgId: string) {
+    const [row] = await db
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(and(eq(organizations.id, orgId), isNull(organizations.parentId)));
+    return row != null;
+  },
   /** 审计 before 快照:查用户(UserSummary 形状,不含 password 等敏感列)。 */
   async getUserSnapshot(userId: string) {
     const [row] = await db

@@ -15,4 +15,6 @@ export interface AuthState {
   user?: Me["user"];
   /** 经 `_authenticated.beforeLoad` 由 getMe 填充后下钻;公开路由下为 undefined。 */
   permissionCodes?: PermissionCode[];
+  /** Home org 是否为系统根；仅供全局角色管理入口做 UX 门控。 */
+  isSystemRootUser?: boolean;
 }

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import process from "node:process";
 
 import { hashPassword } from "better-auth/crypto";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 
 import { allPermissions } from "@/catalogs/permissions.js";
 import env from "@/config/env.js";
@@ -25,7 +25,16 @@ async function main() {
   const userId = randomUUID();
 
   await db.transaction(async (tx) => {
-    await tx.insert(organizations).values({ id: rootOrgId, name: "Root" }).onConflictDoNothing();
+    const [existingRoot] = await tx
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(isNull(organizations.parentId));
+    if (existingRoot != null && existingRoot.id !== rootOrgId) {
+      throw new Error(`bootstrap: 系统根已存在(${existingRoot.id})，与 BOOTSTRAP_ROOT_ORG_ID 不一致`);
+    }
+    if (existingRoot == null) {
+      await tx.insert(organizations).values({ id: rootOrgId, name: "Root" });
+    }
 
     const [existing] = await tx.select({ id: user.id }).from(user).where(eq(user.email, email));
     if (existing != null) {

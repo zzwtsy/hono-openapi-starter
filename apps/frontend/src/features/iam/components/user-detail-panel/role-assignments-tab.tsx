@@ -16,6 +16,7 @@ import { RolePreviewCollapsible } from "./role-preview-collapsible";
 
 interface RoleAssignmentsTabProps {
   userId: string;
+  userHomeOrgId: string;
   orgId: string;
   roles: Role[];
   currentUserId: string;
@@ -24,6 +25,7 @@ interface RoleAssignmentsTabProps {
 
 export function RoleAssignmentsTab({
   userId,
+  userHomeOrgId,
   orgId,
   roles,
   currentUserId,
@@ -46,7 +48,7 @@ export function RoleAssignmentsTab({
     roleItems,
     assignRole,
     revoke,
-  } = useRoleAssignments({ userId, orgId, roles, currentUserId });
+  } = useRoleAssignments({ userId, userHomeOrgId, orgId, roles, currentUserId });
 
   return (
     <div className="flex flex-col gap-4">

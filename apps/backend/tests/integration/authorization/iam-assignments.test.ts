@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { allPermissions } from "@/catalogs/permissions.js";
@@ -8,7 +9,7 @@ import { user } from "@/db/schema/auth-schema.js";
 import { userPermissions, userRoles } from "@/db/schema/authorization-schema.js";
 import { organizations } from "@/db/schema/organization-schema.js";
 import { IamPermissionChecker } from "@/features/iam/permission-checker.js";
-import { IamService } from "@/features/iam/service.js";
+import { IamService as CurrentIamService } from "@/features/iam/service.js";
 import { resetDb } from "../../helpers/db.js";
 
 /**
@@ -17,6 +18,20 @@ import { resetDb } from "../../helpers/db.js";
  */
 
 const checker = new IamPermissionChecker();
+const assignmentActor = { id: "actor-1", orgId: "org-root" };
+const rootActor = { id: "root-actor", orgId: "org-system" };
+const IamService = {
+  ...CurrentIamService,
+  createRole: async (input: Parameters<typeof CurrentIamService.createRole>[1]) => CurrentIamService.createRole(rootActor, input),
+  assignRolePermissions: async (roleId: string, codes: string[]) => CurrentIamService.assignRolePermissions(rootActor, roleId, codes),
+  assignUserRole: async (_orgId: string, userId: string, roleId: string, input: Parameters<typeof CurrentIamService.assignUserRole>[3]) => CurrentIamService.assignUserRole(assignmentActor, userId, roleId, input),
+  deleteUserRole: async (_orgId: string, actorUserId: string, userId: string, roleId: string, grantOrgId: string) => CurrentIamService.deleteUserRole({ ...assignmentActor, id: actorUserId }, userId, roleId, grantOrgId),
+  assignUserPermission: async (_orgId: string, userId: string, permissionCode: string, input: Parameters<typeof CurrentIamService.assignUserPermission>[3]) => CurrentIamService.assignUserPermission(assignmentActor, userId, permissionCode, input),
+  deleteUserPermission: async (_orgId: string, actorUserId: string, userId: string, permissionCode: string, grantOrgId: string) => CurrentIamService.deleteUserPermission({ ...assignmentActor, id: actorUserId }, userId, permissionCode, grantOrgId),
+  listUserEffectivePermissions: async (_orgId: string, userId: string, orgId: string) => CurrentIamService.listUserEffectivePermissions(assignmentActor, userId, orgId),
+  listUserRoles: async (_orgId: string, userId: string, orgId: string) => CurrentIamService.listUserRoles(assignmentActor, userId, orgId),
+  listUserDirectPermissions: async (_orgId: string, userId: string, orgId: string) => CurrentIamService.listUserDirectPermissions(assignmentActor, userId, orgId),
+};
 
 beforeEach(async () => {
   await resetDb();
@@ -28,15 +43,22 @@ beforeEach(async () => {
 
 async function setup() {
   await db.insert(organizations).values([
-    { id: "org-root", name: "Root" },
+    { id: "org-system", name: "System Root" },
+    { id: "org-root", name: "Root", parentId: "org-system" },
     { id: "org-south", name: "South", parentId: "org-root" },
-    { id: "org-other", name: "Other" },
+    { id: "org-other", name: "Other", parentId: "org-system" },
   ]);
   await db.insert(user).values([
     { id: "u-1", name: "U1", email: "u1@x.com", orgId: "org-root" },
+    { id: "u-south", name: "USouth", email: "usouth@x.com", orgId: "org-south" },
     { id: "u-2", name: "U2", email: "u2@x.com", orgId: "org-other" },
     // 操作者(actor-1,org-root 管理员):deleteUserRole/deleteUserPermission 的 actorUserId 入参
     { id: "actor-1", name: "Actor", email: "actor@x.com", orgId: "org-root" },
+    { id: "root-actor", name: "Root Actor", email: "root@x.com", orgId: "org-system" },
+  ]);
+  await db.insert(userRoles).values([
+    { userId: "actor-1", roleId: "role-admin", orgId: "org-root" },
+    { userId: "root-actor", roleId: "role-admin", orgId: "org-system" },
   ]);
 }
 
@@ -254,8 +276,8 @@ describe("iam user assignments", () => {
     await setup();
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
-    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-south" });
-    const roles = await IamService.listUserRoles("org-root", "u-1", "org-south");
+    await IamService.assignUserRole("org-root", "u-south", role.id, { orgId: "org-south" });
+    const roles = await IamService.listUserRoles("org-root", "u-south", "org-south");
     expect(roles.some(r => r.roleId === role.id && r.orgId === "org-south")).toBe(true);
   });
 
@@ -265,8 +287,8 @@ describe("iam user assignments", () => {
       IamService.listUserDirectPermissions("org-root", "u-1", "org-other"),
     ).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
 
-    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-south", effect: "allow" });
-    const perms = await IamService.listUserDirectPermissions("org-root", "u-1", "org-south");
+    await IamService.assignUserPermission("org-root", "u-south", "projects.read", { orgId: "org-south", effect: "allow" });
+    const perms = await IamService.listUserDirectPermissions("org-root", "u-south", "org-south");
     expect(perms.some(p => p.permission.code === "projects.read" && p.orgId === "org-south" && p.effect === "allow")).toBe(true);
   });
 
@@ -274,27 +296,62 @@ describe("iam user assignments", () => {
     await setup();
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
-    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-south" });
-    const perms = await IamService.listUserEffectivePermissions("org-root", "u-1", "org-south");
+    await IamService.assignUserRole("org-root", "u-south", role.id, { orgId: "org-south" });
+    const perms = await IamService.listUserEffectivePermissions("org-root", "u-south", "org-south");
     expect(perms.effective.map(p => p.permissionCode)).toContain("projects.read");
   });
 
-  // 防自我锁死:撤销自己的授权 -> 403(对齐 disableUser)。actor-1 撤 actor-1 自己。
-  it("撤自己的角色 -> 403(防自我锁死)", async () => {
+  it("给自己授角色 -> 403(防自我提权)", async () => {
     await setup();
     const role = await IamService.createRole({ name: "viewer" });
     await IamService.assignRolePermissions(role.id, ["projects.read"]);
-    await IamService.assignUserRole("org-root", "actor-1", role.id, { orgId: "org-root" });
     await expect(
-      IamService.deleteUserRole("org-root", "actor-1", "actor-1", role.id, "org-root"),
-    ).rejects.toMatchObject({ code: "USER_CANNOT_REVOKE_OWN_AUTH" });
+      IamService.assignUserRole("org-root", "actor-1", role.id, { orgId: "org-root" }),
+    ).rejects.toMatchObject({ code: "USER_CANNOT_MODIFY_OWN_AUTH" });
   });
 
-  it("撤自己的直接权限 -> 403(防自我锁死)", async () => {
+  it("给自己授直接权限 -> 403(防自我提权)", async () => {
     await setup();
-    await IamService.assignUserPermission("org-root", "actor-1", "projects.read", { orgId: "org-root", effect: "allow" });
     await expect(
-      IamService.deleteUserPermission("org-root", "actor-1", "actor-1", "projects.read", "org-root"),
-    ).rejects.toMatchObject({ code: "USER_CANNOT_REVOKE_OWN_AUTH" });
+      IamService.assignUserPermission("org-root", "actor-1", "projects.read", { orgId: "org-root", effect: "allow" }),
+    ).rejects.toMatchObject({ code: "USER_CANNOT_MODIFY_OWN_AUTH" });
+  });
+
+  it("不能授出操作者自己不具备的角色权限", async () => {
+    await setup();
+    const delegator = await IamService.createRole({ name: "delegator" });
+    await IamService.assignRolePermissions(delegator.id, ["assignments.grant", "projects.read"]);
+    const elevated = await IamService.createRole({ name: "elevated" });
+    await IamService.assignRolePermissions(elevated.id, ["projects.delete"]);
+    await db.delete(userRoles).where(and(eq(userRoles.userId, "actor-1"), eq(userRoles.roleId, "role-admin")));
+    await db.insert(userRoles).values({ userId: "actor-1", roleId: delegator.id, orgId: "org-root" });
+
+    await expect(IamService.assignUserRole("org-root", "u-1", elevated.id, { orgId: "org-root" }))
+      .rejects
+      .toMatchObject({ code: "ASSIGNMENT_EXCEEDS_ACTOR_PERMISSION" });
+  });
+
+  it("临时权限不能授出永久或更长有效期", async () => {
+    await setup();
+    const delegator = await IamService.createRole({ name: "temporary-delegator" });
+    await IamService.assignRolePermissions(delegator.id, ["assignments.grant", "projects.read"]);
+    await db.delete(userRoles).where(and(eq(userRoles.userId, "actor-1"), eq(userRoles.roleId, "role-admin")));
+    await db.insert(userRoles).values({
+      userId: "actor-1",
+      roleId: delegator.id,
+      orgId: "org-root",
+      expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+    });
+
+    await expect(IamService.assignUserPermission("org-root", "u-1", "projects.read", {
+      orgId: "org-root",
+      effect: "allow",
+    })).rejects.toMatchObject({ code: "ASSIGNMENT_EXCEEDS_ACTOR_PERMISSION" });
+
+    await expect(IamService.assignUserPermission("org-root", "u-1", "projects.read", {
+      orgId: "org-root",
+      effect: "allow",
+      expiresAt: "2098-01-01T00:00:00.000Z",
+    })).resolves.toBeUndefined();
   });
 });

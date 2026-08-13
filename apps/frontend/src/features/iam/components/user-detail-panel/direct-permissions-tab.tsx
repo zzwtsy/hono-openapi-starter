@@ -21,12 +21,13 @@ import { DirectPermissionRow } from "./direct-permission-row";
 
 interface DirectPermissionsTabProps {
   userId: string;
+  userHomeOrgId: string;
   orgId: string;
   currentUserId: string;
 }
 
-export function DirectPermissionsTab({ userId, orgId, currentUserId }: DirectPermissionsTabProps) {
-  const { canReadAssignments, canGrantDirectPermissions: canGrant, canRevokeAssignments: canRevoke } = useIamUserCapabilities(currentUserId, userId);
+export function DirectPermissionsTab({ userId, userHomeOrgId, orgId, currentUserId }: DirectPermissionsTabProps) {
+  const { canReadAssignments, canGrantDirectPermissions: canGrant, canRevokeAssignments: canRevoke } = useIamUserCapabilities(currentUserId, userId, userHomeOrgId, orgId);
   const { data: catalog } = useRequest(() => Apis.IAM.listPermissions(), { immediate: canGrant });
   const {
     data: directPerms,

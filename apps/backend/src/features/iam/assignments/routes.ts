@@ -56,6 +56,7 @@ export const assignUserRoleRoute = createRoute({
   responses: {
     200: jsonSuccessResponse(z.object({ userId: z.string(), roleId: z.string(), orgId: z.string() }), "已授予"),
     ...authErrorResponses,
+    403: jsonErrorResponses("无目标权限、禁止自授权或超出委派上限", ["COMMON_FORBIDDEN", "USER_CANNOT_MODIFY_OWN_AUTH", "ASSIGNMENT_EXCEEDS_ACTOR_PERMISSION"]),
     404: jsonErrorResponse("角色或组织不存在", "COMMON_NOT_FOUND"),
   },
 });
@@ -120,6 +121,7 @@ export const assignUserPermissionRoute = createRoute({
     200: jsonSuccessResponse(z.object({ userId: z.string(), permissionCode: PermissionCodeSchema, orgId: z.string(), effect: z.enum(["allow", "deny"]) }), "已授予"),
     400: jsonErrorResponse("权限 code 无效", "PERMISSION_CODE_INVALID"),
     ...authErrorResponses,
+    403: jsonErrorResponses("无目标权限、禁止自授权或超出委派上限", ["COMMON_FORBIDDEN", "USER_CANNOT_MODIFY_OWN_AUTH", "ASSIGNMENT_EXCEEDS_ACTOR_PERMISSION"]),
     404: jsonErrorResponses("权限或组织不存在", ["PERMISSION_NOT_FOUND", "ORG_NOT_FOUND"]),
   },
 });
