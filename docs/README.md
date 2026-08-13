@@ -108,6 +108,9 @@ docs/
     0008-error-i18n.md
     0009-audit-log.md
     0010-audit-template-boundaries.md
+    0011-permission-contract-separation.md
+    0012-home-org-integrity-and-auth-schema-ownership.md
+    0013-hierarchical-administration.md
 
   diagrams/
 

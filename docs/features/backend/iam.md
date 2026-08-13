@@ -24,7 +24,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 ## 3. Non-goals
 
-- 分级管理员（对目标 org 二次 manage 检查）。
+- 组织级角色与 `roles.orgId`（分级管理员继续复用全局角色模板）。
 - Redis 权限缓存 + 事件失效（第一版 ALS 请求级 memoize 足够）。
 - 自定义角色之外的实例角色复杂策略；过期记录 housekeeping。
 - 硬删除用户（用禁用替代，涉及权限/项目归属 cascade，延后）。
@@ -36,11 +36,12 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | Method | Path | OperationId | Auth | Description |
 | --- | --- | --- | --- | --- |
 | GET | `/api/v1/me` | `getMe` | 认证 | 当前用户 + 有效 `permissionCodes` |
+| GET | `/api/v1/me/capabilities?orgId=...` | `getTargetCapabilities` | 认证 | 管理子树内目标组织的有效权限（前端 UX） |
 | PATCH | `/api/v1/me` | `updateMe` | 认证 | 自助修改显示名(不改 email/orgId/disabled) |
 | POST | `/api/v1/me/password` | `changeMyPassword` | 认证 | 自助改密码(验当前密码 → 删全部 session,强制重登) |
 | GET | `/api/v1/permissions` | `listPermissions` | permissions.read | 权限目录（只读） |
 | GET | `/api/v1/roles` | `listRoles` | roles.read | 角色列表（含 source） |
-| POST | `/api/v1/roles` | `createRole` | roles.create | 建实例角色 |
+| POST | `/api/v1/roles` | `createRole` | 系统根 + roles.create | 建全局实例角色 |
 | PATCH | `/api/v1/roles/{roleId}` | `updateRole` | roles.update | 改实例角色 |
 | DELETE | `/api/v1/roles/{roleId}` | `deleteRole` | roles.delete | 删实例角色（cascade） |
 | GET | `/api/v1/roles/{roleId}/permissions` | `listRolePermissions` | roles.read | 角色含的权限 |
@@ -103,7 +104,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | `users.disable` | 禁用用户 |
 | `users.enable` | 启用用户 |
 
-第一版全局 admin：根组织 admin 因祖先遍历对任意子组织检查通过。`/api/v1/me` 仅需认证（看自己）。
+系统根 admin 因祖先遍历可在全树检查权限；下级管理员只管理其 Home org 子树。`/api/v1/me` 仅需认证（看自己）。
 
 ### 管理范围(Home / 管理子树 / Grant org)
 
@@ -113,9 +114,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - **管理子树**:管理员可写操作的范围 = 自身 + 子孙。`createUser`/`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable`/`assignUserRole`/`assignUserPermission` 的目标组织与目标用户均须落在操作者管理子树内。
 - **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
 
-> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission`/`listUserPermissions`/`listUserRoles`/`listUserDirectPermissions`/`listRoleUsers` 均已按操作者管理子树(自身+子孙)校验(user 与 grant.orgId 双校验,读端点与写端点对称);重复授角色/权限时,提供 `expiresAt` 则更新(续期),省略则保留原过期时间(不清空),`effect` 总以新值为准。调岗(`transferUserOrganization`)改 `user.orgId` 到管理子树内的新 org,并在同事务内清理失效 grant(方案 A:删 staleOrgIds = 旧 home 祖先集 − 新 home 祖先集 上的 `user_roles`/`user_permissions`,共同祖先 grant 保留;`clearAllGrants=true` 清全部 grant);调岗后权限检查沿新 home 向上查祖先集,旧独有路径 grant 算法层面自动失效,清理是数据卫生;禁止调岗自己(防把自己调出管理子树锁死);乐观锁 `UPDATE WHERE orgId = oldOrgId`,并发后写者 409。`user.orgId` 由 `NOT NULL` + `ON DELETE RESTRICT` 外键保证 home org 必然存在；创建用户和调岗先对目标组织取 `FOR KEY SHARE`，删除组织先取 `FOR UPDATE` 再检查子组织与用户，因此并发竞争稳定返回 `ORG_NOT_FOUND`/`ORG_HAS_USERS`，不会产生孤儿用户或暴露裸 PostgreSQL 错误。`deleteUserRole`/`deleteUserPermission` 禁止对自己操作(防自我降级锁死,对齐 `disableUser`);`assignUserRole`/`assignUserPermission` 不限(授予不锁死)。所有写路径(`createUser`/`updateUser`/`resetPassword`/`disableUser`/`transferUserOrganization`/`createRole`/`updateRole`/`assignRolePermissions`/`updateOrganization`)均用 `db.transaction` 包多步写 + 冲突显式抛 `AppError`(照 `createUser` 范本,B2),不依赖 PG 错误冒泡兜底。
->
-> **组织操作的全局 admin 边界**：`listOrganizations`/`createOrganization`/`updateOrganization`/`deleteOrganization` 当前不按管理子树过滤/校验。第一版全局 admin 模型下，`organizations.*` 与 `organizations.read` 仅根 admin 持有，根 admin 子树=全树，故无越权。分级管理员（§3 Non-goal）落地时，需为组织写操作补子树校验、为 `listOrganizations` 补子树过滤；在此之前组织 list/写操作仅全局 admin 可用（checklist §6/§7）。
+> 当前实现：组织、用户和授权写操作均按实际目标组织执行 PEP。调岗同时校验旧、新 Home；Grant org 必须是目标 Home 或祖先，并同时校验目标 Home 与 Grant org。组织拓扑写使用独占事务 advisory lock，依赖子树的用户/授权写使用共享 lock。全局角色仅系统根管理员可维护；下级管理员授角色/直接权限不得超出自身权限集合和有效期，并禁止修改自己的授权。
 
 ## 7. Data Model
 

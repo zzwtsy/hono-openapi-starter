@@ -82,7 +82,7 @@ core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `ap
 
 **管理子树(向下)与 Grant 继承(向上)方向相反,不可混用**:管理子树决定「我能管谁」--写操作范围向子孙展开;Grant 继承决定「授在父组织、子组织生效」--检查范围向祖先回溯。例:张三 Home = 华南,管理子树 = {华南, 福建, 深圳}(可在此范围建用户/授 grant);张三在总部授 admin,因福建祖先含总部,张三在福建检查 admin 通过(Grant 继承)。
 
-> 当前实现:Grant org 继承已落地;**管理子树已实现**(createUser 选目标 org + listUsers/update/reset/disable/enable 子树校验 + 调岗 transferUserOrganization);授权写路径(assign/revoke)子树校验已实现(与读端点对称)。调岗改 user.orgId 到管理子树内新 org,同事务清理失效 grant(旧 home 独有路径上的 user_roles/user_permissions,共同祖先保留),禁止自调岗,乐观锁防并发。
+> 当前实现:Grant org 继承和管理子树均已落地。组织/用户/授权写操作在实际目标组织执行 PEP；调岗同时校验旧、新 Home，grant 同时校验目标用户 Home 与 Grant org。组织拓扑写使用独占事务锁，依赖子树的写使用共享事务锁，避免并发移动绕过范围检查。
 
 ## 组织树继承（向下）
 
@@ -138,6 +138,15 @@ middleware: [requireAuth(), requirePermission("users.read", { orgId: c.req.param
 ```
 
 `requirePermission` 是 `core/auth/` 下的中间件，内部调用 `core/authorization/` 的 `PermissionService.check(user.id, permissionCode, orgId)`。未授权抛 `AppError("COMMON_FORBIDDEN")`。
+
+## 分级管理员与全局角色
+
+- 数据库最多允许一个 `parent_id IS NULL` 的系统根；业务 API 只能在现有父组织下创建子组织。
+- 组织列表只返回操作者 Home org 的管理子树。树外目标统一 404；树内但缺少目标权限返回 403。
+- 全局角色定义只能由系统根用户维护；下级管理员可读取角色，并在自身管理范围内分配角色。
+- 授角色时操作者必须拥有角色当前全部权限；直接授权必须拥有对应权限，且授权有效期不能超过操作者当前权限来源。
+- Grant org 必须是目标用户 Home org 或其祖先；管理 API 禁止修改自己的角色/直接权限授权。
+- `/api/v1/me/capabilities?orgId=...` 仅给前端做目标 UI 门控，后端 PEP 仍是唯一安全边界。
 
 ## 数据模型
 

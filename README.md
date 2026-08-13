@@ -10,7 +10,7 @@
 | --- | --- |
 | API | Hono + Zod 路由契约、统一响应 envelope、错误码、请求校验、Scalar API Reference |
 | 认证 | Better Auth 邮箱密码登录、cookie / bearer session、个人资料与密码修改 |
-| 授权 | 组织树、角色、权限目录、用户授权、直接 allow / deny、组织范围继承 |
+| 授权 | 唯一系统根、分级管理子树、目标组织 PEP、全局角色、直接 allow / deny、组织范围继承与委派上限 |
 | 数据 | PostgreSQL + Drizzle schema、migration、开发 seed、生产首次管理员 bootstrap |
 | 前端 | React 19、TanStack Router / Form / Table、alova 请求层、OpenAPI 客户端生成、Base UI（shadcn） |
 | 业务基线 | Dashboard、用户 / 角色 / 组织管理、项目管理、系统设置扩展点（当前无内置 key）、操作日志 |
@@ -151,7 +151,7 @@ pnpm --filter backend build
 pnpm --filter backend start
 ```
 
-`db:bootstrap` 用于创建根组织和第一个 admin。成功后应从部署环境中移除 `BOOTSTRAP_ADMIN_PASSWORD`，后续用户与授权通过管理界面或 API 维护。
+`db:bootstrap` 用于创建唯一系统根和第一个 admin。业务 API 只能创建子组织，不提供第二个根或替换根的入口。成功后应从部署环境中移除 `BOOTSTRAP_ADMIN_PASSWORD`，后续用户与授权通过管理界面或 API 维护。
 
 生产环境默认不公开 `/openapi.json`，`/reference` 也不会挂载；确需公开 OpenAPI 时显式设置 `OPENAPI_PUBLIC=true`。
 

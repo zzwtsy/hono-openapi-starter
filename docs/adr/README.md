@@ -24,6 +24,7 @@ ADR 记录已经接受的长期架构决策。它说明决策背景、取舍和�
 | [ADR-0010：审计日志模板边界与发布策略](0010-audit-template-boundaries.md) | Review | 固化 core/应用装配边界、事件与 DTO 契约、队列可靠性边界以及 migration/API 兼容和回滚规则。 | [ADR-0009](0009-audit-log.md)、[backend audit feature 文档](../features/backend/audit.md)、[frontend audit feature 文档](../features/frontend/audit.md) |
 | [ADR-0011：权限 code 与展示元数据分离](0011-permission-contract-separation.md) | Accepted | `PermissionCode` 负责机器授权身份，`PermissionRef` 负责展示；catalog、OpenAPI 与 code-only DB registry 同源。 | [权限层规范](../conventions/backend/authorization.md)、[backend IAM feature 文档](../features/backend/iam.md) |
 | [ADR-0012：Home org 完整性与认证 schema 所有权](0012-home-org-integrity-and-auth-schema-ownership.md) | Accepted | 应用维护正式认证 schema；`user.orgId` 由数据库外键与事务锁保证非空且不可悬空，Better Auth 只声明字段契约。 | [Better Auth 集成](../conventions/backend/auth-better-auth.md)、[backend IAM feature 文档](../features/backend/iam.md) |
+| [ADR-0013：唯一系统根与分级管理员目标授权](0013-hierarchical-administration.md) | Accepted | 唯一系统根、目标组织 PEP、拓扑锁、全局角色治理与委派上限共同构成分级管理员安全边界。 | [权限层规范](../conventions/backend/authorization.md)、[backend IAM feature 文档](../features/backend/iam.md) |
 
 ## 维护规则
 

@@ -69,7 +69,7 @@ lastReviewedAt: 2026-08-13
 - [x] `requirePermission(perm, { orgId })` 支持显式目标组织
 - [x] `requireOrgUser`：无 user → 401；`orgId == null` → 403
 - [x] 业务路由（如 projects）按 home org 做数据隔离
-- [ ] 管理类写操作「显式传 orgId 做 PEP」= 分级管理员（Non-goal，见 §13）；当前全局 admin 模型：用户/授权写操作用 home org PEP + service 子树校验（安全），组织写操作无子树校验（仅全局 admin 持有 `organizations.*`，见 iam.md §6）。分级管理员落地时补组织写操作子树校验。
+- [x] 管理类写操作在 service 内按实际目标 org 执行 PEP；树外 404，树内缺权限 403
 
 ---
 
@@ -145,7 +145,8 @@ lastReviewedAt: 2026-08-13
 - [x] 组织 CRUD、改 parent 防环、有子拒删
 - [x] 扁平 list + 前端建树
 - [x] `listOrganizations` 需 `organizations.read`
-- [ ] 读路径按子树过滤 = 分级管理员需求（Non-goal，见 §13）；当前全局 admin 模型，`listOrganizations` 全表返回可接受（仅全局 admin 持有 `organizations.read`）。「仅全局 admin 可读全树」文档约束已在 iam.md §6 显式；分级管理员落地时按子树过滤。
+- [x] `listOrganizations` 与组织详情按操作者 Home org 管理子树过滤；树外统一 404
+- [x] 数据库部分唯一索引保证唯一系统根；业务 API 不可创建、移动或删除系统根
 - [x] 写路径与 `organizations.*`/`roles.*`/`assignments.grant/revoke` + 子树约束一致
 
 ---
@@ -159,6 +160,8 @@ lastReviewedAt: 2026-08-13
 - [x] 代码角色权限只读；用户本人角色/直接权限撤销入口隐藏且后端拒绝
 - [x] 权限从代码移除后的 registry 清理策略：catalog 外且无 `role_permissions`/`user_permissions` 引用的 code 行由 sync 清理；仍被引用时启动失败，先显式处理授权关系后再同步（权限外键为 `ON DELETE RESTRICT`）
 - [x] 与细粒度角色权限对齐（见 §3.2）--角色写操作拆为 `roles.create/update/delete/assign-permissions/revoke-permissions`、读操作 `roles.read`，已对齐
+- [x] 全局角色写仅系统根管理员可用；下级管理员只能读取与分配角色
+- [x] 授权写校验目标 PEP、Grant org 与目标 Home 祖先关系、权限集合和有效期委派上限
 
 ---
 
@@ -231,7 +234,7 @@ lastReviewedAt: 2026-08-13
 以下 **默认不实现**；出现需求时应新开 ADR/feature，而不是 silently 塞进清单当 P0：
 
 - 用户多组织 membership + 登录切换当前组织
-- 分级管理员完整产品（在写路径子树硬边界就绪前不要假装已支持）
+- 组织级角色、角色权限快照或多组织 membership（分级管理员安全边界已实现）
 - Redis 权限缓存、权限事件总线
 - 硬删除用户
 - 邮件验证 / 魔法链邀请（除非单独 epic）
