@@ -14,12 +14,13 @@ export const getMeRoute = createRoute({
   tags: ["Me"],
   operationId: "getMe",
   summary: "获取当前用户信息与权限",
-  description: "返回当前登录用户信息及在其所属组织下的有效权限 code 全集。未绑定组织时 permissionCodes 为空。",
+  description: "返回当前登录用户信息及在其所属组织下的有效权限 code 全集。",
   middleware: [requireAuth()],
   security: authedSecurity,
   responses: {
     200: jsonSuccessResponse(MeSchema, "当前用户与权限"),
     401: jsonErrorResponse("未认证", "COMMON_UNAUTHORIZED"),
+    500: jsonErrorResponse("用户组织不变量损坏", "COMMON_INTERNAL_ERROR"),
   },
 });
 

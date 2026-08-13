@@ -1,8 +1,8 @@
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { index, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth-schema.js";
+import { organizations } from "./organization-schema.js";
 import { createdAtColumn, idColumn, updatedAtColumn } from "./shared/index.js";
 
 /**
@@ -12,17 +12,6 @@ import { createdAtColumn, idColumn, updatedAtColumn } from "./shared/index.js";
  * 列名 snake_case,id 用 text PK,时间戳用 shared helper(均带时区)。
  * 外键列均建索引:checkPermission 按 user_id/org_id/role_id/parent_id 过滤或 JOIN。
  */
-
-/** 组织:树形结构,parent_id 自引用(总部→华南→福建/深圳)。 */
-export const organizations = pgTable("organizations", {
-  id: idColumn(),
-  name: text("name").notNull(),
-  parentId: text("parent_id").references((): AnyPgColumn => organizations.id),
-  createdAt: createdAtColumn(),
-  updatedAt: updatedAtColumn(),
-}, t => [
-  index("organizations_parent_id_idx").on(t.parentId),
-]);
 
 /** 角色:权限集合(如 admin、viewer)。`source` 区分代码同步角色(code,不可改删)与管理 API 创建角色(instance)。 */
 export const roles = pgTable("roles", {

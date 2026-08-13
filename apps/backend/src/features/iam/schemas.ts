@@ -122,7 +122,7 @@ export const UserSummarySchema = z.object({
   id: z.string().openapi({ description: "用户 ID", example: "user-1" }),
   name: z.string().openapi({ description: "用户名", example: "张三" }),
   email: z.string().openapi({ description: "邮箱", example: "zhangsan@example.com" }),
-  orgId: z.string().nullable().openapi({ description: "归属组织 ID", example: "org-root" }),
+  orgId: z.string().openapi({ description: "归属组织 ID", example: "org-root" }),
   disabled: z.boolean().nullable().openapi({ description: "是否禁用(null/false=启用)", example: false }),
   createdAt: z.iso.datetime().openapi({ description: "创建时间(ISO 8601)" }),
 }).openapi("UserSummary");

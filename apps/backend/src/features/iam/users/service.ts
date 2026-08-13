@@ -47,6 +47,16 @@ export const UserService = {
     // email 查重在事务内用 onConflictDoNothing 兜底,根除并发 TOCTOU:并发同邮箱第二次不再撞 DB 唯一约束返 500,
     // 而是 returning 空 -> 抛 COMMON_CONFLICT(409),与 OpenAPI 契约一致。
     await db.transaction(async (tx) => {
+      // 与组织删除统一锁顺序：先锁目标组织，再写 user。FK 虽能阻止孤儿行，
+      // KEY SHARE 还能让并发删除稳定地落到业务错误，而不是暴露约束异常。
+      const [lockedOrg] = await tx
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.id, input.orgId))
+        .for("key share");
+      if (lockedOrg == null) {
+        throw new AppError("ORG_NOT_FOUND");
+      }
       const [inserted] = await tx
         .insert(user)
         .values({
@@ -212,7 +222,7 @@ export const UserService = {
    * 清理是数据卫生(防管理端噪声、调回旧 org 时 grant 复活、表膨胀)。
    *
    * 乐观锁:UPDATE WHERE orgId = oldOrgId,并发调岗后写者 affected=0 -> 409。
-   * user.orgId 无 FK(已知 TOCTOU),乐观锁收窄窗口。
+   * 目标组织先取 KEY SHARE 锁，与组织删除的 UPDATE 锁互斥；数据库 FK 最终兜底。
    */
   async transferUserOrganization(
     actorOrgId: string,
@@ -224,7 +234,7 @@ export const UserService = {
     assertNotSelf(actorUserId, userId, "USER_CANNOT_TRANSFER_SELF");
     // 事务外快速失败:用户在子树 + 取 oldOrgId
     const target = await requireUserInSubtree(actorOrgId, userId);
-    const oldOrgId = target.orgId!;
+    const oldOrgId = target.orgId;
     // 目标 org 须在操作者管理子树(不能把人调到自己管不了的地方)
     await assertOrgInSubtree(actorOrgId, newOrgId);
     if (newOrgId === oldOrgId) {
@@ -232,6 +242,14 @@ export const UserService = {
     }
 
     return db.transaction(async (tx) => {
+      const [lockedOrg] = await tx
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.id, newOrgId))
+        .for("key share");
+      if (lockedOrg == null) {
+        throw new AppError("ORG_NOT_FOUND");
+      }
       // 乐观锁:update 时校验 orgId 未被并发改;并发调岗后写者 affected=0 -> 409
       const [updated] = await tx
         .update(user)

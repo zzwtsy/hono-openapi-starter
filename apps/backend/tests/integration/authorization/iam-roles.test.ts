@@ -5,7 +5,8 @@ import { allPermissions } from "@/catalogs/permissions.js";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { db } from "@/db/client.js";
 import { user } from "@/db/schema/auth-schema.js";
-import { organizations, rolePermissions, roles, userRoles } from "@/db/schema/authorization-schema.js";
+import { rolePermissions, roles, userRoles } from "@/db/schema/authorization-schema.js";
+import { organizations } from "@/db/schema/organization-schema.js";
 import { IamService } from "@/features/iam/service.js";
 import { resetDb } from "../../helpers/db.js";
 

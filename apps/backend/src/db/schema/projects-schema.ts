@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { index, pgTable, text, unique } from "drizzle-orm/pg-core";
 
-import { organizations } from "./authorization-schema.js";
+import { organizations } from "./organization-schema.js";
 import { createdAtColumn, idColumn, updatedAtColumn } from "./shared/index.js";
 
 /**

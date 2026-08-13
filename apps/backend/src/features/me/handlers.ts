@@ -15,16 +15,17 @@ export const getMeHandler: AppRouteHandler<GetMeRoute> = async (c) => {
   if (!user) {
     throw new AppError("COMMON_UNAUTHORIZED");
   }
-  // 未绑定组织时 permissionCodes 为空(不抛 403,me 语义是"看自己")
   const orgId = user.orgId;
-  const result: UserPermissionsResult = orgId != null
-    ? await PermissionService.listEffectivePermissions(user.id, orgId)
-    : { effective: [], denied: [] };
+  // 数据库保证 orgId 非空；若认证适配器仍返回 null，说明数据库不变量或映射已损坏。
+  if (orgId == null) {
+    throw new AppError("COMMON_INTERNAL_ERROR");
+  }
+  const result: UserPermissionsResult = await PermissionService.listEffectivePermissions(user.id, orgId);
   // listEffectivePermissions 现返回带来源链结构;me 只需 code 做门控。
   const permissionCodes = toAppPermissionCodes(result.effective.map(p => p.permissionCode));
 
   return successResponse(c, {
-    user: { id: user.id, name: user.name, email: user.email, orgId: user.orgId ?? null },
+    user: { id: user.id, name: user.name, email: user.email, orgId },
     permissionCodes,
   });
 };

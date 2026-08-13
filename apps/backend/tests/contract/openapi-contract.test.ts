@@ -109,6 +109,15 @@ describe("OpenAPI contract", () => {
     expect(spec.components?.schemas?.ErrorEnvelope).toBeDefined();
   });
 
+  it("user 与 UserSummary 的 orgId 是必填非空字符串", () => {
+    for (const schemaName of ["User", "UserSummary"]) {
+      const schema = spec.components?.schemas?.[schemaName];
+      expect(schema?.required, `${schemaName}.orgId 应为必填`).toContain("orgId");
+      expect(schema?.properties?.orgId, `${schemaName}.orgId 应为 string`).toMatchObject({ type: "string" });
+      expect(schema?.properties?.orgId?.nullable, `${schemaName}.orgId 不应 nullable`).not.toBe(true);
+    }
+  });
+
   // envelope 漂移检查:ErrorEnvelope 的 required 字段集合必须与运行时 envelope 一致。
   it("envelope 结构无漂移(required 字段集合)", () => {
     const envelope = spec.components?.schemas?.ErrorEnvelope;

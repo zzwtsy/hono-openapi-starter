@@ -1,9 +1,15 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 
 import env from "./src/config/env.js";
-import { db } from "./src/db/client.js";
 import * as authSchema from "./src/db/schema/auth-schema.js";
+
+// Better Auth CLI 的 jiti loader 不解析应用 `@/*` 路径别名，因此不能导入
+// src/db/client.ts。postgres-js 是惰性连接；schema generate 不会实际访问数据库。
+const cliClient = postgres(env.DATABASE_URL, { max: 1 });
+const cliDb = drizzle({ client: cliClient, schema: authSchema });
 
 /**
  * Better Auth CLI 专用配置。
@@ -16,7 +22,7 @@ import * as authSchema from "./src/db/schema/auth-schema.js";
  * 行为仍由运行时配置唯一维护。
  */
 export const auth = betterAuth({
-  database: drizzleAdapter(db, {
+  database: drizzleAdapter(cliDb, {
     provider: "pg",
     schema: authSchema,
   }),

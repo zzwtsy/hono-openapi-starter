@@ -61,25 +61,35 @@ export const OrganizationService = {
     });
   },
 
-  /** 删组织(有子组织或仍有用户拒绝;外键 cascade 删 user_roles/user_permissions/projects)。 */
+  /** 删组织(有子组织或仍有用户拒绝;先锁组织，与创建用户/调岗统一锁顺序)。 */
   async deleteOrganization(id: string) {
-    const [child] = await db
-      .select({ id: organizations.id })
-      .from(organizations)
-      .where(eq(organizations.parentId, id))
-      .limit(1);
-    if (child != null) {
-      throw new AppError("ORG_HAS_CHILDREN");
-    }
-    // user.orgId 无 FK,删 org 后用户成孤儿(对所有 admin 不可见/不可管理)-> 有用户拒删。
-    // 当前无迁移/删除用户 API(调岗本期不做,见 docs/features/backend/iam.md),有用户的组织需先经数据库迁移用户。
-    const [u] = await db.select({ id: user.id }).from(user).where(eq(user.orgId, id)).limit(1);
-    if (u != null) {
-      throw new AppError("ORG_HAS_USERS");
-    }
-    const [org] = await db.delete(organizations).where(eq(organizations.id, id)).returning({ id: organizations.id });
-    if (org == null) {
-      throw new AppError("ORG_NOT_FOUND");
-    }
+    await db.transaction(async (tx) => {
+      // FOR UPDATE 先与引用方的 KEY SHARE 锁互斥。拿锁后再检查引用，
+      // PostgreSQL READ COMMITTED 会让后续语句看到先完成事务的新用户。
+      const [lockedOrg] = await tx
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.id, id))
+        .for("update");
+      if (lockedOrg == null) {
+        throw new AppError("ORG_NOT_FOUND");
+      }
+
+      const [child] = await tx
+        .select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.parentId, id))
+        .limit(1);
+      if (child != null) {
+        throw new AppError("ORG_HAS_CHILDREN");
+      }
+
+      const [u] = await tx.select({ id: user.id }).from(user).where(eq(user.orgId, id)).limit(1);
+      if (u != null) {
+        throw new AppError("ORG_HAS_USERS");
+      }
+
+      await tx.delete(organizations).where(eq(organizations.id, id));
+    });
   },
 };

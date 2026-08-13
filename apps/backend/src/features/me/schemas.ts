@@ -7,7 +7,7 @@ export const UserSchema = z.object({
   id: z.string().openapi({ description: "用户 ID", example: "user-1" }),
   name: z.string().openapi({ description: "用户名" }),
   email: z.string().openapi({ description: "邮箱" }),
-  orgId: z.string().nullable().openapi({ description: "归属组织 ID,未绑定则为 null", example: "org-root" }),
+  orgId: z.string().openapi({ description: "归属组织 ID", example: "org-root" }),
 }).openapi("User");
 
 /** 改自己的显示名入参(至少提供 name)。不改 email/orgId/disabled。 */
@@ -30,7 +30,7 @@ export const ChangeMyPasswordSchema = z.object({
 export const MeSchema = z.object({
   user: UserSchema,
   permissionCodes: z.array(z.enum(allPermissionCodes)).openapi({
-    description: "当前组织下的有效权限 code 列表(空数组表示未绑定组织或无权限)",
+    description: "当前组织下的有效权限 code 列表(空数组表示无权限)",
     example: ["projects.read", "organizations.read", "users.read"],
   }),
 }).openapi("Me");

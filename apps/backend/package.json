@@ -19,7 +19,7 @@
     "db:seed": "tsx src/commands/seed-development.ts",
     "db:bootstrap": "tsx src/commands/bootstrap-admin.ts",
     "db:studio": "drizzle-kit studio",
-    "auth:generate": "auth generate --config better-auth.config.ts --output src/db/schema/auth-schema.ts --yes"
+    "auth:generate:reference": "mkdir -p ../../.cache/better-auth && auth generate --config better-auth.config.ts --output ../../.cache/better-auth/auth-schema.ts --yes"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",

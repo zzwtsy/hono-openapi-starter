@@ -164,14 +164,14 @@ export interface User {
    */
   email: string;
   /**
-   * 归属组织 ID,未绑定则为 null
+   * 归属组织 ID
    */
-  orgId: string | null;
+  orgId: string;
 }
 export interface Me {
   user: User;
   /**
-   * 当前组织下的有效权限 code 列表(空数组表示未绑定组织或无权限)
+   * 当前组织下的有效权限 code 列表(空数组表示无权限)
    */
   permissionCodes: (
     | 'projects.read'
@@ -294,7 +294,7 @@ export interface UserSummary {
   /**
    * 归属组织 ID
    */
-  orgId: string | null;
+  orgId: string;
   /**
    * 是否禁用(null/false=启用)
    */
@@ -843,10 +843,10 @@ declare global {
        *     name: string
        *     // 邮箱
        *     email: string
-       *     // 归属组织 ID,未绑定则为 null
-       *     orgId: string | null
+       *     // 归属组织 ID
+       *     orgId: string
        *   }
-       *   // 当前组织下的有效权限 code 列表(空数组表示未绑定组织或无权限)
+       *   // 当前组织下的有效权限 code 列表(空数组表示无权限)
        *   // [items] start
        *   // [items] end
        *   permissionCodes: (
@@ -910,8 +910,8 @@ declare global {
        *   name: string
        *   // 邮箱
        *   email: string
-       *   // 归属组织 ID,未绑定则为 null
-       *   orgId: string | null
+       *   // 归属组织 ID
+       *   orgId: string
        * }
        * ```
        */
@@ -1273,7 +1273,7 @@ declare global {
        *   // 邮箱
        *   email: string
        *   // 归属组织 ID
-       *   orgId: string | null
+       *   orgId: string
        *   // 是否禁用(null/false=启用)
        *   disabled: boolean | null
        *   // 创建时间(ISO 8601)
@@ -1319,7 +1319,7 @@ declare global {
        *   // 邮箱
        *   email: string
        *   // 归属组织 ID
-       *   orgId: string | null
+       *   orgId: string
        *   // 是否禁用(null/false=启用)
        *   disabled: boolean | null
        *   // 创建时间(ISO 8601)
@@ -1375,7 +1375,7 @@ declare global {
        *   // 邮箱
        *   email: string
        *   // 归属组织 ID
-       *   orgId: string | null
+       *   orgId: string
        *   // 是否禁用(null/false=启用)
        *   disabled: boolean | null
        *   // 创建时间(ISO 8601)
@@ -1482,7 +1482,7 @@ declare global {
        *   // 邮箱
        *   email: string
        *   // 归属组织 ID
-       *   orgId: string | null
+       *   orgId: string
        *   // 是否禁用(null/false=启用)
        *   disabled: boolean | null
        *   // 创建时间(ISO 8601)
@@ -1531,7 +1531,7 @@ declare global {
        *   // 邮箱
        *   email: string
        *   // 归属组织 ID
-       *   orgId: string | null
+       *   orgId: string
        *   // 是否禁用(null/false=启用)
        *   disabled: boolean | null
        *   // 创建时间(ISO 8601)
@@ -1592,7 +1592,7 @@ declare global {
        *   // 邮箱
        *   email: string
        *   // 归属组织 ID
-       *   orgId: string | null
+       *   orgId: string
        *   // 是否禁用(null/false=启用)
        *   disabled: boolean | null
        *   // 创建时间(ISO 8601)

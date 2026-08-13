@@ -77,14 +77,13 @@ describe("me routes", () => {
     expect(mockListEffective).toHaveBeenCalledWith("u-1", "org-1");
   });
 
-  it("未绑定组织时 permissionCodes 为空,不查权限", async () => {
+  it("orgId 为 null 视为数据库不变量损坏并返回 500", async () => {
     authed({ ...mockUser, orgId: null });
 
     const res = await buildApp().request("/me");
-    expect(res.status).toBe(200);
-    const body = await res.json() as { success: boolean; data: { user: { orgId: string | null }; permissionCodes: string[] } };
-    expect(body.data.user.orgId).toBe(null);
-    expect(body.data.permissionCodes).toEqual([]);
+    expect(res.status).toBe(500);
+    const body = await res.json() as { code: string };
+    expect(body.code).toBe("COMMON_INTERNAL_ERROR");
     expect(mockListEffective).not.toHaveBeenCalled();
   });
 

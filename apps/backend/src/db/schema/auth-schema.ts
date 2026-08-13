@@ -1,6 +1,12 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
+import { organizations } from "./organization-schema.js";
+
+/**
+ * 应用维护的正式认证 schema。Better Auth CLI 生成结果只写入
+ * `.cache/better-auth/auth-schema.ts`，用于升级时核对上游字段变化。
+ */
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -12,9 +18,13 @@ export const user = pgTable("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-  orgId: text("org_id"),
+  orgId: text("org_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "restrict" }),
   disabled: boolean("disabled"),
-});
+}, table => [
+  index("user_org_id_idx").on(table.orgId),
+]);
 
 export const session = pgTable(
   "session",

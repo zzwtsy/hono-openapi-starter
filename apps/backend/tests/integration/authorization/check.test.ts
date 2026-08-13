@@ -53,6 +53,7 @@ async function seedBase() {
     id: USER_ID,
     name: "Test User",
     email: "test@example.com",
+    orgId: ORG.hq,
   });
 }
 

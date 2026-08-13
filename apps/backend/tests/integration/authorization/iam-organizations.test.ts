@@ -1,9 +1,11 @@
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { allPermissions } from "@/catalogs/permissions.js";
 import { syncAuthorizationCatalog } from "@/core/authorization/index.js";
 import { db } from "@/db/client.js";
 import { user } from "@/db/schema/auth-schema.js";
+import { organizations } from "@/db/schema/organization-schema.js";
 import { IamService } from "@/features/iam/service.js";
 import { resetDb } from "../../helpers/db.js";
 
@@ -15,6 +17,25 @@ beforeEach(async () => {
   await resetDb();
   await syncAuthorizationCatalog(allPermissions);
 });
+
+async function waitForBlockedQuery(fragment: string) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const [row] = await db.execute(sql<{ blocked: boolean }>`
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_stat_activity
+        WHERE wait_event_type = 'Lock'
+          AND lower(query) LIKE ${`%${fragment.toLowerCase()}%`}
+      ) AS blocked
+    `);
+    if (row?.blocked === true) {
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  throw new Error(`等待被阻塞的 PostgreSQL 查询超时: ${fragment}`);
+}
 
 describe("iam organization management", () => {
   it("建根组织和子组织", async () => {
@@ -78,5 +99,78 @@ describe("iam organization management", () => {
     });
     // 拒绝后组织仍存在(防 guard 误删:若检查顺序错成先删后查,org 已没而 user 成真孤儿)。
     await expect(IamService.getOrganizationById(org.id)).resolves.toBeDefined();
+  });
+
+  it("user.orgId 拒绝 null 和不存在的组织", async () => {
+    await expect(db.execute(sql`
+      INSERT INTO "user" (id, name, email, org_id)
+      VALUES ('u-null-org', 'NullOrg', 'null-org@test.com', NULL)
+    `)).rejects.toMatchObject({ cause: { code: "23502" } });
+
+    await expect(db.insert(user).values({
+      id: "u-missing-org",
+      name: "MissingOrg",
+      email: "missing-org@test.com",
+      orgId: "org-missing",
+    })).rejects.toMatchObject({ cause: { code: "23503" } });
+  });
+
+  it("绕过 service 直接删除有用户组织仍被 FK 拒绝", async () => {
+    const org = await IamService.createOrganization({ name: "FkProtected" });
+    await db.insert(user).values({ id: "u-fk", name: "U", email: "fk@test.com", orgId: org.id });
+
+    await expect(db.delete(organizations).where(eq(organizations.id, org.id))).rejects.toMatchObject({
+      cause: { code: "23503", constraint_name: "user_org_id_organizations_id_fk" },
+    });
+    await expect(IamService.getOrganizationById(org.id)).resolves.toBeDefined();
+  });
+
+  it("创建用户先持有 KEY SHARE 时，组织删除等待后返回 ORG_HAS_USERS", async () => {
+    const org = await IamService.createOrganization({ name: "CreateWins" });
+    const locked = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const creating = db.transaction(async (tx) => {
+      await tx.select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.id, org.id))
+        .for("key share");
+      locked.resolve();
+      await release.promise;
+      await tx.insert(user).values({ id: "u-concurrent", name: "U", email: "concurrent@test.com", orgId: org.id });
+    });
+
+    await locked.promise;
+    const deleting = IamService.deleteOrganization(org.id);
+    await waitForBlockedQuery("for update");
+    release.resolve();
+    await creating;
+    await expect(deleting).rejects.toMatchObject({ code: "ORG_HAS_USERS" });
+  });
+
+  it("组织删除先持有 UPDATE 锁时，创建用户等待后返回 ORG_NOT_FOUND", async () => {
+    const org = await IamService.createOrganization({ name: "DeleteWins" });
+    const locked = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const deleting = db.transaction(async (tx) => {
+      await tx.select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.id, org.id))
+        .for("update");
+      locked.resolve();
+      await release.promise;
+      await tx.delete(organizations).where(eq(organizations.id, org.id));
+    });
+
+    await locked.promise;
+    const creating = IamService.createUser(org.id, {
+      email: "delete-wins@test.com",
+      password: "password-123",
+      name: "DeleteWins",
+      orgId: org.id,
+    });
+    await waitForBlockedQuery("for key share");
+    release.resolve();
+    await deleting;
+    await expect(creating).rejects.toMatchObject({ code: "ORG_NOT_FOUND" });
   });
 });
