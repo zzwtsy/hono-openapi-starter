@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-08-07
+lastReviewedAt: 2026-08-13
 ---
 
 # Feature: iam（权限管理 + 用户身份）
@@ -113,7 +113,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - **管理子树**:管理员可写操作的范围 = 自身 + 子孙。`createUser`/`listUsers`/`updateUser`/`resetPassword`/`disable`/`enable`/`assignUserRole`/`assignUserPermission` 的目标组织与目标用户均须落在操作者管理子树内。
 - **Grant org**:授角色/直接权限时绑定的组织节点,检查时祖先继承(向下传播)。
 
-> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission`/`listUserPermissions`/`listUserRoles`/`listUserDirectPermissions`/`listRoleUsers` 均已按操作者管理子树(自身+子孙)校验(user 与 grant.orgId 双校验,读端点与写端点对称);重复授角色/权限时,提供 `expiresAt` 则更新(续期),省略则保留原过期时间(不清空),`effect` 总以新值为准。调岗(`transferUserOrganization`)改 `user.orgId` 到管理子树内的新 org,并在同事务内清理失效 grant(方案 A:删 staleOrgIds = 旧 home 祖先集 − 新 home 祖先集 上的 `user_roles`/`user_permissions`,共同祖先 grant 保留;`clearAllGrants=true` 清全部 grant);调岗后权限检查沿新 home 向上查祖先集,旧独有路径 grant 算法层面自动失效,清理是数据卫生;禁止调岗自己(防把自己调出管理子树锁死);乐观锁 `UPDATE WHERE orgId = oldOrgId`,并发后写者 409。`deleteOrganization` 有用户即拒删(防孤儿),当前无迁移/删除用户 API,有用户的组织需先经数据库迁移用户;且检查与删除非原子(`user.orgId` 无 FK),并发 `createUser` 存在低概率产生孤儿用户的 TOCTOU 窗口,待加 FK 或迁移 API 后根除。`deleteUserRole`/`deleteUserPermission` 禁止对自己操作(防自我降级锁死,对齐 `disableUser`);`assignUserRole`/`assignUserPermission` 不限(授予不锁死)。所有写路径(`createUser`/`updateUser`/`resetPassword`/`disableUser`/`transferUserOrganization`/`createRole`/`updateRole`/`assignRolePermissions`/`updateOrganization`)均用 `db.transaction` 包多步写 + 冲突显式抛 `AppError`(照 `createUser` 范本,B2),不依赖 PG 错误冒泡兜底。
+> 当前实现:`createUser`/`listUsers`/`update`/`reset`/`disable`/`enable`/`assignUserRole`/`assignUserPermission`/`deleteUserRole`/`deleteUserPermission`/`listUserPermissions`/`listUserRoles`/`listUserDirectPermissions`/`listRoleUsers` 均已按操作者管理子树(自身+子孙)校验(user 与 grant.orgId 双校验,读端点与写端点对称);重复授角色/权限时,提供 `expiresAt` 则更新(续期),省略则保留原过期时间(不清空),`effect` 总以新值为准。调岗(`transferUserOrganization`)改 `user.orgId` 到管理子树内的新 org,并在同事务内清理失效 grant(方案 A:删 staleOrgIds = 旧 home 祖先集 − 新 home 祖先集 上的 `user_roles`/`user_permissions`,共同祖先 grant 保留;`clearAllGrants=true` 清全部 grant);调岗后权限检查沿新 home 向上查祖先集,旧独有路径 grant 算法层面自动失效,清理是数据卫生;禁止调岗自己(防把自己调出管理子树锁死);乐观锁 `UPDATE WHERE orgId = oldOrgId`,并发后写者 409。`user.orgId` 由 `NOT NULL` + `ON DELETE RESTRICT` 外键保证 home org 必然存在；创建用户和调岗先对目标组织取 `FOR KEY SHARE`，删除组织先取 `FOR UPDATE` 再检查子组织与用户，因此并发竞争稳定返回 `ORG_NOT_FOUND`/`ORG_HAS_USERS`，不会产生孤儿用户或暴露裸 PostgreSQL 错误。`deleteUserRole`/`deleteUserPermission` 禁止对自己操作(防自我降级锁死,对齐 `disableUser`);`assignUserRole`/`assignUserPermission` 不限(授予不锁死)。所有写路径(`createUser`/`updateUser`/`resetPassword`/`disableUser`/`transferUserOrganization`/`createRole`/`updateRole`/`assignRolePermissions`/`updateOrganization`)均用 `db.transaction` 包多步写 + 冲突显式抛 `AppError`(照 `createUser` 范本,B2),不依赖 PG 错误冒泡兜底。
 >
 > **组织操作的全局 admin 边界**：`listOrganizations`/`createOrganization`/`updateOrganization`/`deleteOrganization` 当前不按管理子树过滤/校验。第一版全局 admin 模型下，`organizations.*` 与 `organizations.read` 仅根 admin 持有，根 admin 子树=全树，故无越权。分级管理员（§3 Non-goal）落地时，需为组织写操作补子树校验、为 `listOrganizations` 补子树过滤；在此之前组织 list/写操作仅全局 admin 可用（checklist §6/§7）。
 
@@ -123,8 +123,9 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 - `permissions`：code-only registry，只有 `code` 主键；`role_permissions.permission_code` 和 `user_permissions.permission_code` 外键使用 `ON DELETE RESTRICT`。
 - `role_permissions` / `user_roles` / `user_permissions`：授权关联，均带 orgId + 可选 expiresAt；角色/组织/用户关系仍按原有语义 cascade，权限 code 不级联删除。
 - `organizations`：树形（parentId 自引用，CYCLE 兜底）。
+- `user.orgId`：非空 home org，外键 `ON DELETE RESTRICT` 指向 `organizations.id` 并建立 `user_org_id_idx`；组织定义独立在 `organization-schema.ts`，认证 schema 与授权 schema 单向依赖它。
 - `IamPermissionChecker`（`features/iam/permission-checker.ts`）：`PermissionChecker` 的本地 Adapter（PDP），实现 check（单点 EXISTS CTE）/ listEffectivePermissions（带来源链的递归 CTE：grant_sources UNION deny_set，JOIN roles 拿 role_name，祖先集 + 过期过滤）；不含 memoize（由 core `PermissionService` 装饰，me 与 listUserPermissions 路由共享缓存）。可整体替换为外部 PDP（见 [authorization.md 边界划分](../../conventions/backend/authorization.md)）。
-- `user.disabled`：Better Auth additionalField（经 `auth:generate` 写入 auth-schema），`databaseHooks.session.create.before` 检查 disabled 阻止 session 创建（阻止登录但不负责 session update 续期），禁用时主动删 session 立即下线（未开 cookieCache，删行即失效）。见 ADR-0007。`disableUser`/`resetPassword` 的 update 标记/密码 + delete session 在同一 `db.transaction` 内，保证原子（任一失败回滚，避免"disabled=true 但旧 session 仍有效"的安全语义破坏，B2 D1）。
+- `user.disabled`：Better Auth additionalField（由应用正式 `auth-schema.ts` 维护，CLI 生成物仅作升级参考），`databaseHooks.session.create.before` 检查 disabled 阻止 session 创建（阻止登录但不负责 session update 续期），禁用时主动删 session 立即下线（未开 cookieCache，删行即失效）。见 ADR-0007。`disableUser`/`resetPassword` 的 update 标记/密码 + delete session 在同一 `db.transaction` 内，保证原子（任一失败回滚，避免"disabled=true 但旧 session 仍有效"的安全语义破坏，B2 D1）。
 
 ## 8. Error Codes
 
@@ -179,8 +180,9 @@ sequenceDiagram
 ## 12. Rollout / Migration Notes
 
 - migration `0003`：`roles` 加 `source` 列（default `instance`）。`sync.ts` 用 `onConflictDoUpdate` 强制 admin `source='code'`（修正旧库被 default 覆盖的情况）。
-- migration `0004`：`user` 加 `disabled` 列（经 `auth:generate` 自动生成）；新建 `system_settings` 表。
+- migration `0004`：`user` 加 `disabled` 列（历史上由 Better Auth CLI 生成）；新建 `system_settings` 表。当前正式认证 schema 已改由应用维护（ADR-0012）。
 - migration `0009_permission_contract_cleanup`：`permissions` 收敛为 code-only；关联列改名为 `permission_code`，权限外键改为 `ON DELETE RESTRICT`。不修改旧 migration，不做双读/双写或历史数据回填。
+- migration `0010_striped_smasher`：仅将 `user.org_id` 设为 `NOT NULL`、增加 `user_org_id_organizations_id_fk` 和 `user_org_id_idx`；greenfield 边界下不回填 null 或悬空数据。
 - 部署顺序：`db:migrate` -> `db:bootstrap`（造第一个 admin）-> start（sync 同步目录 + admin 角色）。
 - `commands/bootstrap-admin.ts` 幂等：组织已存在跳过；admin email 已存在报错（不覆盖密码）；首个 user/account/admin grant 在同一事务中，失败不留下半成品账号。
 - 用户管理端点复用 bootstrap 原语（`hashPassword` from `better-auth/crypto` + `db.insert` user/account），不引 BA admin 插件（ADR-0007）。

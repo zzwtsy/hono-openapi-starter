@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-06-03
+lastReviewedAt: 2026-08-13
 ---
 
 # Drizzle 数据库规范
@@ -27,6 +27,7 @@ src/db/
   schema/
     auth-schema.ts
     authorization-schema.ts
+    organization-schema.ts
     projects-schema.ts
     system-settings-schema.ts
     audit-schema.ts
@@ -54,6 +55,7 @@ tests/helpers/
 schema/
   auth-schema.ts
   authorization-schema.ts
+  organization-schema.ts
   projects-schema.ts
   system-settings-schema.ts
   audit-schema.ts
@@ -64,8 +66,11 @@ schema/
 ```ts
 export * from "./auth-schema.js";
 export * from "./authorization-schema.js";
+export * from "./organization-schema.js";
 export * from "./projects-schema.js";
 ```
+
+`organization-schema.ts` 是认证用户与授权关系共同依赖的低层业务实体，不反向依赖二者。`auth-schema.ts` 是应用维护的正式 schema；Better Auth CLI 只生成 `.cache/better-auth/auth-schema.ts` 作为升级参考，不能覆盖正式 schema。
 
 ## migration 规范
 
@@ -73,6 +78,7 @@ export * from "./projects-schema.js";
 
 - migration SQL 必须提交到版本库。
 - migration 必须 code review。
+- 仅移动 schema 定义文件不得产生表重建或无关 DDL。
 - 生产环境禁止直接 `push` 改库。
 - 破坏性迁移必须使用 expand / contract 策略。
 

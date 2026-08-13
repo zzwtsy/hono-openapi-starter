@@ -108,9 +108,9 @@ betterAuth({
 });
 ```
 
-`auth-schema.ts` 是 Better Auth CLI 生成文件，CLI schema registry 不包含授权层的 `organizations` 模型，因此 CLI 专用配置不得为 `user.orgId` 声明跨文件 `references`。组织表和授权关系由 `authorization-schema.ts` 管理；当前模板保持 `user.orgId` 为无外键列，不修改生成文件，也不通过 Better Auth 配置添加自定义迁移。
+`auth-schema.ts` 是应用维护的正式 Drizzle schema。Better Auth 的 `additionalFields` 仍只声明认证适配器需要识别的字段契约：`orgId` 保持 `required: false, input: false`，不声明 `references`。数据库完整性由正式 schema 负责：`user.orgId` 为 `NOT NULL`，外键以 `ON DELETE RESTRICT` 指向独立 `organization-schema.ts` 中的 `organizations.id`。这样 Better Auth 不需要理解组织模型，也不能接受客户端写入 home org。
 
-CLI 使用 `apps/backend/better-auth.config.ts` 这一份仅用于生成 schema 的配置，`auth:generate` 不应直接加载运行时 `src/core/auth/better-auth.ts`：后者还会装配审计和路径别名。运行时认证行为仍只在 `src/core/auth/better-auth.ts` 维护。
+CLI 使用 `apps/backend/better-auth.config.ts` 这一份仅用于生成参考 schema 的配置；`auth:generate:reference` 输出到 `.cache/better-auth/auth-schema.ts`，只用于升级对比，不得覆盖正式 schema。该配置不加载运行时 `src/core/auth/better-auth.ts`：后者还会装配审计和应用能力。运行时认证行为仍只在 `src/core/auth/better-auth.ts` 维护。详见 [ADR-0012](../../adr/0012-home-org-integrity-and-auth-schema-ownership.md)。
 
 强制规范：
 

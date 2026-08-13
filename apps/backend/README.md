@@ -74,7 +74,7 @@ tests/
 - `app/` 是唯一允许组合具体 feature adapter 的位置，并显式拥有 server、timer 和 signal 生命周期；
 - `db/` 只负责数据库机械细节；seed/bootstrap 等业务数据编排位于 `commands/`；
 - 简单 feature 可由 handler 直接访问数据库，中等 feature 使用 service；没有真实复杂度时不要提前引入 repository；
-- `src/db/schema/auth-schema.ts` 由 Better Auth CLI 生成，不要手工修改。
+- `src/db/schema/auth-schema.ts` 是应用维护的正式 Drizzle schema；Better Auth CLI 只生成忽略提交的参考文件，用于升级对比。
 
 完整目录事实见[后端目录结构](../../docs/architecture/backend/directory-structure.md)。
 
@@ -103,13 +103,13 @@ pnpm --filter backend test:integration
 
 提交前应人工检查生成的 migration SQL。涉及 schema、事务或 PostgreSQL 特有行为时必须补集成测试。
 
-Better Auth schema 更新使用：
+升级 Better Auth 时生成上游参考 schema：
 
 ```sh
-pnpm --filter backend auth:generate
+pnpm --filter backend auth:generate:reference
 ```
 
-该命令会更新生成文件，执行前先确认 Better Auth 配置和输出范围，执行后检查 diff。
+该命令输出到仓库根目录 `.cache/better-auth/auth-schema.ts`，不会覆盖正式 schema。对比上游字段变化后，由应用显式修改 `src/db/schema/auth-schema.ts` 并生成 migration。
 
 ## 测试与质量门禁
 

@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-28
+lastReviewedAt: 2026-08-13
 ---
 
 # 模板 IAM 完成度 Checklist
@@ -53,7 +53,7 @@ lastReviewedAt: 2026-07-28
 - [x] `expires_at` 在检查时过滤（null = 永不过期）
 - [x] `PermissionChecker` Port + `IamPermissionChecker` Adapter
 - [x] 请求级 ALS memoize（`PermissionService`）
-- [x] `/api/v1/me` 返回相对 **home org** 的有效权限全集（无 org 时 `[]`）
+- [x] `/api/v1/me` 返回相对 **home org** 的有效权限全集；运行时读到 null 视为数据库不变量损坏
 
 **非缺口（可选增强）**
 
@@ -117,6 +117,8 @@ lastReviewedAt: 2026-07-28
 - [x] **管理员变更归属（调岗）** API：改 `user.orgId`，含子树校验
 - [x] 调岗时 **grant 清理策略写死**（推荐默认：清旧 home 节点上的 user_roles/user_permissions，或清空全部 grant 后重授--二选一写进 feature 文档）
 - [x] 所有创建用户路径（bootstrap / seed / createUser；若保留注册则含注册）**禁止**产出 `orgId == null`
+- [x] `user.orgId` 具备 `NOT NULL` + `ON DELETE RESTRICT` 外键 + 查询索引，绕过 service 也不能产生孤儿用户
+- [x] 创建/调岗以 `FOR KEY SHARE` 锁目标组织；删除以 `FOR UPDATE` 锁组织后检查引用，并发竞争映射为业务错误
 - [x] `orgId` / `disabled` additionalFields 配置 **`input: false`**（防客户端写入）
 
 **Non-goals（不算失败）**
