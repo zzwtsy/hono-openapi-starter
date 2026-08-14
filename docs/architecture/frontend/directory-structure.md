@@ -40,7 +40,7 @@ apps/frontend/src/
       hooks/            # IAM 业务 hook(use-user-page-state)
       lib/              # IAM 工具(organization-tree/iam-actions/permission-format/group-by-resource)
       {users,roles,organizations}-page.tsx  # page 组装(feature 根)
-    account/components/ # 账户资料与密码表单
+    account/components/ # 账户资料、密码表单与授权来源
     audit/              # 审计列表、筛选、时间线、hooks 与格式化逻辑
     auth/
       components/       # login-form

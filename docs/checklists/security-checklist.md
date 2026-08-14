@@ -24,7 +24,7 @@ lastReviewedAt: 2026-08-06
 ## 推荐项
 
 - [x] 关键写操作写 audit log。
-  - 当前覆盖 3 个 project 写路由、18 个 IAM 写路由、2 个账户自助写路由、1 个系统设置写路由，以及登录/登出认证事件；action registry 共 26 项，证据见 [backend audit feature](../features/backend/audit.md)。
+  - 当前覆盖 3 个 project 写路由、19 个 IAM 写路由、2 个账户自助写路由、1 个系统设置写路由，以及登录/登出认证事件；action registry 共 27 项，证据见 [backend audit feature](../features/backend/audit.md)。
 - [x] 受保护接口标注 OpenAPI security。
 - [x] 使用 `requirePermission()` 管理授权。
 - [ ] 数据库迁移使用 expand / contract。

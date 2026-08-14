@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-08-12
+lastReviewedAt: 2026-08-14
 ---
 
 # 前端 IAM
@@ -14,7 +14,7 @@ IAM 前端提供角色、组织和用户授权管理界面。三个页面统一�
 
 ## 范围
 
-- 包含：角色 CRUD 与权限分配、组织树 CRUD、用户授权、用户管理（代创建/编辑/重置密码/禁用·启用）。
+- 包含：角色 CRUD 与权限分配、组织树 CRUD、用户授权、用户管理（代创建/编辑/重置密码/禁用·启用）。账户页的自助授权来源查看与此 IAM API 共用契约，但不受管理端权限门控。
 - 组织树包含：展开/收起、单选、搜索定位、URL 状态、桌面详情面板和移动端 Sheet。
 - 不包含：拖拽移动组织、按任意组织筛选用户、服务端组织搜索和懒加载、硬删除用户（用禁用替代）。
 
@@ -100,6 +100,7 @@ features/iam/
 - **有效权限**：后端 `IAM.listUserPermissions` 直接返回带来源链的结构（`effective` + `denied`），无需前端 N+1 拼。每条权限展示来源 badge；有对应读权限时角色名可跳转角色详情、组织可切到该 org 视角，否则显示纯文本。祖先继承的权限来源 orgId 即祖先组织。被 deny 抵消的权限单独成区，标注本会来自的来源（`suppressedSources`）与哪些 org deny（`deniedBy`）。
 - **角色授权**：列出已授角色（`listUserRoles`，含过期，角色名可点击跳转） + 确认后逐条撤销（`deleteUserRole`） + 授角色表单（角色 Select + 过期 DatePicker + `assignUserRole`）。选中角色后内联预览其权限，并对比当前有效权限高亮「授予后将新增」的权限，消除盲选；本人授权不显示撤销。
 - **直接授权**：列出已授直接权限（`listUserDirectPermissions`，含 effect/过期） + 确认后逐条撤销（`deleteUserPermission`） + 授直接权限表单（权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`）。deny = 阻止部分权限；权限目录只在具备 `permissions.read` 时加载。
+- **有效期编辑**：角色和直接授权行均提供「编辑」入口；编辑时保留角色/权限身份，只修改 effect 或 `expiresAt`，清除 DatePicker 即发送 `null`，将有限期授权恢复为永久。新授时留空仍表示永久，重复授予省略 `expiresAt` 则保留原值。
 
 **组织选择器**解决「祖先 org 授的授权在 home org 视角不可见不可撤销」：`listUserRoles`/`listUserDirectPermissions` 用 `eq(orgId)` 只返回该 org 直接授权，有效权限走祖先继承 CTE；切换组织选择器可逐个 org 查看直接授权与生效全集，来源 badge 的组织点击可快速跳到祖先 org 视角。
 
@@ -107,7 +108,11 @@ features/iam/
 
 角色权限配置保留本地勾选草稿：多项新增、当前结果全选和全选撤销均在一次点击「保存」时调用一次 `PATCH /api/v1/roles/{roleId}/permissions`，body 为新增/撤销差量；成功后以服务端返回值更新基线，失败时保留草稿并可重试。代码角色始终只读。只有新增或只有撤销时分别使用对应方向权限，混合变更需同时具备两种角色权限写权限。
 
-> 续期语义：重复授角色/权限时，提供 `expiresAt` 则更新（续期），省略则保留原过期时间（不清空）；UI 标注「暂不支持从有限期改回永不过期」（后端 `onConflictDoUpdate` 不支持显式清空，留后续）。
+> 续期语义：重复授角色/权限时，提供 `expiresAt` 则更新（续期），省略则保留原过期时间，显式传 `null` 则清空为永久。管理 UI 通过编辑入口支持有限期与永久之间双向切换。
+
+## 自助授权来源
+
+账户设置的「授权」Tab 调用 `GET /api/v1/me/authorization`，只需认证即可查看自己的 Home org、祖先组织的原始角色/直接授权（含过期与 deny）以及当前有效权限的来源链。它不依赖 `assignments.read`，也不允许指定其他用户或组织；管理端的用户详情仍使用 `assignments.read` 读取目标用户授权。
 
 ## 用户管理
 
@@ -152,7 +157,7 @@ features/iam/
 
 - 列表：`useRequest(() => Apis.IAM.listOrganizations())` 等。
 - 写操作：直接调用生成的 Method，成功后 `send()` 刷新当前列表状态。
-- `api/method-config.ts` 已通过 mutation `name` + list `hitSource` 自动失效列表缓存。
+- `api/method-config.ts` 已通过 mutation `name` + list `hitSource` 自动失效列表缓存；授权变更也会失效账户页的 `IAM.getMyAuthorization`，已打开的面板通过 action delegation 重拉。
 - 路由 loader 预取列表，组件首次请求命中 alova cache。
 
 ## 权限
@@ -173,4 +178,5 @@ features/iam/
 - 后端 feature 文档：[`docs/features/backend/iam.md`](../backend/iam.md)
 - 组织 API：`GET/POST /api/v1/organizations`、`PATCH/DELETE /api/v1/organizations/{orgId}`
 - 用户管理 API：`POST /api/v1/users`、`PATCH /api/v1/users/{userId}`、`POST /api/v1/users/{userId}/reset-password`、`POST /api/v1/users/{userId}/disable`、`POST /api/v1/users/{userId}/enable`（权限 `users.*`）
+- 自助授权 API：`GET /api/v1/me/authorization`（仅认证，当前用户不可查询他人）
 - 运行时配置控制决策：[ADR-0007](../../adr/0007-runtime-config-control.md)

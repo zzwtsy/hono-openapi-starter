@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-08-07
+lastReviewedAt: 2026-08-14
 ---
 
 # 权限层规范
@@ -105,6 +105,8 @@ core 不 import features：holder 持 `PermissionChecker` 接口引用，由 `ap
 
 `user_roles` 和 `user_permissions` 都有 `expires_at`（可选，null = 永不过期）。检查时过滤（`expires_at IS NULL OR expires_at > now()`），过期立即失效。后台清理过期记录是可选的 housekeeping，不影响正确性。
 
+管理端授予接口的 `expiresAt` 是三态输入：新授时省略或 `null` 表示永久；已有授权省略表示保留原值；已有授权传 ISO 时间表示替换，传 `null` 表示清空为永久。`GET /api/v1/me/authorization` 只需认证，返回当前用户 Home org 及祖先 Grant org 的原始授权（不过滤过期）和 Home org 的有效权限来源链；不接受 `userId`/`orgId` 参数。认证用户的 `orgId` 读到 null 属于数据库不变量损坏，应返回内部错误。
+
 ## 默认 org scope
 
 `requirePermission` 的 `orgId` 可选：
@@ -193,7 +195,7 @@ user_permissions(user_id, permission_code, org_id, effect, expires_at?)
 - `GET /api/v1/me`：当前用户信息 + 有效权限全集
 - `GET /api/v1/permissions`：权限目录（代码同步，只读）
 - 角色：`GET/POST /api/v1/roles`、`PATCH/DELETE /api/v1/roles/{id}`、`GET/POST /api/v1/roles/{id}/permissions`、`DELETE /api/v1/roles/{id}/permissions/{permissionCode}`（仅 `source='instance'` 角色可改删；body 使用 `{ permissionCodes }`）
-- 用户授权：`POST/DELETE /api/v1/users/{userId}/roles/{roleId}`、`POST/DELETE /api/v1/users/{userId}/permissions/{permissionCode}`、`GET /api/v1/users/{userId}/permissions`（有效全集，祖先继承）、`GET /api/v1/users/{userId}/roles`（已授角色记录，直接授权）、`GET /api/v1/users/{userId}/direct-permissions`（已授直接权限记录，allow/deny）
+- 用户授权：`POST/DELETE /api/v1/users/{userId}/roles/{roleId}`、`POST/DELETE /api/v1/users/{userId}/permissions/{permissionCode}`、`GET /api/v1/users/{userId}/permissions`（有效全集，祖先继承）、`GET /api/v1/users/{userId}/roles`（已授角色记录，直接授权）、`GET /api/v1/users/{userId}/direct-permissions`（已授直接权限记录，allow/deny）、`GET /api/v1/me/authorization`（自查授权来源，仅认证）
 - 组织：`GET/POST /api/v1/organizations`、`GET/PATCH/DELETE /api/v1/organizations/{orgId}`（改 parentId 防环，有子组织或有用户拒绝删除）
 
 ## 性能

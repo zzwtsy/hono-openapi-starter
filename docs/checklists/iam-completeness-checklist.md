@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-08-13
+lastReviewedAt: 2026-08-14
 ---
 
 # 模板 IAM 完成度 Checklist
@@ -136,7 +136,7 @@ lastReviewedAt: 2026-08-13
 - [x] 校验 role / permission / org **存在性**
 - [x] 校验目标 **user 存在**且在操作者**管理范围内**（当前主要依赖 FK）
 - [x] 校验 **grant.orgId** 在操作者管理子树内（禁止任意 org 乱授）
-- [x] 重复授角色时 **续期/更新 expiresAt** 语义明确（今日 `onConflictDoNothing` 会静默忽略续期）
+- [x] 重复授角色/直接权限时 **续期、保留和清空 expiresAt** 语义明确（省略保留旧值，`null` 清空为永久）
 
 ---
 
@@ -191,8 +191,8 @@ lastReviewedAt: 2026-08-13
 - [x] 禁用用户：disabled + 拦 session + 可清 session
 - [x] 管理员重置密码
 - [x] 新用户「有 home、无业务权限」的空状态或默认 member 角色（二选一写死）
-- [ ] `/api/v1/me` PATCH（自助改资料，可选）
-- [ ] 用户查看自己的 grants（可选；管理端已有按 userId 查询）
+- [x] `/api/v1/me` PATCH（自助改资料）
+- [x] `GET /api/v1/me/authorization`（用户查看自己的原始授权来源与有效权限来源链）
 
 ---
 
@@ -211,7 +211,7 @@ lastReviewedAt: 2026-08-13
 
 - [x] 认证端点 rate limit
 - [x] 敏感日志脱敏
-- [ ] 关键 IAM 写操作 **audit log**（谁给谁在何 org 授了什么）- 模板默认不做（Non-goal,见 §13;生产按需独立 feature）
+- [x] 关键 IAM 写操作 **audit log**（谁给谁在何 org 授了什么；当前 19 个写路由均接入 `audit()`）
 - [x] 认证后日志上下文带 **userId** - requireAuth 认证成功后用 `c.var.logger.getContextManager().appendContext({ userId })` 追加到请求级 child logger（业务日志与 access log 均带 userId）。详见 observability-checklist 与 logging-loglayer.md。
 - [ ] 定期核对权限矩阵 / 错误码（与安全 checklist「推荐项」呼应）
 
@@ -239,7 +239,6 @@ lastReviewedAt: 2026-08-13
 - 硬删除用户
 - 邮件验证 / 魔法链邀请（除非单独 epic）
 - OpenAPI lint 进 CI（项目决策可不做时，不列入本清单强制项）
-- audit log（关键写操作审计,独立载体;生产按需新开 feature,见 iam.md §3）
 
 ---
 

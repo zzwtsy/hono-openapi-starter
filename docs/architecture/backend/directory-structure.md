@@ -65,6 +65,7 @@ src/
       users/
       assignments/
       organizations/
+      self-authorization/           # 当前用户自查授权来源（仅认证）
       shared/                      # 仅 IAM 子能力内部共享
 
 tests/

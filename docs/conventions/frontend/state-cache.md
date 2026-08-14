@@ -62,7 +62,7 @@ const { data } = useRequest(() => Apis.IAM.listRoles(), {
 accessAction("iam-roles-list", (a) => { void a.send(); }, true);
 ```
 
-action 名集中常量 + `refreshIam(...names)` 封装见 `features/iam/lib/iam-actions.ts`(IAM 实践)。
+IAM 内部 action 名集中常量 + `refreshIam(...names)` 封装见 `features/iam/lib/iam-actions.ts`；跨 feature 共用的 action key 放在 `src/lib/action-keys.ts`，避免账户等 feature 反向依赖 IAM。
 
 ## cache 与 loader 协作
 

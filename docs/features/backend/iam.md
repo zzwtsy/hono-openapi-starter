@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-08-13
+lastReviewedAt: 2026-08-14
 ---
 
 # Feature: iam（权限管理 + 用户身份）
@@ -16,6 +16,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 - `pnpm db:bootstrap` 引导第一个 admin（破鸡生蛋）。
 - `/api/v1/me` 暴露当前用户身份与有效权限全集。
+- `/api/v1/me/authorization` 让用户自查原始授权来源与 Home org 有效权限。
 - 权限目录查询（代码同步，只读）。
 - 角色 CRUD（实例角色，`source` 区分代码/实例）。
 - 用户授权（授角色 / 直接授权 allow|deny / 撤销 / 查全集），支持组织 scope + 过期。
@@ -37,6 +38,7 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 | --- | --- | --- | --- | --- |
 | GET | `/api/v1/me` | `getMe` | 认证 | 当前用户 + 有效 `permissionCodes` |
 | GET | `/api/v1/me/capabilities?orgId=...` | `getTargetCapabilities` | 认证 | 管理子树内目标组织的有效权限（前端 UX） |
+| GET | `/api/v1/me/authorization` | `getMyAuthorization` | 认证 | 当前用户 Home org 及祖先 Grant org 的原始授权与有效权限来源 |
 | PATCH | `/api/v1/me` | `updateMe` | 认证 | 自助修改显示名(不改 email/orgId/disabled) |
 | POST | `/api/v1/me/password` | `changeMyPassword` | 认证 | 自助改密码(验当前密码 → 删全部 session,强制重登) |
 | GET | `/api/v1/permissions` | `listPermissions` | permissions.read | 权限目录（只读） |
@@ -75,7 +77,11 @@ ADR-0004 决定权限层自建，读侧（schema / 递归 CTE 检查 / 目录同
 
 权限契约统一使用机器 code：字符串身份字段命名为 `permissionCode`，字符串数组命名为 `permissionCodes`，批量角色授权 body 为 `{ permissionCodes }`；角色权限差量更新 body 为 `{ addPermissionCodes, removePermissionCodes }`，两个数组不可交叉。`GET /api/v1/permissions`、角色权限列表返回 `PermissionRef[]`；有效权限、deny 和直接授权记录使用 `permission: PermissionRef`。`/api/v1/me` 只返回 `permissionCodes`，不把展示 label 混入授权身份。已知权限输入由 catalog 派生的 OpenAPI enum 约束，HTTP 未知 code 返回 `400/PERMISSION_CODE_INVALID`，service 或同步阶段发现内部未知 code 则使用 `PERMISSION_NOT_FOUND` 或启动失败。角色权限差量更新在同一事务中完成，失败不留下部分新增或撤销。
 
+授权授予端点的 `expiresAt` 采用三态语义：新授时省略或传 `null` 都表示永久；重复授予时省略表示保留旧值，传 ISO 时间表示替换，传 `null` 表示清空为永久。这样可以在管理端把有限期授权明确改回永久，同时不让只更新 `effect` 的请求意外清空有效期。
+
 `listUserRoles` / `listUserDirectPermissions` 返回**原始授权记录**（`orgId` 直接相等，非祖先继承），供管理端撤销用；`listUserPermissions` 返回**有效权限全集 + 来源链**（含祖先继承 + deny 减法 + 过期过滤，CTE 计算；每条权限带来源 `{type, roleId, roleName, orgId, expiresAt}`，被 deny 抵消的单独列 `denied` 带 `suppressedSources` + `deniedBy`）。`listRoleUsers` 返回管理子树内授了某角色的 `(user, org)` 记录（供角色详情展示影响面）。撤销看原始授权记录，展示"用户最终能干什么 + 从哪来"看有效权限全集，看"改角色影响谁"看 `listRoleUsers`。三者查无记录返回空数组/空对象，不抛 404。
+
+`GET /api/v1/me/authorization` 只要求认证，不要求 `assignments.read`，也不接受 `userId`/`orgId` 查询参数。它返回当前用户 Home org 及其祖先 Grant org 的原始角色/直接授权（包含 deny 与过期记录），以及 Home org 视角经过过期过滤和 deny 减法后的有效权限来源链。运行时若认证用户的 `orgId` 为 null，视为数据库不变量损坏并返回内部错误。
 
 ## 6. Auth & Permissions
 
@@ -169,12 +175,12 @@ sequenceDiagram
 
 管理写操作走结构化日志（LogLayer，带 requestId）。userId 由 requireAuth 认证成功后用 `c.var.logger.getContextManager().appendContext({ userId })` 注入请求级 logger context（业务日志与 access log 均带 userId；appendContext 绕开 withContext 的 `ts/no-unsafe-argument` 误报，见 logging-loglayer.md）。
 
-全部 18 个写路由已接入审计日志（`audit()` 中间件声明式接入，含 before 快照与 metadata），见 [backend audit feature 文档](../backend/audit.md) 与 ADR-0009。
+全部 19 个写路由已接入审计日志（`audit()` 中间件声明式接入，含 before 快照与 metadata），见 [backend audit feature 文档](../backend/audit.md) 与 ADR-0009。
 
 ## 11. Test Cases
 
 - unit：`core/auth/permissions.test.ts`（builder 字段、格式与 label 校验）、`catalogs/permissions.test.ts`（唯一性与 registry 覆盖）、`core/app/create-router.test.ts`（未知 code 400）、`features/iam/iam.test.ts`（路由鉴权 + 新字段接线）、`features/me/me.test.ts`
-- integration：`tests/integration/authorization/sync.test.ts`（code-only registry、stale code 清理/有引用失败、admin 同步）、`iam-roles.test.ts`（source 保护、cascade、listRoleUsers 子树过滤）、`iam-assignments.test.ts`（授角色/deny/祖先/过期/撤销全语义）、`iam-organizations.test.ts`（建树/防环/删除约束）、`list-effective.test.ts`（全集算法 + 来源链 + deny 抵消 + 多来源聚合）、`iam-users.test.ts`（代创建 409、reset 后旧密码失效、disable 拦登录 + enable 恢复、自禁用 403）
+- integration：`tests/integration/authorization/sync.test.ts`（code-only registry、stale code 清理/有引用失败、admin 同步）、`iam-roles.test.ts`（source 保护、cascade、listRoleUsers 子树过滤）、`iam-assignments.test.ts`（授角色/deny/祖先/过期/撤销、重复授予有效期更新/清空、用户自查授权来源）、`iam-organizations.test.ts`（建树/防环/删除约束）、`list-effective.test.ts`（全集算法 + 来源链 + deny 抵消 + 多来源聚合）、`iam-users.test.ts`（代创建 409、reset 后旧密码失效、disable 拦登录 + enable 恢复、自禁用 403）
 
 ## 12. Rollout / Migration Notes
 
