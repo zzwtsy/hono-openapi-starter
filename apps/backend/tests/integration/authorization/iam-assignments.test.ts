@@ -173,6 +173,37 @@ describe("iam user assignments", () => {
     expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
   });
 
+  it("重复授角色省略 expiresAt 时按保留后的期限校验委派上限", async () => {
+    await setup();
+    await db.update(userRoles).set({ expiresAt: new Date("2099-01-01T00:00:00Z") }).where(and(
+      eq(userRoles.userId, "actor-1"),
+      eq(userRoles.roleId, "role-admin"),
+      eq(userRoles.orgId, "org-root"),
+    ));
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root", expiresAt: "2020-01-01T00:00:00Z" });
+
+    await expect(IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root" })).resolves.toBeUndefined();
+    const [grant] = await db.select({ expiresAt: userRoles.expiresAt }).from(userRoles).where(and(
+      eq(userRoles.userId, "u-1"),
+      eq(userRoles.roleId, role.id),
+      eq(userRoles.orgId, "org-root"),
+    ));
+    expect(grant?.expiresAt).toEqual(new Date("2020-01-01T00:00:00.000Z"));
+  });
+
+  it("重复授角色显式 null 清空期限为永久", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root", expiresAt: "2020-01-01T00:00:00Z" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
+
+    await IamService.assignUserRole("org-root", "u-1", role.id, { orgId: "org-root", expiresAt: null });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
+  });
+
   it("重复授直接权限省略 expiresAt 保留原过期,effect 仍更新", async () => {
     await setup();
     // 先授 allow + 2020(已过期)
@@ -187,6 +218,36 @@ describe("iam user assignments", () => {
     // 切回 allow + 2099:通过
     await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "allow", expiresAt: "2099-01-01T00:00:00Z" });
     expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
+  });
+
+  it("重复授直接权限显式 null 清空期限为永久", async () => {
+    await setup();
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "allow", expiresAt: "2020-01-01T00:00:00Z" });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(false);
+
+    await IamService.assignUserPermission("org-root", "u-1", "projects.read", { orgId: "org-root", effect: "allow", expiresAt: null });
+    expect(await checker.check("u-1", "projects.read", "org-root")).toBe(true);
+  });
+
+  it("getMyAuthorization 返回 Home org 祖先授权与有效来源,排除无关组织", async () => {
+    await setup();
+    const role = await IamService.createRole({ name: "viewer" });
+    await IamService.assignRolePermissions(role.id, ["projects.read"]);
+    await db.insert(userRoles).values([
+      { userId: "u-1", roleId: role.id, orgId: "org-system", expiresAt: new Date("2020-01-01T00:00:00.000Z") },
+      { userId: "u-1", roleId: role.id, orgId: "org-root" },
+    ]);
+    await db.insert(userPermissions).values([
+      { userId: "u-1", permissionCode: "projects.read", orgId: "org-system", effect: "deny" },
+      { userId: "u-1", permissionCode: "projects.delete", orgId: "org-other", effect: "allow" },
+    ]);
+
+    const result = await IamService.getMyAuthorization("u-1", "org-root");
+    expect(result.roles).toHaveLength(2);
+    expect(result.roles.map(grant => grant.orgId)).toEqual(expect.arrayContaining(["org-system", "org-root"]));
+    expect(result.directPermissions).toHaveLength(1);
+    expect(result.directPermissions[0]?.orgId).toBe("org-system");
+    expect(result.effective.denied.map(item => item.permissionCode)).toContain("projects.read");
   });
 
   it("重复授直接权限更新 effect(allow->deny)", async () => {

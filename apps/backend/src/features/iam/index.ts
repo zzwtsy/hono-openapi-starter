@@ -6,6 +6,7 @@ import * as routes from "./routes.js";
 const router = createRouter()
   .openapi(routes.listPermissionsRoute, handlers.listPermissionsHandler)
   .openapi(routes.getTargetCapabilitiesRoute, handlers.getTargetCapabilitiesHandler)
+  .openapi(routes.getMyAuthorizationRoute, handlers.getMyAuthorizationHandler)
   .openapi(routes.listUsersRoute, handlers.listUsersHandler)
   .openapi(routes.createUserRoute, handlers.createUserHandler)
   .openapi(routes.updateUserRoute, handlers.updateUserHandler)

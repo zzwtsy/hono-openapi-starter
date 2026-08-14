@@ -74,7 +74,7 @@ export async function assertCanDelegatePermissions(
   actorUserId: string,
   permissionCodes: readonly AppPermissionCode[],
   grantOrgId: string,
-  requestedExpiresAt?: string,
+  requestedExpiresAt?: string | null,
 ): Promise<void> {
   const requested = requestedExpiresAt == null ? null : new Date(requestedExpiresAt);
   const result = await PermissionService.listEffectivePermissions(actorUserId, grantOrgId);

@@ -14,6 +14,7 @@ interface SchemaObject {
   type?: string;
   nullable?: boolean;
   properties?: Record<string, SchemaObject>;
+  oneOf?: SchemaObject[];
   anyOf?: SchemaObject[];
   allOf?: SchemaObject[];
   items?: SchemaObject;
@@ -155,6 +156,21 @@ describe("OpenAPI contract", () => {
       expect(schema, `AuditLog.${field} 缺 schema`).toBeDefined();
       expect(JSON.stringify(schema), `AuditLog.${field} 未引用 AuditJsonValue`).toContain("#/components/schemas/AuditJsonValue");
     }
+  });
+
+  it("公开 OpenAPI 文档不会把递归 JSON component 生成为 oneOf + allOf", async () => {
+    const response = await app.request("/openapi.json");
+    expect(response.status).toBe(200);
+
+    const publicSpec = await response.json() as Spec;
+    const jsonValue = publicSpec.components?.schemas?.AuditJsonValue;
+
+    expect(jsonValue?.oneOf).toBeUndefined();
+    expect(jsonValue?.anyOf).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "array" }),
+      expect.objectContaining({ type: "object" }),
+    ]));
+    expect(JSON.stringify(jsonValue)).not.toContain("\"allOf\"");
   });
 
   it("审计时间线只暴露最小 DTO", () => {

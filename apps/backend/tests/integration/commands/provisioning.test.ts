@@ -67,6 +67,13 @@ describe("provisioning commands", () => {
     expect(response.status).toBe(200);
     const body = await response.json() as { data: { user: { orgId: string } } };
     expect(body.data.user.orgId).toBe("org-bootstrap");
+
+    const authorizationResponse = await app.request("/api/v1/me/authorization", {
+      headers: { authorization: `Bearer ${signed.token}` },
+    });
+    expect(authorizationResponse.status).toBe(200);
+    const authorizationBody = await authorizationResponse.json() as { data: { orgId: string } };
+    expect(authorizationBody.data.orgId).toBe("org-bootstrap");
   });
 
   it("development seed 创建可登录且带 home org 的演示用户", async () => {
@@ -81,5 +88,10 @@ describe("provisioning commands", () => {
       body: { email: "dev@example.com", password: "dev-password" },
     });
     expect(signed.user.orgId).toBe("org-dev");
+
+    const authorizationResponse = await app.request("/api/v1/me/authorization", {
+      headers: { authorization: `Bearer ${signed.token}` },
+    });
+    expect(authorizationResponse.status).toBe(200);
   });
 });

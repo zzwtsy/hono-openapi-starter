@@ -1,12 +1,12 @@
 import type { IamActor } from "../access-policy.js";
 import type { AppPermissionCode } from "@/core/auth/permissions.js";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { toPermissionRefs } from "@/catalogs/permissions.js";
 import { PermissionService } from "@/core/authorization/index.js";
 import { AppError } from "@/core/errors/app-error.js";
 import { db } from "@/db/client.js";
-import { roles, user, userPermissions, userRoles } from "@/db/schema/index.js";
+import { organizations, roles, user, userPermissions, userRoles } from "@/db/schema/index.js";
 import {
   assertCanDelegatePermissions,
   assertGrantOrgForHome,
@@ -21,12 +21,22 @@ import {
 } from "../shared/service-helpers.js";
 import { acquireSharedTopologyLock } from "../topology-lock.js";
 
+interface MyAuthorizationGrantRow extends Record<string, unknown> {
+  kind: "role" | "direct";
+  role_id: string | null;
+  role_name: string | null;
+  permission_code: string | null;
+  effect: "allow" | "deny" | null;
+  org_id: string;
+  expires_at: Date | string | null;
+}
+
 /** IAM 用户角色与直接权限授权子能力。 */
 export const AssignmentService = {
-  async assignUserRole(actor: IamActor, userId: string, roleId: string, input: { orgId: string; expiresAt?: string }) {
+  async assignUserRole(actor: IamActor, userId: string, roleId: string, input: { orgId: string; expiresAt?: string | null }) {
     assertNotSelf(actor.id, userId, "USER_CANNOT_MODIFY_OWN_AUTH");
     await requireExistingRole(roleId);
-    const expiresAt = input.expiresAt == null ? null : new Date(input.expiresAt);
+    const expiresAt = input.expiresAt === undefined || input.expiresAt === null ? null : new Date(input.expiresAt);
 
     await db.transaction(async (tx) => {
       await tx.execute(acquireSharedTopologyLock());
@@ -34,10 +44,18 @@ export const AssignmentService = {
       await assertGrantOrgForHome(actor.orgId, input.orgId, target.orgId);
       await assertTargetPermission(actor, "assignments.grant", target.orgId);
       await assertTargetPermission(actor, "assignments.grant", input.orgId);
-      await assertCanDelegatePermissions(actor.id, await getRolePermissionCodes(roleId), input.orgId, input.expiresAt);
+      const [existing] = await tx.select({ expiresAt: userRoles.expiresAt }).from(userRoles).where(and(
+        eq(userRoles.userId, userId),
+        eq(userRoles.roleId, roleId),
+        eq(userRoles.orgId, input.orgId),
+      ));
+      const requestedExpiresAt = input.expiresAt === undefined
+        ? (existing?.expiresAt?.toISOString() ?? null)
+        : input.expiresAt;
+      await assertCanDelegatePermissions(actor.id, await getRolePermissionCodes(roleId), input.orgId, requestedExpiresAt);
 
       const insert = tx.insert(userRoles).values({ userId, roleId, orgId: input.orgId, expiresAt });
-      if (input.expiresAt == null) {
+      if (input.expiresAt === undefined) {
         await insert.onConflictDoNothing();
       } else {
         await insert.onConflictDoUpdate({
@@ -71,11 +89,11 @@ export const AssignmentService = {
     actor: IamActor,
     userId: string,
     permissionCode: string,
-    input: { orgId: string; effect: "allow" | "deny"; expiresAt?: string },
+    input: { orgId: string; effect: "allow" | "deny"; expiresAt?: string | null },
   ) {
     assertNotSelf(actor.id, userId, "USER_CANNOT_MODIFY_OWN_AUTH");
     await requireExistingPermission(permissionCode);
-    const expiresAt = input.expiresAt == null ? null : new Date(input.expiresAt);
+    const expiresAt = input.expiresAt === undefined || input.expiresAt === null ? null : new Date(input.expiresAt);
 
     await db.transaction(async (tx) => {
       await tx.execute(acquireSharedTopologyLock());
@@ -83,11 +101,19 @@ export const AssignmentService = {
       await assertGrantOrgForHome(actor.orgId, input.orgId, target.orgId);
       await assertTargetPermission(actor, "assignments.grant", target.orgId);
       await assertTargetPermission(actor, "assignments.grant", input.orgId);
+      const [existing] = await tx.select({ expiresAt: userPermissions.expiresAt }).from(userPermissions).where(and(
+        eq(userPermissions.userId, userId),
+        eq(userPermissions.permissionCode, permissionCode),
+        eq(userPermissions.orgId, input.orgId),
+      ));
+      const requestedExpiresAt = input.expiresAt === undefined
+        ? (existing?.expiresAt?.toISOString() ?? null)
+        : input.expiresAt;
       await assertCanDelegatePermissions(
         actor.id,
         [permissionCode as AppPermissionCode],
         input.orgId,
-        input.expiresAt,
+        requestedExpiresAt,
       );
 
       const insert = tx.insert(userPermissions).values({
@@ -97,10 +123,17 @@ export const AssignmentService = {
         effect: input.effect,
         expiresAt,
       });
-      await insert.onConflictDoUpdate({
-        target: [userPermissions.userId, userPermissions.permissionCode, userPermissions.orgId],
-        set: input.expiresAt == null ? { effect: input.effect } : { effect: input.effect, expiresAt },
-      });
+      if (input.expiresAt === undefined) {
+        await insert.onConflictDoUpdate({
+          target: [userPermissions.userId, userPermissions.permissionCode, userPermissions.orgId],
+          set: { effect: input.effect },
+        });
+      } else {
+        await insert.onConflictDoUpdate({
+          target: [userPermissions.userId, userPermissions.permissionCode, userPermissions.orgId],
+          set: { effect: input.effect, expiresAt },
+        });
+      }
     });
   },
 
@@ -122,6 +155,66 @@ export const AssignmentService = {
         throw new AppError("COMMON_NOT_FOUND");
       }
     });
+  },
+
+  async getMyAuthorization(userId: string, orgId: string) {
+    const [rows, effective] = await Promise.all([
+      db.execute<MyAuthorizationGrantRow>(sql`
+        WITH RECURSIVE org_ancestors AS (
+          SELECT ${organizations.id}, ${organizations.parentId}
+          FROM ${organizations}
+          WHERE ${organizations.id} = ${orgId}
+          UNION ALL
+          SELECT ${organizations.id}, ${organizations.parentId}
+          FROM ${organizations}
+          JOIN org_ancestors oa ON ${organizations.id} = oa.parent_id
+        )
+        CYCLE id SET is_cycle USING path
+        SELECT 'role'::text AS kind,
+               ${userRoles.roleId} AS role_id,
+               ${roles.name} AS role_name,
+               NULL::text AS permission_code,
+               NULL::text AS effect,
+               ${userRoles.orgId} AS org_id,
+               ${userRoles.expiresAt} AS expires_at
+        FROM ${userRoles}
+        JOIN ${roles} ON ${userRoles.roleId} = ${roles.id}
+        WHERE ${userRoles.userId} = ${userId}
+          AND ${userRoles.orgId} IN (SELECT id FROM org_ancestors)
+        UNION ALL
+        SELECT 'direct'::text AS kind,
+               NULL::text AS role_id,
+               NULL::text AS role_name,
+               ${userPermissions.permissionCode} AS permission_code,
+               ${userPermissions.effect} AS effect,
+               ${userPermissions.orgId} AS org_id,
+               ${userPermissions.expiresAt} AS expires_at
+        FROM ${userPermissions}
+        WHERE ${userPermissions.userId} = ${userId}
+          AND ${userPermissions.orgId} IN (SELECT id FROM org_ancestors)
+        ORDER BY org_id, kind, role_name, permission_code
+      `),
+      PermissionService.listEffectivePermissions(userId, orgId),
+    ]);
+
+    const roleGrants = rows
+      .filter((row): row is MyAuthorizationGrantRow & { kind: "role"; role_id: string; role_name: string } => row.kind === "role" && row.role_id != null && row.role_name != null)
+      .map(row => ({
+        roleId: row.role_id,
+        roleName: row.role_name,
+        orgId: row.org_id,
+        expiresAt: toDate(row.expires_at),
+      }));
+    const directGrants = rows
+      .filter((row): row is MyAuthorizationGrantRow & { kind: "direct"; permission_code: string; effect: "allow" | "deny" } => row.kind === "direct" && row.permission_code != null && row.effect != null)
+      .map(row => ({
+        permission: toPermissionRefs([row.permission_code])[0],
+        effect: row.effect,
+        orgId: row.org_id,
+        expiresAt: toDate(row.expires_at),
+      }));
+
+    return { orgId, roles: roleGrants, directPermissions: directGrants, effective };
   },
 
   async listUserEffectivePermissions(actor: IamActor, userId: string, orgId: string) {
@@ -198,3 +291,7 @@ export const AssignmentService = {
     return row;
   },
 };
+
+function toDate(value: Date | string | null): Date | null {
+  return value == null || value instanceof Date ? value : new Date(value);
+}

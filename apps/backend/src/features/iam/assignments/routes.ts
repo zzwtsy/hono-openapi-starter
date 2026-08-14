@@ -30,7 +30,7 @@ export const assignUserRoleRoute = createRoute({
   tags: ["IAM"],
   operationId: "assignUserRole",
   summary: "授用户角色",
-  description: "给用户在指定组织授予角色,可指定过期。重复授可续期。需 assignments.grant。",
+  description: "给用户在指定组织授予角色。新授省略或传 null 表示永久；重复授省略保留原期限，传 null 清空为永久，传时间可续期。需 assignments.grant。",
   middleware: [...assignmentsGrantMiddleware, audit({
     action: iamAuditActions.assignmentGrantRole,
     resourceRefs: c => [
@@ -97,7 +97,7 @@ export const assignUserPermissionRoute = createRoute({
   tags: ["IAM"],
   operationId: "assignUserPermission",
   summary: "授用户权限",
-  description: "给用户在指定组织直接授予权限(allow 或 deny),可指定过期。重复授时 effect 以新值为准。需 assignments.grant。",
+  description: "给用户在指定组织直接授予权限(allow 或 deny)。新授省略或传 null 表示永久；重复授省略保留原期限，传 null 清空为永久，传时间可替换。需 assignments.grant。",
   middleware: [...assignmentsGrantMiddleware, audit({
     action: iamAuditActions.assignmentGrantPermission,
     resourceType: "user",

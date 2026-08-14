@@ -1,6 +1,6 @@
 import type { UserDirectPermission } from "@/api/globals";
 import { format } from "date-fns";
-import { CalendarClock, X } from "lucide-react";
+import { CalendarClock, Pencil, X } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -9,12 +9,14 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/co
 
 interface DirectPermissionRowProps {
   perm: UserDirectPermission;
+  canEdit: boolean;
   canRevoke: boolean;
   busy: boolean;
+  onEdit: () => void;
   onRevoke: () => void;
 }
 
-export function DirectPermissionRow({ perm, canRevoke, busy, onRevoke }: DirectPermissionRowProps) {
+export function DirectPermissionRow({ perm, canEdit, canRevoke, busy, onEdit, onRevoke }: DirectPermissionRowProps) {
   const [confirming, setConfirming] = useState(false);
   const [now] = useState(() => Date.now());
   const expired = perm.expiresAt != null && new Date(perm.expiresAt).getTime() <= now;
@@ -37,12 +39,20 @@ export function DirectPermissionRow({ perm, canRevoke, busy, onRevoke }: DirectP
             </ItemDescription>
           )}
         </ItemContent>
-        {canRevoke && (
+        {(canEdit || canRevoke) && (
           <ItemActions>
-            <Button variant="ghost" size="sm" onClick={() => { setConfirming(true); }}>
-              <X data-icon="inline-start" />
-              撤销
-            </Button>
+            {canEdit && (
+              <Button variant="ghost" size="sm" onClick={onEdit}>
+                <Pencil data-icon="inline-start" />
+                编辑
+              </Button>
+            )}
+            {canRevoke && (
+              <Button variant="ghost" size="sm" onClick={() => { setConfirming(true); }}>
+                <X data-icon="inline-start" />
+                撤销
+              </Button>
+            )}
           </ItemActions>
         )}
       </Item>

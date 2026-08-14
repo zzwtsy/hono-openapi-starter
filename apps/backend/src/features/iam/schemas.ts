@@ -76,14 +76,14 @@ export const UserPermissionParamSchema = z.object({
 /** 授角色入参(绑定组织 + 可选过期)。 */
 export const UserRoleBodySchema = z.object({
   orgId: z.string().openapi({ description: "授权绑定的组织 ID", example: "org-root" }),
-  expiresAt: z.iso.datetime().optional().openapi({ description: "过期时间(ISO 8601),不填则永不过期" }),
+  expiresAt: z.iso.datetime().nullable().optional().openapi({ description: "过期时间(ISO 8601);新授不填/null=永久,已有授权不填=保留原值,null=清空为永久" }),
 });
 
 /** 直接授权入参(绑定组织 + effect + 可选过期)。 */
 export const UserPermissionBodySchema = z.object({
   orgId: z.string().openapi({ description: "授权绑定的组织 ID", example: "org-root" }),
   effect: z.enum(["allow", "deny"]).openapi({ description: "允许或拒绝" }),
-  expiresAt: z.iso.datetime().optional().openapi({ description: "过期时间(ISO 8601),不填则永不过期" }),
+  expiresAt: z.iso.datetime().nullable().optional().openapi({ description: "过期时间(ISO 8601);新授不填/null=永久,已有授权不填=保留原值,null=清空为永久" }),
 });
 
 /** 组织 ID 查询参数(撤销/查询时指定目标组织)。 */
@@ -209,6 +209,14 @@ export const UserPermissionsResultSchema = z.object({
   effective: z.array(EffectivePermissionSchema).openapi({ description: "生效权限全集(含祖先继承,带来源)" }),
   denied: z.array(DeniedPermissionSchema).openapi({ description: "被直接 deny 抵消的权限(本会生效但被扣掉)" }),
 }).openapi("UserPermissionsResult");
+
+/** 当前用户授权自查响应:原始 Grant + Home org 下的有效权限与来源链。 */
+export const MyAuthorizationSchema = z.object({
+  orgId: z.string().openapi({ description: "当前用户 Home org", example: "org-root" }),
+  roles: z.array(UserRoleAssignmentSchema).openapi({ description: "Home org 及祖先 Grant org 的原始角色授权(含已过期)" }),
+  directPermissions: z.array(UserDirectPermissionSchema).openapi({ description: "Home org 及祖先 Grant org 的原始直接授权(含 allow/deny/已过期)" }),
+  effective: UserPermissionsResultSchema,
+}).openapi("MyAuthorization");
 
 /** 角色已授用户记录(listRoleUsers 响应项)。 */
 export const RoleUserAssignmentSchema = z.object({

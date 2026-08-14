@@ -34,6 +34,7 @@ const {
   mockListUserEffectivePermissions,
   mockListUserRoles,
   mockListUserDirectPermissions,
+  mockGetMyAuthorization,
   mockListOrganizations,
   mockCreateOrganization,
   mockGetOrganizationById,
@@ -65,6 +66,7 @@ const {
   mockListUserEffectivePermissions: vi.fn(),
   mockListUserRoles: vi.fn(),
   mockListUserDirectPermissions: vi.fn(),
+  mockGetMyAuthorization: vi.fn(),
   mockListOrganizations: vi.fn(),
   mockCreateOrganization: vi.fn(),
   mockGetOrganizationById: vi.fn(),
@@ -103,6 +105,7 @@ vi.mock("./service.js", () => ({
     listUserEffectivePermissions: (_actor: unknown, userId: string, orgId: string) => mockListUserEffectivePermissions("org-1", userId, orgId),
     listUserRoles: (_actor: unknown, userId: string, orgId: string) => mockListUserRoles("org-1", userId, orgId),
     listUserDirectPermissions: (_actor: unknown, userId: string, orgId: string) => mockListUserDirectPermissions("org-1", userId, orgId),
+    getMyAuthorization: (userId: string, orgId: string) => mockGetMyAuthorization(userId, orgId),
     listOrganizations: (_orgId: string) => mockListOrganizations(),
     createOrganization: (_actor: unknown, input: unknown) => mockCreateOrganization(input),
     getOrganizationById: (orgId: string, _actorOrgId?: string) => mockGetOrganizationById(orgId),
@@ -140,6 +143,7 @@ const mockOrg = {
 function buildApp() {
   const app = new OpenAPIHono<AppBindings>();
   app.openapi(routes.listPermissionsRoute, handlers.listPermissionsHandler);
+  app.openapi(routes.getMyAuthorizationRoute, handlers.getMyAuthorizationHandler);
   app.openapi(routes.listUsersRoute, handlers.listUsersHandler);
   app.openapi(routes.createUserRoute, handlers.createUserHandler);
   app.openapi(routes.updateUserRoute, handlers.updateUserHandler);
@@ -234,6 +238,47 @@ describe("iam routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { data: { code: string }[] };
     expect(body.data[0].code).toBe("projects.read");
+  });
+
+  // --- 当前用户授权自查 ---
+  it("getMyAuthorization 未认证返回 401", async () => {
+    mockGetSession.mockResolvedValue(null);
+
+    const res = await buildApp().request("/me/authorization");
+    expect(res.status).toBe(401);
+    expect(mockGetMyAuthorization).not.toHaveBeenCalled();
+  });
+
+  it("getMyAuthorization 只需认证且返回授权来源", async () => {
+    authed();
+    mockCheck.mockResolvedValue(false);
+    mockGetMyAuthorization.mockResolvedValue({
+      orgId: "org-1",
+      roles: [{ roleId: "r-1", roleName: "viewer", orgId: "org-1", expiresAt: null }],
+      directPermissions: [{ permission: mockPermission, effect: "deny", orgId: "org-1", expiresAt: null }],
+      effective: {
+        effective: [{ permissionCode: "projects.read", sources: [{ type: "role", roleId: "r-1", roleName: "viewer", orgId: "org-1", expiresAt: null }] }],
+        denied: [],
+      },
+    });
+
+    const res = await buildApp().request("/me/authorization");
+    expect(res.status).toBe(200);
+    const body = await res.json() as { data: { orgId: string; roles: unknown[]; directPermissions: unknown[]; effective: { effective: unknown[] } } };
+    expect(body.data.orgId).toBe("org-1");
+    expect(body.data.roles).toHaveLength(1);
+    expect(body.data.directPermissions).toHaveLength(1);
+    expect(body.data.effective.effective).toHaveLength(1);
+    expect(mockGetMyAuthorization).toHaveBeenCalledWith("u-1", "org-1");
+    expect(mockCheck).not.toHaveBeenCalled();
+  });
+
+  it("getMyAuthorization 读取到 null orgId 返回内部错误", async () => {
+    mockGetSession.mockResolvedValue({ user: { ...mockUser, orgId: null } as never, session: mockSession as never });
+
+    const res = await buildApp().request("/me/authorization");
+    expect(res.status).toBe(500);
+    expect(mockGetMyAuthorization).not.toHaveBeenCalled();
   });
 
   // --- 角色列表 ---
@@ -1150,9 +1195,10 @@ describe("iam routes", () => {
 
   // --- 无 session 返回 401 ---
   // requireAuth 是所有 iam 端点的首个中间件,无 session 时统一 401(先于权限检查与 body 校验)。
-  // 参数化覆盖全部 26 端点,证明 requireAuth 链路完整(此前只测 403,401 路径零覆盖)。
+  // 参数化覆盖全部 27 端点,证明 requireAuth 链路完整(此前只测 403,401 路径零覆盖)。
   const unauthCases: Array<[string, string, string]> = [
     ["get", "/permissions", ""],
+    ["get", "/me/authorization", ""],
     ["get", "/roles", ""],
     ["post", "/roles", "{}"],
     ["patch", "/roles/r-1", "{}"],

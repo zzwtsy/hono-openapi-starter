@@ -35,6 +35,21 @@ export const $$userConfigMap = withConfigType({
       "IAM.assignRolePermissions",
       "IAM.updateRolePermissions",
       "IAM.deleteRolePermission",
+      "IAM.updateRole",
+      "IAM.deleteRole",
+      "IAM.transferUserOrganization",
+    ],
+  },
+  "IAM.getMyAuthorization": {
+    cacheFor: 60_000,
+    hitSource: [
+      "IAM.assignUserRole",
+      "IAM.deleteUserRole",
+      "IAM.assignUserPermission",
+      "IAM.deleteUserPermission",
+      "IAM.assignRolePermissions",
+      "IAM.updateRolePermissions",
+      "IAM.deleteRolePermission",
     ],
   },
   "IAM.listRolePermissions": {
@@ -47,7 +62,7 @@ export const $$userConfigMap = withConfigType({
   // 重置密码不改变列表字段，因此不触发用户列表失效。
   "IAM.listUsers": {
     cacheFor: 60_000,
-    hitSource: ["IAM.createUser", "IAM.updateUser", "IAM.disableUser", "IAM.enableUser", "Me.updateMe"],
+    hitSource: ["IAM.createUser", "IAM.updateUser", "IAM.disableUser", "IAM.enableUser", "IAM.transferUserOrganization", "Me.updateMe"],
   },
   // 角色权限变化也会改变用户有效权限，必须沿角色 -> 权限 -> 用户链路失效。
   "IAM.listUserPermissions": {
@@ -99,6 +114,7 @@ export const $$userConfigMap = withConfigType({
   "IAM.resetUserPassword": { name: "IAM.resetUserPassword" },
   "IAM.disableUser": { name: "IAM.disableUser" },
   "IAM.enableUser": { name: "IAM.enableUser" },
+  "IAM.transferUserOrganization": { name: "IAM.transferUserOrganization" },
   "Settings.updateSetting": { name: "Settings.updateSetting" },
   // action 目录静态缓存；日志列表与资源时间线保持实时。
   "Audit.listAuditActions": { cacheFor: Infinity },

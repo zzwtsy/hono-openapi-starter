@@ -1,4 +1,5 @@
 import { accessAction } from "alova/client";
+import { AUTHORIZATION_ACTION } from "@/lib/action-keys";
 
 /**
  * IAM 列表 useRequest 的 action delegation 名。
@@ -15,6 +16,7 @@ export const IAM_ACTIONS = {
   userRoles: "iam-user-roles",
   userPermissions: "iam-user-permissions",
   userDirectPerms: "iam-user-direct-perms",
+  authorization: AUTHORIZATION_ACTION,
   rolePerms: "iam-role-perms",
   roleUsers: "iam-role-users",
 } as const;

@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { CalendarClock, X } from "lucide-react";
+import { CalendarClock, Pencil, X } from "lucide-react";
 import { useState } from "react";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
@@ -7,13 +7,15 @@ import { Item, ItemActions, ItemContent, ItemDescription } from "@/components/ui
 
 interface RoleAssignmentRowProps {
   assignment: { roleId: string; roleName: string; orgId: string; expiresAt: string | null };
+  canEdit: boolean;
   canRevoke: boolean;
   busy: boolean;
+  onEdit: () => void;
   onRevoke: () => void;
   onNavigateRole: (roleId: string, orgId?: string) => void;
 }
 
-export function RoleAssignmentRow({ assignment, canRevoke, busy, onRevoke, onNavigateRole }: RoleAssignmentRowProps) {
+export function RoleAssignmentRow({ assignment, canEdit, canRevoke, busy, onEdit, onRevoke, onNavigateRole }: RoleAssignmentRowProps) {
   const [confirming, setConfirming] = useState(false);
   const [now] = useState(() => Date.now());
   const expired = assignment.expiresAt != null && new Date(assignment.expiresAt).getTime() <= now;
@@ -36,12 +38,20 @@ export function RoleAssignmentRow({ assignment, canRevoke, busy, onRevoke, onNav
             </ItemDescription>
           )}
         </ItemContent>
-        {canRevoke && (
+        {(canEdit || canRevoke) && (
           <ItemActions>
-            <Button variant="ghost" size="sm" onClick={() => { setConfirming(true); }}>
-              <X data-icon="inline-start" />
-              撤销
-            </Button>
+            {canEdit && (
+              <Button variant="ghost" size="sm" onClick={onEdit}>
+                <Pencil data-icon="inline-start" />
+                编辑
+              </Button>
+            )}
+            {canRevoke && (
+              <Button variant="ghost" size="sm" onClick={() => { setConfirming(true); }}>
+                <X data-icon="inline-start" />
+                撤销
+              </Button>
+            )}
           </ItemActions>
         )}
       </Item>

@@ -21,7 +21,10 @@ export function configureOpenApi(app: AppOpenAPI) {
         description: "面向生产环境的 Hono 后端模板 API。",
       },
     }, {
-      unionPreferredType: "oneOf",
+      // Zod union 允许多个分支重叠,与 anyOf 语义一致。
+      // 全局使用 oneOf 会与递归 AuditJsonValue 的显式 anyOf 合并,
+      // 让 Wormhole 把 schema 生成为交叉类型(&)而不是联合类型(|)。
+      unionPreferredType: "anyOf",
     });
   }
 

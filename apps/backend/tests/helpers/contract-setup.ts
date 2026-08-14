@@ -7,3 +7,5 @@ process.env.LOG_LEVEL ??= "silent";
 process.env.DATABASE_URL ??= "postgres://fake:fake@localhost:5432/fake";
 process.env.BETTER_AUTH_SECRET ??= "test-secret-at-least-32-characters-long-placeholder";
 process.env.BETTER_AUTH_URL ??= "http://localhost:3001";
+// 让契约测试覆盖与前端 gen:api 相同的公开 OpenAPI 路径。
+process.env.OPENAPI_PUBLIC ??= "true";

@@ -26,7 +26,7 @@ export const settingRegistry = {
 /** 全部配置 key 的字面量联合类型。 */
 export type SettingKey = keyof typeof settingRegistry;
 
-/** 全部 value schema 的数组(供 z.union 构造 OpenAPI oneOf 表达)。 */
+/** 全部 value schema 的数组(供 z.union 构造 OpenAPI anyOf 表达)。 */
 const allValueSchemas = Object.values(settingRegistry as Record<string, SettingRegistryEntry>).map(s => s.valueSchema);
 
 /** 全部 key 的字面量数组(供 z.enum 构造 path 参数校验)。 */
@@ -47,7 +47,7 @@ export const SettingKeyParamSchema = z.object({
 });
 
 /**
- * value 联合:registry 非空时 z.union(oneOf);空时 z.unknown(z.union 空数组会 throw)。
+ * value 联合:registry 非空时 z.union(anyOf);空时 z.unknown(z.union 空数组会 throw)。
  * 空时此分支不可达(keyParamSchema 拒所有 key)。z.unknown() 语义为任意 JSON(jsonb 列),
  * wormhole 对其生成 null 是已知生成器限制(见 globals.d.ts),不应在 schema 妥协成 z.record 限死为 object。
  */

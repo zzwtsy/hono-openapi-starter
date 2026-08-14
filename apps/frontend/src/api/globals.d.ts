@@ -282,6 +282,113 @@ export interface PermissionRef {
    */
   label: string;
 }
+export interface UserRoleAssignment {
+  /**
+   * 角色 ID
+   */
+  roleId: string;
+  /**
+   * 角色名
+   */
+  roleName: string;
+  /**
+   * 授权绑定的组织 ID
+   */
+  orgId: string;
+  /**
+   * 过期时间(ISO 8601),null 表示永不过期
+   */
+  expiresAt: string | null;
+}
+export interface UserDirectPermission {
+  permission: PermissionRef;
+  /**
+   * 允许或拒绝
+   */
+  effect: 'allow' | 'deny';
+  /**
+   * 授权绑定的组织 ID
+   */
+  orgId: string;
+  /**
+   * 过期时间(ISO 8601),null 表示永不过期
+   */
+  expiresAt: string | null;
+}
+export interface PermissionSource {
+  /**
+   * 来源类型:role=角色授予,direct=直接授权
+   */
+  type: 'role' | 'direct';
+  /**
+   * 角色 ID(role 类型有值,direct 为 null)
+   */
+  roleId: string | null;
+  /**
+   * 角色名(role 类型有值,direct 为 null)
+   */
+  roleName: string | null;
+  /**
+   * 授权绑定的组织 ID(可能是祖先组织,经继承生效)
+   */
+  orgId: string;
+  /**
+   * 过期时间(ISO 8601),null 表示永不过期
+   */
+  expiresAt: string | null;
+}
+export interface EffectivePermission {
+  permission: PermissionRef;
+  /**
+   * 来源链:角色/直接/继承
+   */
+  sources: PermissionSource[];
+}
+export interface DeniedPermission {
+  permission: PermissionRef;
+  /**
+   * 哪些组织的 deny 扣掉了此权限(deny 是全局减法,可多 org)
+   */
+  deniedBy: Array<{
+    /**
+     * 施加 deny 的组织 ID(可能是祖先组织)
+     */
+    orgId: string;
+    /**
+     * deny 的过期时间,null 表示永久 deny
+     */
+    expiresAt: string | null;
+  }>;
+  /**
+   * 本会生效的来源(被 deny 抵消)
+   */
+  suppressedSources: PermissionSource[];
+}
+export interface UserPermissionsResult {
+  /**
+   * 生效权限全集(含祖先继承,带来源)
+   */
+  effective: EffectivePermission[];
+  /**
+   * 被直接 deny 抵消的权限(本会生效但被扣掉)
+   */
+  denied: DeniedPermission[];
+}
+export interface MyAuthorization {
+  /**
+   * 当前用户 Home org
+   */
+  orgId: string;
+  /**
+   * Home org 及祖先 Grant org 的原始角色授权(含已过期)
+   */
+  roles: UserRoleAssignment[];
+  /**
+   * Home org 及祖先 Grant org 的原始直接授权(含 allow/deny/已过期)
+   */
+  directPermissions: UserDirectPermission[];
+  effective: UserPermissionsResult;
+}
 export interface UserSummary {
   /**
    * 用户 ID
@@ -568,8 +675,7 @@ export interface ResourceRef {
    */
   name?: string | null;
 }
-export type AuditJsonValue = (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-  (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>);
+export type AuditJsonValue = string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>;
 export interface AuditLog {
   /**
    * 日志 ID
@@ -705,98 +811,6 @@ export interface AuditLogTimeline {
     nextCursor: string | null;
     hasMore: boolean;
   };
-}
-export interface PermissionSource {
-  /**
-   * 来源类型:role=角色授予,direct=直接授权
-   */
-  type: 'role' | 'direct';
-  /**
-   * 角色 ID(role 类型有值,direct 为 null)
-   */
-  roleId: string | null;
-  /**
-   * 角色名(role 类型有值,direct 为 null)
-   */
-  roleName: string | null;
-  /**
-   * 授权绑定的组织 ID(可能是祖先组织,经继承生效)
-   */
-  orgId: string;
-  /**
-   * 过期时间(ISO 8601),null 表示永不过期
-   */
-  expiresAt: string | null;
-}
-export interface EffectivePermission {
-  permission: PermissionRef;
-  /**
-   * 来源链:角色/直接/继承
-   */
-  sources: PermissionSource[];
-}
-export interface DeniedPermission {
-  permission: PermissionRef;
-  /**
-   * 哪些组织的 deny 扣掉了此权限(deny 是全局减法,可多 org)
-   */
-  deniedBy: Array<{
-    /**
-     * 施加 deny 的组织 ID(可能是祖先组织)
-     */
-    orgId: string;
-    /**
-     * deny 的过期时间,null 表示永久 deny
-     */
-    expiresAt: string | null;
-  }>;
-  /**
-   * 本会生效的来源(被 deny 抵消)
-   */
-  suppressedSources: PermissionSource[];
-}
-export interface UserPermissionsResult {
-  /**
-   * 生效权限全集(含祖先继承,带来源)
-   */
-  effective: EffectivePermission[];
-  /**
-   * 被直接 deny 抵消的权限(本会生效但被扣掉)
-   */
-  denied: DeniedPermission[];
-}
-export interface UserRoleAssignment {
-  /**
-   * 角色 ID
-   */
-  roleId: string;
-  /**
-   * 角色名
-   */
-  roleName: string;
-  /**
-   * 授权绑定的组织 ID
-   */
-  orgId: string;
-  /**
-   * 过期时间(ISO 8601),null 表示永不过期
-   */
-  expiresAt: string | null;
-}
-export interface UserDirectPermission {
-  permission: PermissionRef;
-  /**
-   * 允许或拒绝
-   */
-  effect: 'allow' | 'deny';
-  /**
-   * 授权绑定的组织 ID
-   */
-  orgId: string;
-  /**
-   * 过期时间(ISO 8601),null 表示永不过期
-   */
-  expiresAt: string | null;
 }
 declare global {
   interface Apis {
@@ -1366,6 +1380,218 @@ declare global {
       >(
         config: Config
       ): Alova2Method<TargetCapabilities, 'IAM.getTargetCapabilities', Config>;
+      /**
+       * ---
+       *
+       * [GET] 查看我的授权来源
+       *
+       * **path:** /api/v1/me/authorization
+       *
+       * ---
+       *
+       * **Response**
+       * ```ts
+       * type Response = {
+       *   // 当前用户 Home org
+       *   orgId: string
+       *   // Home org 及祖先 Grant org 的原始角色授权(含已过期)
+       *   // [items] start
+       *   // [items] end
+       *   roles: Array<{
+       *     // 角色 ID
+       *     roleId: string
+       *     // 角色名
+       *     roleName: string
+       *     // 授权绑定的组织 ID
+       *     orgId: string
+       *     // 过期时间(ISO 8601),null 表示永不过期
+       *     expiresAt: string | null
+       *   }>
+       *   // Home org 及祖先 Grant org 的原始直接授权(含 allow/deny/已过期)
+       *   // [items] start
+       *   // [items] end
+       *   directPermissions: Array<{
+       *     permission: {
+       *       // 权限机器身份 <resourceCode>.<actionCode>
+       *       code:
+       *         | 'projects.read'
+       *         | 'projects.create'
+       *         | 'projects.update'
+       *         | 'projects.delete'
+       *         | 'permissions.read'
+       *         | 'organizations.read'
+       *         | 'organizations.create'
+       *         | 'organizations.update'
+       *         | 'organizations.delete'
+       *         | 'roles.read'
+       *         | 'roles.create'
+       *         | 'roles.update'
+       *         | 'roles.delete'
+       *         | 'roles.assign-permissions'
+       *         | 'roles.revoke-permissions'
+       *         | 'assignments.read'
+       *         | 'assignments.grant'
+       *         | 'assignments.revoke'
+       *         | 'users.read'
+       *         | 'users.create'
+       *         | 'users.update'
+       *         | 'users.reset-password'
+       *         | 'users.disable'
+       *         | 'users.enable'
+       *         | 'settings.read'
+       *         | 'settings.update'
+       *         | 'audit.read'
+       *       // 资源机器标识
+       *       resourceCode: string
+       *       // 动作机器标识
+       *       actionCode: string
+       *       // 资源展示名称
+       *       resourceLabel: string
+       *       // 动作展示名称
+       *       label: string
+       *     }
+       *     // 允许或拒绝
+       *     effect: 'allow' | 'deny'
+       *     // 授权绑定的组织 ID
+       *     orgId: string
+       *     // 过期时间(ISO 8601),null 表示永不过期
+       *     expiresAt: string | null
+       *   }>
+       *   effective: {
+       *     // 生效权限全集(含祖先继承,带来源)
+       *     // [items] start
+       *     // [items] end
+       *     effective: Array<{
+       *       permission: {
+       *         // 权限机器身份 <resourceCode>.<actionCode>
+       *         code:
+       *           | 'projects.read'
+       *           | 'projects.create'
+       *           | 'projects.update'
+       *           | 'projects.delete'
+       *           | 'permissions.read'
+       *           | 'organizations.read'
+       *           | 'organizations.create'
+       *           | 'organizations.update'
+       *           | 'organizations.delete'
+       *           | 'roles.read'
+       *           | 'roles.create'
+       *           | 'roles.update'
+       *           | 'roles.delete'
+       *           | 'roles.assign-permissions'
+       *           | 'roles.revoke-permissions'
+       *           | 'assignments.read'
+       *           | 'assignments.grant'
+       *           | 'assignments.revoke'
+       *           | 'users.read'
+       *           | 'users.create'
+       *           | 'users.update'
+       *           | 'users.reset-password'
+       *           | 'users.disable'
+       *           | 'users.enable'
+       *           | 'settings.read'
+       *           | 'settings.update'
+       *           | 'audit.read'
+       *         // 资源机器标识
+       *         resourceCode: string
+       *         // 动作机器标识
+       *         actionCode: string
+       *         // 资源展示名称
+       *         resourceLabel: string
+       *         // 动作展示名称
+       *         label: string
+       *       }
+       *       // 来源链:角色/直接/继承
+       *       // [items] start
+       *       // [items] end
+       *       sources: Array<{
+       *         // 来源类型:role=角色授予,direct=直接授权
+       *         type: 'role' | 'direct'
+       *         // 角色 ID(role 类型有值,direct 为 null)
+       *         roleId: string | null
+       *         // 角色名(role 类型有值,direct 为 null)
+       *         roleName: string | null
+       *         // 授权绑定的组织 ID(可能是祖先组织,经继承生效)
+       *         orgId: string
+       *         // 过期时间(ISO 8601),null 表示永不过期
+       *         expiresAt: string | null
+       *       }>
+       *     }>
+       *     // 被直接 deny 抵消的权限(本会生效但被扣掉)
+       *     // [items] start
+       *     // [items] end
+       *     denied: Array<{
+       *       permission: {
+       *         // 权限机器身份 <resourceCode>.<actionCode>
+       *         code:
+       *           | 'projects.read'
+       *           | 'projects.create'
+       *           | 'projects.update'
+       *           | 'projects.delete'
+       *           | 'permissions.read'
+       *           | 'organizations.read'
+       *           | 'organizations.create'
+       *           | 'organizations.update'
+       *           | 'organizations.delete'
+       *           | 'roles.read'
+       *           | 'roles.create'
+       *           | 'roles.update'
+       *           | 'roles.delete'
+       *           | 'roles.assign-permissions'
+       *           | 'roles.revoke-permissions'
+       *           | 'assignments.read'
+       *           | 'assignments.grant'
+       *           | 'assignments.revoke'
+       *           | 'users.read'
+       *           | 'users.create'
+       *           | 'users.update'
+       *           | 'users.reset-password'
+       *           | 'users.disable'
+       *           | 'users.enable'
+       *           | 'settings.read'
+       *           | 'settings.update'
+       *           | 'audit.read'
+       *         // 资源机器标识
+       *         resourceCode: string
+       *         // 动作机器标识
+       *         actionCode: string
+       *         // 资源展示名称
+       *         resourceLabel: string
+       *         // 动作展示名称
+       *         label: string
+       *       }
+       *       // 哪些组织的 deny 扣掉了此权限(deny 是全局减法,可多 org)
+       *       // [items] start
+       *       // [items] end
+       *       deniedBy: Array<{
+       *         // 施加 deny 的组织 ID(可能是祖先组织)
+       *         orgId: string
+       *         // deny 的过期时间,null 表示永久 deny
+       *         expiresAt: string | null
+       *       }>
+       *       // 本会生效的来源(被 deny 抵消)
+       *       // [items] start
+       *       // [items] end
+       *       suppressedSources: Array<{
+       *         // 来源类型:role=角色授予,direct=直接授权
+       *         type: 'role' | 'direct'
+       *         // 角色 ID(role 类型有值,direct 为 null)
+       *         roleId: string | null
+       *         // 角色名(role 类型有值,direct 为 null)
+       *         roleName: string | null
+       *         // 授权绑定的组织 ID(可能是祖先组织,经继承生效)
+       *         orgId: string
+       *         // 过期时间(ISO 8601),null 表示永不过期
+       *         expiresAt: string | null
+       *       }>
+       *     }>
+       *   }
+       * }
+       * ```
+       */
+      getMyAuthorization<Config extends Alova2MethodConfig<MyAuthorization>>(
+        config?: Config
+      ): Alova2Method<MyAuthorization, 'IAM.getMyAuthorization', Config>;
       /**
        * ---
        *
@@ -2549,8 +2775,8 @@ declare global {
        * type RequestBody = {
        *   // 授权绑定的组织 ID
        *   orgId: string
-       *   // 过期时间(ISO 8601),不填则永不过期
-       *   expiresAt?: string
+       *   // 过期时间(ISO 8601);新授不填/null=永久,已有授权不填=保留原值,null=清空为永久
+       *   expiresAt?: string | null
        * }
        * ```
        *
@@ -2581,9 +2807,9 @@ declare global {
              */
             orgId: string;
             /**
-             * 过期时间(ISO 8601),不填则永不过期
+             * 过期时间(ISO 8601);新授不填/null=永久,已有授权不填=保留原值,null=清空为永久
              */
-            expiresAt?: string;
+            expiresAt?: string | null;
           };
         }
       >(
@@ -2717,8 +2943,8 @@ declare global {
        *   orgId: string
        *   // 允许或拒绝
        *   effect: 'allow' | 'deny'
-       *   // 过期时间(ISO 8601),不填则永不过期
-       *   expiresAt?: string
+       *   // 过期时间(ISO 8601);新授不填/null=永久,已有授权不填=保留原值,null=清空为永久
+       *   expiresAt?: string | null
        * }
        * ```
        *
@@ -2843,9 +3069,9 @@ declare global {
              */
             effect: 'allow' | 'deny';
             /**
-             * 过期时间(ISO 8601),不填则永不过期
+             * 过期时间(ISO 8601);新授不填/null=永久,已有授权不填=保留原值,null=清空为永久
              */
-            expiresAt?: string;
+            expiresAt?: string | null;
           };
         }
       >(
@@ -3814,62 +4040,30 @@ declare global {
        *     // 旧值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
-       *     // [params1] start
        *     // [params5] start
        *     // [items] start
        *     // [cycle] $.items.[].beforeState.[]
        *     // [items] end
        *     // [params5] end
-       *     // [params1] end
-       *     // [params2] start
-       *     // [params5] start
-       *     // [items] start
-       *     // [params1] start
-       *     // [cycle] $.items.[].beforeState.[]
-       *     // [params1] end
-       *     // [items] end
-       *     // [params5] end
-       *     // [params2] end
        *     // [items] end
        *     // [params1] end
        *     beforeState:
-       *       | ((string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-       *           (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>))[]
-       *       | Record<
-       *           string,
-       *           (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-       *             (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
-       *         >
+       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | Record<string, string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>>
        *       | null
        *     // 新值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
-       *     // [params1] start
        *     // [params5] start
        *     // [items] start
        *     // [cycle] $.items.[].afterState.[]
        *     // [items] end
        *     // [params5] end
-       *     // [params1] end
-       *     // [params2] start
-       *     // [params5] start
-       *     // [items] start
-       *     // [params1] start
-       *     // [cycle] $.items.[].afterState.[]
-       *     // [params1] end
-       *     // [items] end
-       *     // [params5] end
-       *     // [params2] end
        *     // [items] end
        *     // [params1] end
        *     afterState:
-       *       | ((string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-       *           (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>))[]
-       *       | Record<
-       *           string,
-       *           (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-       *             (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
-       *         >
+       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | Record<string, string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>>
        *       | null
        *     // 变更字段名数组
        *     // [params1] start
@@ -3890,8 +4084,7 @@ declare global {
        *     // 业务自定义上下文
        *     metadata: Record<
        *       string,
-       *       (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-       *         (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
+       *       string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>
        *     > | null
        *     // 业务发生时间(ISO 8601)
        *     occurredAt: string
@@ -3993,62 +4186,30 @@ declare global {
        *     // 旧值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
-       *     // [params1] start
        *     // [params5] start
        *     // [items] start
        *     // [cycle] $.items.[].beforeState.[]
        *     // [items] end
        *     // [params5] end
-       *     // [params1] end
-       *     // [params2] start
-       *     // [params5] start
-       *     // [items] start
-       *     // [params1] start
-       *     // [cycle] $.items.[].beforeState.[]
-       *     // [params1] end
-       *     // [items] end
-       *     // [params5] end
-       *     // [params2] end
        *     // [items] end
        *     // [params1] end
        *     beforeState:
-       *       | ((string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-       *           (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>))[]
-       *       | Record<
-       *           string,
-       *           (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-       *             (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
-       *         >
+       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | Record<string, string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>>
        *       | null
        *     // 新值快照(脱敏),对象或数组
        *     // [params1] start
        *     // [items] start
-       *     // [params1] start
        *     // [params5] start
        *     // [items] start
        *     // [cycle] $.items.[].afterState.[]
        *     // [items] end
        *     // [params5] end
-       *     // [params1] end
-       *     // [params2] start
-       *     // [params5] start
-       *     // [items] start
-       *     // [params1] start
-       *     // [cycle] $.items.[].afterState.[]
-       *     // [params1] end
-       *     // [items] end
-       *     // [params5] end
-       *     // [params2] end
        *     // [items] end
        *     // [params1] end
        *     afterState:
-       *       | ((string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-       *           (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>))[]
-       *       | Record<
-       *           string,
-       *           (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>) &
-       *             (string | number | boolean | null | (AuditJsonValue & null)[] | Record<string, AuditJsonValue & undefined>)
-       *         >
+       *       | (string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>)[]
+       *       | Record<string, string | number | boolean | null | AuditJsonValue[] | Record<string, AuditJsonValue>>
        *       | null
        *     // 变更字段名数组
        *     // [params1] start

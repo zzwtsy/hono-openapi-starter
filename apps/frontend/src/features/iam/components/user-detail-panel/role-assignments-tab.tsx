@@ -42,11 +42,14 @@ export function RoleAssignmentsTab({
     setSelectedRoleId,
     expiresAt,
     setExpiresAt,
+    editingRoleId,
     assigning,
     previewPerms,
     newPerms,
     roleItems,
     assignRole,
+    startEdit,
+    cancelEdit,
     revoke,
   } = useRoleAssignments({ userId, userHomeOrgId, orgId, roles, currentUserId });
 
@@ -78,8 +81,10 @@ export function RoleAssignmentsTab({
                     <RoleAssignmentRow
                       key={a.roleId}
                       assignment={a}
+                      canEdit={canGrant}
                       canRevoke={canRevoke}
                       busy={assigning}
+                      onEdit={() => { startEdit(a); }}
                       onRevoke={() => { void revoke(a.roleId); }}
                       onNavigateRole={onNavigateRole}
                     />
@@ -93,13 +98,14 @@ export function RoleAssignmentsTab({
         <>
           <Separator />
           <div className="flex flex-col gap-2">
-            <h4 className="text-sm font-medium">授予角色</h4>
+            <h4 className="text-sm font-medium">{editingRoleId === null ? "授予角色" : "编辑角色授权"}</h4>
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="role-select">选择角色</FieldLabel>
                 <Select
                   items={roleItems}
                   value={selectedRoleId === "" ? null : selectedRoleId}
+                  disabled={editingRoleId !== null}
                   onValueChange={(val) => {
                     setSelectedRoleId(val ?? "");
                   }}
@@ -124,14 +130,19 @@ export function RoleAssignmentsTab({
               <Field>
                 <FieldLabel htmlFor="role-expires">过期时间(可选)</FieldLabel>
                 <DatePicker id="role-expires" value={expiresAt} onChange={setExpiresAt} />
-                <FieldDescription>留空=永不过期(新授)/保留原值(续期)；暂不支持从有限期改回永不过期。</FieldDescription>
+                <FieldDescription>留空表示永不过期；编辑已有授权时可清除日期恢复永久。</FieldDescription>
               </Field>
             </FieldGroup>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {editingRoleId !== null && (
+                <Button variant="outline" disabled={assigning} onClick={cancelEdit}>
+                  取消
+                </Button>
+              )}
               <Button disabled={selectedRoleId === "" || assigning} onClick={() => { void assignRole(); }}>
                 {assigning && <Spinner data-icon="inline-start" />}
                 <ShieldCheck data-icon="inline-start" />
-                授予
+                {editingRoleId === null ? "授予" : "保存"}
               </Button>
             </div>
           </div>

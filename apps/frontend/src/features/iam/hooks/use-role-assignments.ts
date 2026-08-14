@@ -39,6 +39,7 @@ export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, curren
 
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const { mutate: runWithToast, busy: assigning } = useToastMutation();
 
   // useWatcher 监听 selectedRoleId:选中角色自动用新 roleId 拉权限,
@@ -63,7 +64,7 @@ export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, curren
   ], [roles]);
 
   const refresh = () => {
-    refreshIam(IAM_ACTIONS.userRoles, IAM_ACTIONS.userPermissions);
+    refreshIam(IAM_ACTIONS.userRoles, IAM_ACTIONS.userPermissions, IAM_ACTIONS.authorization);
   };
 
   const assignRole = async () => {
@@ -73,15 +74,28 @@ export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, curren
     const ok = await runWithToast(
       () => Apis.IAM.assignUserRole({
         pathParams: { userId, roleId: selectedRoleId },
-        data: { orgId, expiresAt: expiresAt ?? undefined },
+        data: { orgId, expiresAt: editingRoleId === null ? (expiresAt ?? undefined) : expiresAt },
       }),
-      { successMessage: "角色已授予", errorMessage: "授权失败" },
+      { successMessage: editingRoleId === null ? "角色已授予" : "角色授权已更新", errorMessage: "授权失败" },
     );
     if (ok) {
       setSelectedRoleId("");
       setExpiresAt(null);
+      setEditingRoleId(null);
       refresh();
     }
+  };
+
+  const startEdit = (assignment: { roleId: string; expiresAt: string | null }) => {
+    setEditingRoleId(assignment.roleId);
+    setSelectedRoleId(assignment.roleId);
+    setExpiresAt(assignment.expiresAt);
+  };
+
+  const cancelEdit = () => {
+    setEditingRoleId(null);
+    setSelectedRoleId("");
+    setExpiresAt(null);
   };
 
   const revoke = async (roleId: string) => {
@@ -105,11 +119,14 @@ export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, curren
     setSelectedRoleId,
     expiresAt,
     setExpiresAt,
+    editingRoleId,
     assigning,
     previewPerms,
     newPerms,
     roleItems,
     assignRole,
+    startEdit,
+    cancelEdit,
     revoke,
   };
 }

@@ -129,7 +129,7 @@ export function useRolePermissions(role: Role, isSystemRootUser: boolean) {
       { successMessage: `已更新:授予 ${toAdd.length},撤销 ${toRemove.length}`, errorMessage: "操作失败" },
     );
     if (ok) {
-      refreshIam(IAM_ACTIONS.rolePerms, IAM_ACTIONS.userPermissions);
+      refreshIam(IAM_ACTIONS.rolePerms, IAM_ACTIONS.userPermissions, IAM_ACTIONS.authorization);
     }
   };
 
