@@ -22,18 +22,20 @@ lastReviewedAt: 2026-08-12
 ## 目录与约定
 
 - 测试与源码同置：`src/**/*.{test,spec}.{ts,tsx}`
-- 全局 setup：`src/test/setup.ts`（jest-dom + RTL cleanup + **MSW lifecycle**）
+- 基础 setup：`src/test/setup.ts`（jest-dom + RTL cleanup）
 - MSW：`src/test/msw/server.ts`、`src/test/msw/handlers.ts`（`okEnvelope` / `failEnvelope`）
+- MSW setup：`src/test/msw/setup.ts`；只有使用 `server.use(...)` 的网络测试在文件顶部显式 `import "@/test/msw/setup"`
 - 配置：`apps/frontend/vitest.config.ts`（`@` alias、happy-dom、`css: false`）
 - **显式** `import { describe, it, expect } from "vitest"`（不强制 globals，与后端一致）
 - 文案与后端一致：`describe`/`it`/注释用**中文**行为描述（`describe` 可用模块/符号名；eslint `test/prefer-lowercase-title` 对 describe 已 ignore）
 
 ## MSW 约定
 
-- lifecycle（setup 内，与 [Vitest Mocking Requests](https://vitest.dev/guide/mocking/requests.md) 一致）：
+- lifecycle（MSW setup 内，与 [Vitest Mocking Requests](https://vitest.dev/guide/mocking/requests.md) 一致）：
   - `beforeAll(() => server.listen({ onUnhandledRequest: "error" }))`
-  - `afterEach(() => { server.resetHandlers(); cleanup(); })`
+  - `afterEach(() => server.resetHandlers())`
   - `afterAll(() => server.close())`
+- RTL `cleanup()` 由基础 setup 独立负责；非网络测试不启动 MSW。
 - 默认 `handlers` 为空；各用例 `server.use(http.get/patch(...))` 注册，避免串扰。
 - 路径用 `*/api/v1/...` 前缀，兼容 `baseURL === ""` 与绝对 URL。
 - 业务响应走 **envelope**：`okEnvelope(data)` / `failEnvelope(message)`；alova `responded` 运行时剥 `data`。

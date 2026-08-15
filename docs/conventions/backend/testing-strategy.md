@@ -33,10 +33,13 @@ lastReviewedAt: 2026-07-08
 
 ### vitest projects 分离
 
-`vitest.config.ts` 用 projects 按目录分离 unit / integration:
+`vitest.config.ts` 用 projects 按目录分离 unit / contract / integration:
 
-- `unit`:`src/**/*.test.ts`,不起容器(默认 `pnpm test`,无需 Docker)
-- `integration`:`tests/integration/**/*.test.ts`,globalSetup 起容器(`pnpm test:integration`,需 Docker)
+- `unit`:`src/**/*.test.ts`,不起容器(默认 `pnpm test`,无需 Docker),保持默认文件并行
+- `contract`:`tests/contract/**/*.test.ts`,不连真实 DB,保持默认文件并行
+- `integration`:`tests/integration/**/*.test.ts`,globalSetup 起容器(`pnpm test:integration`,需 Docker),显式 `fileParallelism: false` 串行执行并保持 `isolate: true`
+
+unit / contract 文件之间没有共享数据库状态,因此不应被 integration 的串行约束拖慢。integration 测试共享同一个 Testcontainers PostgreSQL,每个 case 会 `TRUNCATE ... CASCADE`,必须保持文件串行以避免互相清表；`isolate: true` 则保证 `integration-teardown.ts` 关闭的是当前文件 worker 的连接池。
 
 目录约定:集成测试放 `tests/integration/**` 下(不再用 `.integration.test.ts` 文件名后缀),目录边界让误归类在目录树里显式可见。
 
