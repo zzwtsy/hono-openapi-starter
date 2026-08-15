@@ -141,6 +141,9 @@ catalogs:
     eslint-plugin-react-refresh:
       specifier: ^0.5.3
       version: 0.5.3
+    github-slugger:
+      specifier: ^2.0.0
+      version: 2.0.0
     happy-dom:
       specifier: ^20.11.0
       version: 20.11.0
@@ -156,6 +159,9 @@ catalogs:
     lucide-react:
       specifier: ^1.25.0
       version: 1.25.0
+    mdast-util-from-markdown:
+      specifier: ^2.0.3
+      version: 2.0.3
     msw:
       specifier: ^2.15.0
       version: 2.15.0
@@ -236,9 +242,18 @@ importers:
       eslint-plugin-react-refresh:
         specifier: 'catalog:'
         version: 0.5.3(eslint@10.4.1(jiti@2.7.0))
+      github-slugger:
+        specifier: 'catalog:'
+        version: 2.0.0
+      mdast-util-from-markdown:
+        specifier: 'catalog:'
+        version: 2.0.3
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.1)(happy-dom@20.11.0)(msw@2.15.0(@types/node@24.13.1)(typescript@6.0.3))(vite@8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
 
   apps/backend:
     dependencies:

@@ -333,16 +333,17 @@ status: Active
 | docs index check | 检查新增文档是否被 README 或索引引用 |
 | frontmatter check | 检查正式文档是否包含必要元信息 |
 
-模板落地到具体工程后，CI 中建议至少包含：
+当前工程已经落地的文档/契约门禁：
 
 ```txt
-pnpm docs:lint
+pnpm docs:links:test
 pnpm docs:links
-pnpm docs:frontmatter
-pnpm openapi:generate
-pnpm openapi:lint
-pnpm openapi:validate
+pnpm --filter backend test:contract
 ```
+
+其中 `docs:links:test` 锁定链接扫描器的 Markdown 解析、代码块、路径和锚点行为；`docs:links` 使用 Markdown AST 扫描受版本控制的项目文档，排除本地执行计划和 `.agents/` 技能文档，跳过外部 URL，并校验本地 Markdown 文件与标题锚点。OpenAPI contract test 从后端 app 静态生成文档并校验 operation、response、envelope、security 和递归 JSON 约束。
+
+以下仍是后续可选增强，不得在未提供对应 script 前写入 CI 必跑命令：`docs:lint`、`docs:frontmatter`、`openapi:lint`、`openapi:validate`、SDK generation smoke test。
 
 ## 文档复查
 

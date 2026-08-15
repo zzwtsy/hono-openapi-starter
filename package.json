@@ -9,6 +9,8 @@
   },
   "scripts": {
     "build": "pnpm --filter backend build && pnpm --filter frontend build",
+    "docs:links": "node scripts/docs/check-links.mjs",
+    "docs:links:test": "vitest run scripts/docs/check-links.test.mjs",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "test": "pnpm --filter backend test && pnpm --filter frontend test",
@@ -22,6 +24,9 @@
     "eslint-plugin-boundaries": "catalog:",
     "eslint-plugin-format": "catalog:",
     "eslint-plugin-react-refresh": "catalog:",
-    "typescript": "catalog:"
+    "github-slugger": "catalog:",
+    "mdast-util-from-markdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
