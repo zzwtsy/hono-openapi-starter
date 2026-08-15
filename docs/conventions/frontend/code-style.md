@@ -26,14 +26,14 @@ route 文件是装配层,只做四件事:`createFileRoute` + `beforeLoad` 守卫
 
 禁止在 route 文件内:业务派生计算、多个 `useState`、复杂 handler、媒体查询 hook。这些下放到 feature 组件或 `hooks/`。
 
-- 正例:[projects page](../../../apps/frontend/src/pages/projects/index.tsx)、[settings page](../../../apps/frontend/src/pages/settings/index.tsx);route 文件 [projects route](../../../apps/frontend/src/routes/_authenticated/projects/index.tsx) 只引用 page。
-- 反例(待重构):[users.tsx](../../../apps/frontend/src/routes/_authenticated/iam/users.tsx)(194 行,内联 `useIsNarrowScreen` + 派生 `orgOptions`/`getOrgPath` + 3 个 handler)、[roles.tsx](../../../apps/frontend/src/routes/_authenticated/iam/roles.tsx)(162 行)。
+- 正例:[projects route](../../../apps/frontend/src/routes/_authenticated/projects/index.tsx)、[settings route](../../../apps/frontend/src/routes/_authenticated/settings.tsx) 只负责守卫、loader 和 feature 组件装配；页面主体分别位于 `features/projects` 与 `features/settings`。
+- [users route](../../../apps/frontend/src/routes/_authenticated/iam/users.tsx) 和 [roles route](../../../apps/frontend/src/routes/_authenticated/iam/roles.tsx) 通过 feature page 接收和回写 URL 驱动的选择态，route 本身不承载列表、详情或 mutation 业务逻辑。
 
 ## 4. 组件文件大小
 
 - **单文件 ≤ 300 行**;**单组件函数体 ≤ 150 行**。超过必须拆分。
 - 拆分依据是**职责单一与拥挤度**(非硬行数),行数是警戒线:React 官方"a component should only be concerned with one thing; if it ends up growing, decompose into smaller subcomponents"。
-- god 组件按 **tab/职责拆子组件 + 抽 mutation hook**。目标拆分见 [iam 重构计划](../../features/frontend/iam-refactor-plan.md)。
+- god 组件按 **tab/职责拆子组件 + 抽 mutation hook**。当前 IAM 的拆分实例见 [IAM feature 文档](../../features/frontend/iam.md) 及其 `components/*-detail-panel`、`hooks/` 目录。
 
 ## 5. 状态与副作用
 
@@ -41,19 +41,19 @@ route 文件是装配层,只做四件事:`createFileRoute` + `beforeLoad` 守卫
 
 - **禁止无意义地镜像 props 到 state**(纯 `prevX` 同步而无重置语义)。用 `key` 重置或派生计算。
 - **允许 React 官方 [adjusting state when information changes](https://react.dev/reference/react/useState#storing-information-from-previous-renders) 模式**:数据变化时在 render 期条件 setState 重置派生 state(优于 useEffect)。
-  - 正例:[use-role-permissions.ts](../../../apps/frontend/src/features/iam/ui/role-detail-panel/role-permissions-tab/use-role-permissions.ts) `prevInitial`:granted 刷新(submit / refresh)后重置 working 编辑态(role 切换由容器 `key={role.id}` remount 处理)。
+  - 正例:[use-role-permissions.ts](../../../apps/frontend/src/features/iam/components/role-detail-panel/role-permissions-tab/use-role-permissions.ts) `prevInitial`:granted 刷新(submit / refresh)后重置 working 编辑态(role 切换由容器 `key={role.id}` remount 处理)。
 - **选中态 URL-driven**:URL search param 是唯一 source,未指定时派生 fallback(如 `users?.[0]`),**不写 URL**(用户点选才写)。禁止 `useEffect` 回调父 `setState` 同步 URL(违反 [React single-source-of-truth](https://react.dev/learn/sharing-state-between-components))。
-  - 反例:[OrganizationExplorer.tsx:75-83](../../../apps/frontend/src/features/iam/components/OrganizationExplorer.tsx#L75-L83)。
+- 当前实现由 [users-page.tsx](../../../apps/frontend/src/features/iam/users-page.tsx)、[roles-page.tsx](../../../apps/frontend/src/features/iam/roles-page.tsx) 接收 route search 派生的选择态，并通过回调通知 route 更新 URL。
 - 函数体内大数组/配置对象必须 `useMemo` 或提到模块级,避免每次 render 重建。
-  - 反例:[user-detail-panel.tsx:536](../../../apps/frontend/src/features/iam/components/user-detail-panel.tsx#L536) `roleItems`、[ProjectList.tsx:133](../../../apps/frontend/src/features/projects/components/ProjectList.tsx#L133) 内联 `items`。
+- 当前 IAM 选择与派生逻辑集中在 [use-user-selection.ts](../../../apps/frontend/src/features/iam/hooks/use-user-selection.ts)、[use-role-selection.ts](../../../apps/frontend/src/features/iam/hooks/use-role-selection.ts) 等 hook 中；新增复杂派生逻辑沿同一边界放置。
 - 用**判别联合 + 解构**替代非空断言 `!`。
-  - 反例:[user-detail-panel.tsx:458](../../../apps/frontend/src/features/iam/components/user-detail-panel.tsx#L458) `source.roleId!`。
+- 评审时优先检查当前 [effective-permissions-panel.tsx](../../../apps/frontend/src/features/iam/components/user-detail-panel/effective-permissions-panel.tsx) 等细分组件，避免恢复已拆分文件中的非空断言。
 
 ## 6. 条件渲染
 
 - **禁止嵌套三元(超过一层)**。React 官方"use ternary in moderation; if messy with nested conditional markup, extract child components"。
 - 列表三态(loading / error / empty / data)用早返回子组件,或抽 `<AsyncList>` 复合组件(见 §7)。
-- 反例:[role-detail-panel.tsx:377](../../../apps/frontend/src/features/iam/components/role-detail-panel.tsx#L377) 四重嵌套、[user-detail-panel.tsx:580](../../../apps/frontend/src/features/iam/components/user-detail-panel.tsx#L580) 三重。
+  - 当前复杂条件已按职责拆到 [role-permissions-tab](../../../apps/frontend/src/features/iam/components/role-detail-panel/role-permissions-tab/index.tsx) 等子组件；新增多分支渲染应沿此方式继续拆分。
 
 ## 7. 重复治理(跨文件重复必须沉淀)
 

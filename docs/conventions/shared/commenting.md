@@ -85,10 +85,10 @@ zod schema 字段、配置对象字段、接口字段用单行 `/** ... */` 说�
 
 ## 正例(项目代码)
 
-- 模块 TSDoc:[better-auth.ts](../../apps/backend/src/core/auth/better-auth.ts) 的 `/** Better Auth 实例。... */`
-- 类型 TSDoc(单行):[visibility-policies.ts](../../apps/backend/src/core/audit/visibility-policies.ts) `/** 审计查询操作者。... */`
-- 行内 why:[create-app.ts](../../apps/backend/src/core/app/create-app.ts) `// 全局中间件必须先写入 requestId...`
-- 字段级 TSDoc:[env-schema.ts](../../apps/backend/src/config/env-schema.ts) `/** 认证服务的密钥, 长度必须至少 32 位 */`
+- 模块 TSDoc:[better-auth.ts](../../../apps/backend/src/core/auth/better-auth.ts) 的 `/** Better Auth 实例。... */`
+- 类型 TSDoc(单行):[visibility-policies.ts](../../../apps/backend/src/core/audit/visibility-policies.ts) `/** 审计查询操作者。... */`
+- 行内 why:[create-app.ts](../../../apps/backend/src/core/app/create-app.ts) `// 全局中间件必须先写入 requestId...`
+- 字段级 TSDoc:[env-schema.ts](../../../apps/backend/src/config/env-schema.ts) `/** 认证服务的密钥, 长度必须至少 32 位 */`
 
 ## 评审 checklist
 
