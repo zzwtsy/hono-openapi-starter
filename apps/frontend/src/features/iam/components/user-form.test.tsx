@@ -6,6 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { http, okEnvelope } from "@/test/msw/handlers";
 import { server } from "@/test/msw/server";
 import { UserForm } from "./user-form";
+import "@/test/msw/setup";
 
 const user: UserSummary = {
   id: "user-1",

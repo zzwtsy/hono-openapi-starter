@@ -1,10 +1,11 @@
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { failEnvelope, okEnvelope } from "@/test/msw/handlers";
 import { server } from "@/test/msw/server";
 
 import Apis from "./index";
+import "@/test/msw/setup";
 
 /**
  * API 层 responded.onSuccess 测试:验证 envelope 剥离、success:false 抛错、401 hard-nav。
@@ -15,10 +16,6 @@ import Apis from "./index";
  * 从根上隔离,无需清缓存。
  */
 describe("api responded.onSuccess", () => {
-  beforeEach(() => {
-    server.resetHandlers();
-  });
-
   it("成功响应剥离 envelope 返回 data", async () => {
     server.use(
       http.get("/api/v1/roles", () =>

@@ -6,6 +6,7 @@ import { http, okEnvelope } from "@/test/msw/handlers";
 import { server } from "@/test/msw/server";
 import { OrganizationForm } from "./organization-form";
 import { ResetPasswordDialog } from "./reset-password-dialog";
+import "@/test/msw/setup";
 
 const user: UserSummary = {
   id: "user-1",

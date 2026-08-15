@@ -6,6 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { http, okEnvelope } from "@/test/msw/handlers";
 import { server } from "@/test/msw/server";
 import { RoleForm } from "./role-form";
+import "@/test/msw/setup";
 
 const existingRole: Role = {
   id: "role-1",

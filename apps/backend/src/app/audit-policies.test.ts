@@ -83,11 +83,11 @@ describe("registerAuditPolicies", () => {
     await expect(policy?.(actor, "u3")).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
   });
 
-  it.each([
+  it.for([
     ["role", "roles.read"],
     ["org", "organizations.read"],
     ["setting", "settings.read"],
-  ] as const)("%s 策略校验对应读取权限", async (resourceType, permission) => {
+  ] as const)("%s 策略校验对应读取权限", async ([resourceType, permission]) => {
     const policy = getAuditResourceVisibilityPolicy(resourceType);
 
     await expect(policy?.(actor, "resource-1")).resolves.toBeUndefined();
