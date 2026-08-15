@@ -115,6 +115,7 @@ export const $$userConfigMap = withConfigType({
   "IAM.disableUser": { name: "IAM.disableUser" },
   "IAM.enableUser": { name: "IAM.enableUser" },
   "IAM.transferUserOrganization": { name: "IAM.transferUserOrganization" },
+  "Me.updateMe": { name: "Me.updateMe" },
   "Settings.updateSetting": { name: "Settings.updateSetting" },
   // action 目录静态缓存；日志列表与资源时间线保持实时。
   "Audit.listAuditActions": { cacheFor: Infinity },
