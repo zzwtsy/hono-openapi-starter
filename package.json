@@ -9,11 +9,13 @@
   },
   "scripts": {
     "build": "pnpm --filter backend build && pnpm --filter frontend build",
+    "docs:frontmatter": "node scripts/docs/check-frontmatter.mjs",
     "docs:links": "node scripts/docs/check-links.mjs",
-    "docs:links:test": "vitest run scripts/docs/check-links.test.mjs",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "test": "pnpm --filter backend test && pnpm --filter frontend test",
+    "openapi:generated:check": "node scripts/openapi/check-generated.mjs",
+    "test": "pnpm test:scripts && pnpm --filter backend test && pnpm --filter frontend test",
+    "test:scripts": "vitest run scripts",
     "typecheck": "pnpm --filter backend typecheck && pnpm --filter frontend typecheck"
   },
   "devDependencies": {

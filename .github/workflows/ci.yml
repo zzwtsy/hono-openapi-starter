@@ -4,34 +4,86 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  backend:
+  quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm docs:links:test
-      - run: pnpm docs:links
-      - run: pnpm --filter backend typecheck
-      - run: pnpm -w lint
-      - run: pnpm --filter backend test:all
-      - run: pnpm --filter backend build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Test repository scripts
+        run: pnpm test:scripts
+      - name: Check documentation frontmatter
+        run: pnpm docs:frontmatter
+      - name: Check documentation links
+        run: pnpm docs:links
+      - name: Check generated OpenAPI client
+        run: pnpm openapi:generated:check
+      - name: Lint workspace
+        run: pnpm -w lint
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck backend
+        run: pnpm --filter backend typecheck
+      - name: Test backend
+        run: pnpm --filter backend test:all
+      - name: Build backend
+        run: pnpm --filter backend build
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter frontend typecheck
-      - run: pnpm --filter frontend test
-      - run: pnpm --filter frontend build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck frontend
+        run: pnpm --filter frontend typecheck
+      - name: Test frontend
+        run: pnpm --filter frontend test
+      - name: Build frontend
+        run: pnpm --filter frontend build

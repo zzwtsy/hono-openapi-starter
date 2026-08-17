@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { app } from "../../src/app/create-application.js";
+import { openApiDocumentConfig, openApiGeneratorOptions } from "../../src/core/app/openapi.js";
 
 // 静态 spec 校验:用 app.getOpenAPIDocument() 取契约,对齐 Spectral OAS 标准规则校验实现。
 interface Operation {
@@ -28,10 +29,7 @@ interface Spec {
   };
 }
 
-const spec = app.getOpenAPIDocument({
-  openapi: "3.0.3",
-  info: { title: "test", version: "0.0.0" },
-}) as unknown as Spec;
+const spec = app.getOpenAPIDocument(openApiDocumentConfig, openApiGeneratorOptions) as unknown as Spec;
 
 const operations = Object.values(spec.paths)
   .flatMap(path => Object.values(path))

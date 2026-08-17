@@ -1,3 +1,4 @@
+import process from "node:process";
 import { defineConfig } from "@alova/wormhole";
 
 // 从后端 OpenAPI spec 自动生成类型安全的 API 函数。
@@ -5,8 +6,8 @@ import { defineConfig } from "@alova/wormhole";
 export default defineConfig({
   generator: [
     {
-      input: "http://localhost:3001/openapi.json",
-      output: "src/api",
+      input: process.env.OPENAPI_INPUT ?? "http://localhost:3001/openapi.json",
+      output: process.env.OPENAPI_OUTPUT ?? "src/api",
       global: "Apis",
       type: "typescript",
       // 后端 envelope { success, code, message, data, error, meta };

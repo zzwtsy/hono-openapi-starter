@@ -161,6 +161,17 @@ export default antfu(
     },
   },
   {
+    name: "project/backend-code-quality",
+    files: BACKEND_SOURCE_FILES,
+    ignores: ["apps/backend/src/**/*.test.ts"],
+    rules: {
+      // 先以当前可通过的阈值建立棘轮，阻止业务源码继续膨胀。
+      "complexity": ["error", 15],
+      "max-lines-per-function": ["error", { max: 150, skipComments: true }],
+      "max-lines": ["error", 350],
+    },
+  },
+  {
     name: "project/frontend-source",
     files: FRONTEND_SOURCE_FILES,
     plugins: { boundaries },
