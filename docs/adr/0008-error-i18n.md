@@ -1,5 +1,8 @@
 ---
-status: Accepted
+status: Active
+adrStatus: Accepted
+owner: backend-platform
+lastReviewedAt: 2026-08-17
 date: 2026-07-18
 ---
 

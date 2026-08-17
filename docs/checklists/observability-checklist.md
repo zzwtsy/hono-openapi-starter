@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-08-06
+lastReviewedAt: 2026-08-17
 ---
 
 # 可观测性 Checklist
@@ -36,7 +36,8 @@ lastReviewedAt: 2026-08-06
 
 - [x] `/openapi.json` 可生成。
 - [x] `/reference` 可访问。
+- [x] 后端 OpenAPI 与已提交 Wormhole 前端生成物在 CI 中做静态一致性检查。
 - [ ] OpenAPI lint 进入 CI。
 - [x] contract test 覆盖核心接口。
 
-> 阶段 6 复查结论:OpenAPI lint/generate/validate 尚未进入 CI,trace_id/span_id 也未实现,继续保持未完成状态;当前以 OpenAPI source、contract test 和已提交前端生成物完成审计契约核对。
+> 2026-08-17 复查结论：OpenAPI source、contract test 和 Wormhole 生成物一致性已进入 CI；通用 OpenAPI lint/validate、trace_id/span_id 仍未实现，继续保持未完成状态。

@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: platform
-lastReviewedAt: 2026-07-11
+lastReviewedAt: 2026-08-17
 ---
 
 # 文档系统规范
@@ -172,7 +172,7 @@ relatedADR:
 
 ## 生命周期状态
 
-每份正式文档必须处于以下状态之一：
+每份受版本控制的正式文档必须处于以下五种持久状态之一：
 
 | 状态 | 含义 | 使用场景 |
 | --- | --- | --- |
@@ -181,7 +181,21 @@ relatedADR:
 | Active | 生效中 | 已评审通过，是当前实现与协作依据 |
 | Deprecated | 已废弃 | 旧方案仍需保留一段时间，但不应再用于新开发 |
 | Archived | 已归档 | 仅作为历史记录保留，不再维护 |
-| Removed | 已移除 | 文档已无保留价值，允许删除 |
+
+`Removed` 表示文件已被删除的终止动作，不是仍在仓库中的 frontmatter 状态。删除前仍需遵守下述流转与 PR 说明要求。
+
+ADR 同时维护两个正交字段：
+
+* `status` 继续表示这份 Markdown 文档的生命周期；
+* `adrStatus` 表示决策生命周期，只允许 `Proposed`、`Accepted`、`Superseded`。
+
+| `adrStatus` | 允许的文档 `status` | 说明 |
+| --- | --- | --- |
+| `Proposed` | `Draft`、`Review` | 决策尚未接受 |
+| `Accepted` | `Active` | 决策已接受，文档是生效的历史记录 |
+| `Superseded` | `Deprecated`、`Archived` | 决策已被另一 ADR 替代，必须提供 `supersededBy` |
+
+不要把 `Accepted` 直接写入通用 `status`。这会混淆“文档是否生效”和“决策是否被接受”两个维度。
 
 ## 状态流转规则
 
@@ -189,12 +203,11 @@ relatedADR:
 
 | 当前状态 | 允许流转到 | 说明 |
 | --- | --- | --- |
-| Draft | Review、Removed | 草稿可以进入评审，也可以直接丢弃 |
+| Draft | Review | 草稿可以进入评审；确认无价值时可直接删除 |
 | Review | Draft、Active | 评审未通过回到草稿，评审通过后生效 |
 | Active | Deprecated | 生效文档被新方案替代时进入废弃状态 |
 | Deprecated | Active、Archived | 如果废弃判断有误可以恢复，否则进入归档 |
-| Archived | Removed | 归档文档确认无历史价值后才允许删除 |
-| Removed | - | 已删除文档不可再流转 |
+| Archived | - | 归档文档确认无历史价值后可以删除；删除后不再有文档状态 |
 
 禁止行为：
 
@@ -219,7 +232,7 @@ relatedADR:
 | README / Onboarding | 可以 | 谨慎删除 | 需要更高频复查，避免新人被过期内容误导 |
 
 ADR 是决策历史，不应被直接改写。
-如果新的决策替代了旧 ADR，应新增 ADR，并在旧 ADR 中标记 `supersededBy`。
+如果新的决策替代了旧 ADR，应新增 ADR，并把旧 ADR 标记为 `status: Deprecated`、`adrStatus: Superseded`，同时填写 `supersededBy`。
 
 示例：
 
@@ -227,6 +240,7 @@ ADR 是决策历史，不应被直接改写。
 ---
 title: Use Unified Response Envelope
 status: Deprecated
+adrStatus: Superseded
 supersededBy: docs/adr/0008-use-problem-details-for-public-api.md
 ---
 ```
@@ -336,14 +350,16 @@ status: Active
 当前工程已经落地的文档/契约门禁：
 
 ```txt
-pnpm docs:links:test
+pnpm test:scripts
+pnpm docs:frontmatter
 pnpm docs:links
 pnpm --filter backend test:contract
+pnpm openapi:generated:check
 ```
 
-其中 `docs:links:test` 锁定链接扫描器的 Markdown 解析、代码块、路径和锚点行为；`docs:links` 使用 Markdown AST 扫描受版本控制的项目文档，排除本地执行计划和 `.agents/` 技能文档，跳过外部 URL，并校验本地 Markdown 文件与标题锚点。OpenAPI contract test 从后端 app 静态生成文档并校验 operation、response、envelope、security 和递归 JSON 约束。
+其中 `test:scripts` 由 Vitest 自动发现 `scripts/**/*.test.mjs`，统一覆盖 frontmatter 字段、状态、日期和 ADR 替代关系，链接扫描器的 Markdown 解析、代码块、路径和锚点行为，以及 OpenAPI 生成物比较器的失败路径；新增工具脚本测试不需要再增加独立的 package script 或 CI step。`docs:frontmatter` 只扫描受版本控制的正式 `docs/` 文档，排除本地执行计划。`docs:links` 使用 Markdown AST 扫描受版本控制的项目文档，排除本地执行计划和 `.agents/` 技能文档，跳过外部 URL，并校验本地 Markdown 文件与标题锚点。OpenAPI contract test 从后端 app 静态生成文档并校验 operation、response、envelope、security 和递归 JSON 约束；`openapi:generated:check` 再从同一 application composition 静态导出 spec，在临时目录运行 Wormhole 并比较三个已提交生成文件，不启动 server/DB，也不覆盖工作区。
 
-以下仍是后续可选增强，不得在未提供对应 script 前写入 CI 必跑命令：`docs:lint`、`docs:frontmatter`、`openapi:lint`、`openapi:validate`、SDK generation smoke test。
+以下仍是后续可选增强，不得在未提供对应 script 前写入 CI 必跑命令：`docs:lint`、通用 `openapi:lint` / `openapi:validate`、外部 SDK generation smoke test。
 
 ## 文档复查
 

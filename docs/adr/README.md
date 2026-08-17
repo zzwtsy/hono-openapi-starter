@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: platform
-lastReviewedAt: 2026-08-13
+lastReviewedAt: 2026-08-17
 ---
 
 # ADR 索引
@@ -29,5 +29,5 @@ ADR 记录已经接受的长期架构决策。它说明决策背景、取舍和�
 ## 维护规则
 
 - ADR 原则上不删除，也不直接改写历史决策。
-- 如果新决策替代旧决策，新增 ADR，并在旧 ADR 的 frontmatter 中标记 `supersededBy`。
+- 如果新决策替代旧决策，新增 ADR，并把旧 ADR 标记为 `status: Deprecated`、`adrStatus: Superseded`，同时填写 `supersededBy`。
 - 阅读 ADR 后必须回到当前事实，检查相关代码、OpenAPI、schema、测试和 conventions 是否仍然一致。

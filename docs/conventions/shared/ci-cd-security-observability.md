@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-06-03
+lastReviewedAt: 2026-08-17
 ---
 
 # CI/CD、安全与可观测性
@@ -25,7 +25,17 @@ lastReviewedAt: 2026-06-03
 13. build
 14. deploy
 
-实际 CI(`.github/workflows/ci.yml`,push main + PR 触发)落地子集:install + typecheck + lint(含 boundary + format)+ test:all(unit/integration/contract)+ build;frontend typecheck + build(并行 job)。未实现:route tests、OpenAPI generate/lint/validate(contract test 静态校验替代)、SDK smoke test、deploy(模板无部署目标)。
+实际 CI（`.github/workflows/ci.yml`，push main + PR 触发）使用三个并行 job：
+
+- `quality`：工具脚本测试、正式文档 frontmatter/链接、OpenAPI → Wormhole 生成物一致性和全仓 lint（含 boundary + format）；
+- `backend`：后端 typecheck、`test:all`（unit/integration/contract）和 build；
+- `frontend`：前端 typecheck、test 和 build。
+
+三个 job 都使用 15 分钟超时、只读 `contents` 权限，并禁止 checkout 持久化凭据。PR 同一编号的新运行会取消旧运行；main push 不互相取消，避免主分支留下未验证状态。pnpm store 由 `actions/setup-node` 缓存，不缓存完整 `node_modules`。
+
+第三方 Actions 固定到对应 major tag 当前解引用后的完整 commit SHA，行尾注释保留可读版本。`.github/dependabot.yml` 每周检查 `github-actions` 更新并把同批更新归组，避免 SHA 固定后失去自动升级路径。
+
+未实现：独立 route tests、通用 OpenAPI lint/validate、外部 SDK smoke test 和 deploy（模板无部署目标）。OpenAPI 静态导出和已提交前端生成物一致性已经是强制门禁，不能再描述为“未生成”。
 
 ## OpenAPI CI
 

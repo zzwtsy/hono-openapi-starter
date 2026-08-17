@@ -1,3 +1,9 @@
+---
+status: Active
+owner: backend-platform
+lastReviewedAt: 2026-08-17
+---
+
 # 后端目录结构
 
 > 本文档是当前架构事实，以 `apps/backend/src/` 实际文件为准；目录或依赖边界变化时必须随代码更新。
@@ -12,6 +18,7 @@ src/
 
   app/                             # 应用组合与进程生命周期
     create-application.ts          # 创建 HTTP app；无 server/timer/signal 副作用
+    export-openapi.ts              # 静态导出完整 OpenAPI JSON；不启动 server/DB
     register-features.ts           # 挂载各 feature router
     audit-policies.ts              # 注册审计名称、组织范围和资源可见性策略
     lifecycle.ts                   # catalog sync、serve、retention、signal 与 graceful shutdown

@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: platform
-lastReviewedAt: 2026-08-06
+lastReviewedAt: 2026-08-17
 ---
 
 # 全栈模板工程文档
@@ -86,7 +86,7 @@ docs/
   conventions/
     shared/{commenting, documentation-system, ci-cd-security-observability}.md
     backend/{api-openapi, response-envelope, error-code-system, auth-better-auth, authorization, database-drizzle, logging-loglayer, development-workflow, testing-strategy}.md
-    frontend/{api-alova, forms-tanstack, routing, auth, state-cache, data-table, development-workflow, testing}.md
+    frontend/{api-alova, forms-tanstack, routing, auth, state-cache, data-table, code-style, development-workflow, testing}.md
 
   features/
     backend/{_template, iam, projects, system-settings, audit}.md

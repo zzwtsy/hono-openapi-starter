@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-08-12
+lastReviewedAt: 2026-08-17
 ---
 
 # 前端 API 调用规范(alova + wormhole)
@@ -128,3 +128,12 @@ alovaInstance.Get("/api/v1/export", { meta: { raw: true } });
 - **生成物入 git**(克隆即用,CI 不依赖后端 dev);`createApis.ts`/`apiDefinitions.ts` eslint ignore(不 lint 生成代码)。
 - `client.ts` 放 alova 实例定制（envelope 剥离 + meta.raw + statesHook）；`method-config.ts` 放缓存/失效策略；`index.ts` 保持最小装配并继续导出生成类型需要的 `alovaInstance` / `$$userConfigMap`。
 - 后端 spec 变更:重新 `gen:api`(或 VSCode 扩展 autoUpdate)同步前端 API。
+
+CI 不依赖 live backend：`pnpm openapi:generated:check` 从 backend application composition 静态导出 spec，在系统临时目录设置 `OPENAPI_INPUT` / `OPENAPI_OUTPUT` 后运行 Wormhole，并逐字比较 `createApis.ts`、`apiDefinitions.ts`、`globals.d.ts`。检查器不覆盖工作区文件；本地正常更新生成物仍使用上面的 `gen:api` 命令。
+
+API 契约变更顺序：
+
+```txt
+backend contract test → 启动 backend 后 gen:api → review 生成 diff
+→ openapi:generated:check → frontend typecheck/test
+```

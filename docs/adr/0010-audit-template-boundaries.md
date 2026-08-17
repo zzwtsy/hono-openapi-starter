@@ -1,5 +1,6 @@
 ---
 status: Review
+adrStatus: Proposed
 date: 2026-08-06
 owner: backend-platform
 lastReviewedAt: 2026-08-06

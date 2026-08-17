@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-06-03
+lastReviewedAt: 2026-08-17
 ---
 
 # 后端开发流程规范
@@ -103,6 +103,20 @@ repository 不负责：
 ## 注释与 TODO
 
 注释规范(原则、TSDoc、行内注释、TODO/FIXME/HACK 格式、反模式、评审 checklist)见 [注释规范](../shared/commenting.md)。
+
+## 复杂度棘轮
+
+后端生产源码由根 ESLint 配置强制执行：
+
+```js
+"complexity": ["error", 15],
+"max-lines-per-function": ["error", { max: 150, skipComments: true }],
+"max-lines": ["error", 350],
+```
+
+这些阈值是阻止继续膨胀的上限，不是机械拆分目标。触线时先判断是否混合了多个业务职责，再按可命名的用例、解析步骤或组装边界拆分；不要只为减少行数抽取薄 helper，也不要用目录级关闭掩盖热点。测试文件不受生产文件长度门禁，migration 和生成 schema 继续使用既有 ignore。
+
+当前 `features/iam/users/service.ts` 接近文件上限；后续新增用户生命周期能力时优先按真实用例拆分，不提前引入 repository/application-service 层。
 
 ## Code Review 检查点
 
