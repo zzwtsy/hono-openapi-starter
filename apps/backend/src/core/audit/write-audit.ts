@@ -7,6 +7,68 @@ import { beginAuditWrite, endAuditWrite, enqueue } from "./queue.js";
 import { resolveRelationNames, resolveResourceRefNames } from "./relation-resolvers.js";
 import { sanitize } from "./sanitize.js";
 
+function createResolverErrorReporter(eventId: string, requestId: string | null, action: string) {
+  return (error: unknown, context: AuditResolverErrorContext) => {
+    logger
+      .withError(error)
+      .withMetadata({
+        eventId,
+        requestId,
+        action,
+        stage: "resolve",
+        ...context,
+      })
+      .error("audit name resolver failed, recording without resolved name");
+  };
+}
+
+function resolveActorFields(
+  entry: AuditEntry,
+  context: ReturnType<typeof getAuditContext>,
+): Pick<AuditRecord, "actorUserId" | "actorOrgId" | "actorNameSnapshot"> {
+  return {
+    actorUserId: entry.actorUserId ?? context?.actorUserId ?? null,
+    actorOrgId: entry.actorOrgId ?? context?.actorOrgId ?? null,
+    actorNameSnapshot: entry.actorNameSnapshot ?? context?.actorNameSnapshot ?? null,
+  };
+}
+
+function resolveRequestFields(
+  context: ReturnType<typeof getAuditContext>,
+): Pick<AuditRecord, "ipAddress" | "userAgent" | "requestId"> {
+  return {
+    ipAddress: context?.ipAddress ?? null,
+    userAgent: context?.userAgent ?? null,
+    requestId: context?.requestId ?? null,
+  };
+}
+
+function createAuditRecord(
+  entry: AuditEntry,
+  context: ReturnType<typeof getAuditContext>,
+  eventId: string,
+  resourceRefs: AuditRecord["resourceRefs"],
+  beforeState: unknown,
+  afterState: unknown,
+  changedFields: string[] | null,
+  metadata: unknown,
+): AuditRecord {
+  return {
+    id: eventId,
+    ...resolveActorFields(entry, context),
+    action: entry.action,
+    occurredAt: entry.occurredAt ?? new Date(),
+    resourceRefs,
+    beforeState,
+    afterState,
+    changedFields,
+    ...resolveRequestFields(context),
+    status: entry.status,
+    errorCode: entry.errorCode,
+    metadata: isRecord(metadata) ? metadata : undefined,
+  };
+}
+
 /**
  * 组装审计记录并 fire-and-forget 入队。
  *
@@ -36,18 +98,11 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
     const beforeSanitized = sanitize(entry.beforeState);
     const afterSanitized = sanitize(entry.afterState);
 
-    const reportResolverError = (error: unknown, context: AuditResolverErrorContext) => {
-      logger
-        .withError(error)
-        .withMetadata({
-          eventId,
-          requestId: ctx?.requestId ?? null,
-          action: entry.action,
-          stage: "resolve",
-          ...context,
-        })
-        .error("audit name resolver failed, recording without resolved name");
-    };
+    const reportResolverError = createResolverErrorReporter(
+      eventId,
+      ctx?.requestId ?? null,
+      entry.action,
+    );
 
     // 2. 解析 resourceRefs 名称快照(调用方提供的 name 优先,解析失败不丢事件)
     const refsWithNames = await resolveResourceRefNames(entry.resourceRefs, reportResolverError);
@@ -65,24 +120,16 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
     const metadataSanitized = sanitize(entry.metadata);
 
     // 6. 组装记录入队
-    const record: AuditRecord = {
-      id: eventId,
-      actorUserId: entry.actorUserId ?? ctx?.actorUserId ?? null,
-      actorOrgId: entry.actorOrgId ?? ctx?.actorOrgId ?? null,
-      actorNameSnapshot: entry.actorNameSnapshot ?? ctx?.actorNameSnapshot ?? null,
-      action: entry.action,
-      occurredAt: entry.occurredAt ?? new Date(),
-      resourceRefs: refsWithNames,
-      beforeState: beforeWithNames,
-      afterState: afterWithNames,
+    const record = createAuditRecord(
+      entry,
+      ctx,
+      eventId,
+      refsWithNames,
+      beforeWithNames,
+      afterWithNames,
       changedFields,
-      ipAddress: ctx?.ipAddress ?? null,
-      userAgent: ctx?.userAgent ?? null,
-      requestId: ctx?.requestId ?? null,
-      status: entry.status,
-      errorCode: entry.errorCode,
-      metadata: isRecord(metadataSanitized) ? metadataSanitized : undefined,
-    };
+      metadataSanitized,
+    );
 
     enqueue(record, true);
   } catch (e) {

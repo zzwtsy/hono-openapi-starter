@@ -56,7 +56,7 @@ async function readResponseData(c: Context<AppBindings>): Promise<unknown> {
   return body.data;
 }
 
-function assertAuditConfig(config: AuditConfig): void {
+function assertActionDefinition(config: AuditConfig): void {
   if (
     config.action == null
     || typeof config.action !== "object"
@@ -68,6 +68,9 @@ function assertAuditConfig(config: AuditConfig): void {
   if (typeof config.action.label !== "string" || config.action.label.length === 0) {
     throw new Error(`audit config: action label is required (action: ${config.action.action})`);
   }
+}
+
+function assertSnapshotInputs(config: AuditConfig): void {
   if (config.before != null && !isSnapshotInput(config.before)) {
     throw new Error(`audit config: invalid before snapshot (action: ${config.action.action})`);
   }
@@ -79,6 +82,9 @@ function assertAuditConfig(config: AuditConfig): void {
   ) {
     throw new Error(`audit config: invalid after snapshot (action: ${config.action.action})`);
   }
+}
+
+function assertResourceMode(config: AuditConfig): void {
   const actionCode = config.action.action;
   const hasResourceType = config.resourceType != null;
   const hasResourceRefs = config.resourceRefs != null;
@@ -89,6 +95,97 @@ function assertAuditConfig(config: AuditConfig): void {
   }
   if (hasResourceType && config.resourceId == null) {
     throw new Error(`audit config: resourceType set but resourceId missing (action: ${actionCode})`);
+  }
+}
+
+function assertAuditConfig(config: AuditConfig): void {
+  assertActionDefinition(config);
+  assertSnapshotInputs(config);
+  assertResourceMode(config);
+}
+
+async function captureSnapshotSafely(
+  input: AuditSnapshotInput | undefined,
+  c: Context<AppBindings>,
+): Promise<unknown> {
+  if (input == null) {
+    return undefined;
+  }
+  try {
+    return await resolveSnapshot(input, c);
+  } catch {
+    return undefined;
+  }
+}
+
+interface AuditOutcome {
+  status: "success" | "failure";
+  errorCode?: string;
+}
+
+function readAuditOutcome(c: Context<AppBindings>): AuditOutcome {
+  if (c.error instanceof AppError) {
+    return { status: "failure", errorCode: c.error.code };
+  }
+  if (c.error != null) {
+    return { status: "failure", errorCode: "COMMON_INTERNAL_ERROR" };
+  }
+  return { status: c.res.status >= 400 ? "failure" : "success" };
+}
+
+async function captureResponseSafely(c: Context<AppBindings>): Promise<unknown> {
+  try {
+    return await readResponseData(c);
+  } catch {
+    return undefined;
+  }
+}
+
+async function resolveAfterSnapshot(
+  afterConfig: AuditConfig["after"],
+  status: AuditOutcome["status"],
+  c: Context<AppBindings>,
+): Promise<unknown> {
+  if (afterConfig === "response") {
+    return status === "success" ? captureResponseSafely(c) : undefined;
+  }
+  if (afterConfig == null || afterConfig === "none") {
+    return undefined;
+  }
+  return captureSnapshotSafely(afterConfig, c);
+}
+
+async function resolveResourceRefs(
+  config: AuditConfig,
+  c: Context<AppBindings>,
+  actionCode: string,
+): Promise<readonly AuditResourceRef[]> {
+  try {
+    if (config.resourceRefs != null) {
+      return await config.resourceRefs(c);
+    }
+    const id = (await config.resourceId(c)) ?? "";
+    return [{ type: config.resourceType, id }];
+  } catch (error) {
+    logger
+      .withError(error)
+      .withMetadata({ action: actionCode })
+      .error("audit resource refs resolution failed, recording without refs");
+    return [];
+  }
+}
+
+async function resolveMetadata(
+  metadataConfig: AuditConfig["metadata"],
+  c: Context<AppBindings>,
+): Promise<Record<string, unknown> | undefined> {
+  if (typeof metadataConfig !== "function") {
+    return metadataConfig;
+  }
+  try {
+    return await metadataConfig(c);
+  } catch {
+    return undefined;
   }
 }
 
@@ -103,14 +200,7 @@ export function audit(config: AuditConfig) {
     const occurredAt = new Date();
 
     // 1. handler 前:查 before(配了才查)
-    let before: unknown;
-    if (config.before != null) {
-      try {
-        before = await resolveSnapshot(config.before, c);
-      } catch {
-        // before 查询失败不阻塞业务(如资源不存在让 handler 自己抛 404)
-      }
-    }
+    const before = await captureSnapshotSafely(config.before, c);
 
     // 2. 执行 handler
     let status: "success" | "failure" = "success";
@@ -121,16 +211,7 @@ export function audit(config: AuditConfig) {
       // Hono compose 在 handler 抛错时于最内层 dispatch 调用 errorHandler 并把错误挂到
       // context.error,next() 正常 resolve —— 失败检测以 c.error + c.res.status 为准。
       // (旧实现依赖 catch,errorCode 对 handler 抛错恒为 undefined——隐性 bug)
-      const err = c.error;
-      if (err instanceof AppError) {
-        status = "failure";
-        errorCode = err.code;
-      } else if (err != null) {
-        status = "failure";
-        errorCode = "COMMON_INTERNAL_ERROR";
-      } else if (c.res.status >= 400) {
-        status = "failure";
-      }
+      ({ errorCode, status } = readAuditOutcome(c));
     } catch (e) {
       // 兜底:正常配置下 next() 不 reject(compose 内部消化),仅非 Error 抛错等边界走到这里。
       status = "failure";
@@ -138,53 +219,15 @@ export function audit(config: AuditConfig) {
       throw e;
     } finally {
       // 3/4. handler 后:读 after,fire-and-forget 记审计
-      let after: unknown;
-
-      if (config.after === "response") {
-        if (status === "success") {
-          try {
-            after = await readResponseData(c);
-          } catch {
-            // 响应体不是 JSON 或读取失败,after 为空
-          }
-        }
-      } else if (config.after != null && config.after !== "none") {
-        try {
-          after = await resolveSnapshot(config.after, c);
-        } catch {
-          // after 查询/transform 失败不阻塞响应
-        }
-      }
+      const after = await resolveAfterSnapshot(config.after, status, c);
 
       // 解析 resourceRefs(async),再 fire-and-forget writeAudit。
       // 解析失败降级为空引用数组继续记(failure 审计不丢),不覆盖业务响应/错误码——
       // create 路由失败路径可能没有资源 id,此时继续记录不带资源引用的事件。
-      let refs: readonly AuditResourceRef[] = [];
-      try {
-        if (config.resourceRefs != null) {
-          refs = await config.resourceRefs(c);
-        } else if (config.resourceType != null) {
-          const id = (await config.resourceId?.(c)) ?? "";
-          refs = [{ type: config.resourceType, id }];
-        }
-      } catch (e) {
-        logger
-          .withError(e)
-          .withMetadata({ action: actionCode })
-          .error("audit resource refs resolution failed, recording without refs");
-      }
+      const refs = await resolveResourceRefs(config, c, actionCode);
 
       // metadata 解析:支持函数形式(读请求上下文);解析失败不阻塞审计,降级 undefined
-      let metadata: Record<string, unknown> | undefined;
-      if (typeof config.metadata === "function") {
-        try {
-          metadata = await config.metadata(c);
-        } catch {
-          // metadata 解析失败不阻塞审计
-        }
-      } else {
-        metadata = config.metadata;
-      }
+      const metadata = await resolveMetadata(config.metadata, c);
 
       void writeAudit({
         action: actionCode,
