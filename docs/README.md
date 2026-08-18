@@ -64,6 +64,7 @@ lastReviewedAt: 2026-08-17
 | 前端路由守卫 | `conventions/frontend/routing.md`、`architecture/frontend/request-lifecycle.md` |
 | 排查日志或可观测性 | `conventions/shared/ci-cd-security-observability.md`、`checklists/observability-checklist.md` |
 | 安全验收 | `checklists/security-checklist.md` |
+| 编写 / 审查 TypeScript 注释 | `conventions/shared/commenting.md` |
 | 修改文档治理 | `AGENTS.md`、`conventions/shared/documentation-system.md`、本文件 |
 | 起草执行计划 | `conventions/shared/documentation-system.md`、execution-plan 技能 |
 
