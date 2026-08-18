@@ -5,6 +5,7 @@
 ## 目录约定
 
 - 内容源:`.agents/skills/<name>/SKILL.md`。
+- 可选 UI 元数据:`.agents/skills/<name>/agents/openai.yaml`;由 `skill-creator` 生成并与 `SKILL.md` 保持一致,不参与触发判断。
 - 加载入口:`.claude/skills/<name>` -> `../../.agents/skills/<name>`(符号链接)。
 - **不要在 `.claude/skills/` 放真实目录**;内容放本目录再符号链接。
 
@@ -15,9 +16,12 @@
 
 ## 新增自定义技能
 
-1. 在 `.agents/skills/<name>/SKILL.md` 写内容(frontmatter 用 `name` + `description`,description 写清触发条件)。
-2. 建符号链接:`ln -s ../../.agents/skills/<name> .claude/skills/<name>`。
-3. 不进 `skills-lock.json`(那是 vendored 专用)。
+1. 使用 `skill-creator` 在 `.agents/skills/` 初始化技能,不创建不需要的 scripts/references/assets。
+2. 编辑 `SKILL.md`(frontmatter 只用 `name` + `description`,description 写清触发条件)。
+3. 需要 UI 元数据时保留生成的 `agents/openai.yaml`,修改 skill 后同步更新。
+4. 建符号链接:`ln -s ../../.agents/skills/<name> .claude/skills/<name>`。
+5. 使用 `skill-creator` 的 `quick_validate.py` 校验技能目录。
+6. 不进 `skills-lock.json`(那是 vendored 专用)。
 
 ## 复用优先
 
