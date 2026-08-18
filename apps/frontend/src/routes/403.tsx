@@ -15,7 +15,7 @@ function Forbidden() {
           <CardDescription>无权限访问此页面。</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button render={<Link to="/dashboard" />}>返回首页</Button>
+          <Button nativeButton={false} render={<Link to="/dashboard" />}>返回首页</Button>
         </CardContent>
       </Card>
     </div>

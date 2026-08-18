@@ -31,7 +31,7 @@ export const Route = createRootRouteWithContext<{ auth: AuthState }>()({
           <CardDescription>页面不存在</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button render={<Link to="/dashboard" />}>返回首页</Button>
+          <Button nativeButton={false} render={<Link to="/dashboard" />}>返回首页</Button>
         </CardContent>
       </Card>
     </div>

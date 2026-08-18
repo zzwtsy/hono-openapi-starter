@@ -101,6 +101,11 @@ export default antfu(
       "apps/frontend/src/api/apiDefinitions.ts",
       "apps/frontend/src/api/createApis.ts",
       "apps/frontend/src/api/globals.d.ts",
+      // Playwright 运行时生成的认证状态、trace/video、HTML 报告和服务日志。
+      "apps/e2e/.auth/**",
+      "apps/e2e/test-results/**",
+      "apps/e2e/playwright-report/**",
+      "apps/e2e/service-logs/**",
     ],
     overrides: {
       javascript: {

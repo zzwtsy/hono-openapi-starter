@@ -21,6 +21,12 @@ logs/
 # Test coverage
 coverage/
 
+# Playwright E2E artifacts and authentication state
+apps/e2e/.auth/
+apps/e2e/playwright-report/
+apps/e2e/test-results/
+apps/e2e/service-logs/
+
 # Cache
 .turbo/
 .cache/

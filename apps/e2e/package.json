@@ -1,0 +1,19 @@
+{
+  "name": "e2e",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "tsx src/run-e2e.ts",
+    "test:runner": "vitest run src/runner-lifecycle.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@testcontainers/postgresql": "catalog:",
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
