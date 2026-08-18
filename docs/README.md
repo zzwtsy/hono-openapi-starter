@@ -51,6 +51,7 @@ lastReviewedAt: 2026-08-17
 | 新增后端 API | `conventions/backend/api-openapi.md`、`conventions/backend/response-envelope.md`、`conventions/backend/error-code-system.md`、`conventions/backend/testing-strategy.md` |
 | 前端调用 API | `conventions/frontend/api-alova.md`、`conventions/frontend/routing.md` |
 | 新增 / 修改前端表单 | `conventions/frontend/forms-tanstack.md`、`conventions/frontend/api-alova.md`、`conventions/frontend/testing.md` |
+| 新增 / 修改前端 E2E | `conventions/frontend/testing.md`、`conventions/shared/ci-cd-security-observability.md` |
 | 修改前端 IAM | `features/frontend/iam.md`、`conventions/frontend/routing.md`、`conventions/frontend/state-cache.md` |
 | 改用户管理 UI | `features/frontend/iam.md`（用户管理节）、`features/backend/iam.md`（users.*） |
 | 改账户自助(个人信息) | `features/frontend/account.md`、`features/backend/iam.md`（me 自助修改节） |

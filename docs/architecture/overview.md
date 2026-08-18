@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-06-03
+lastReviewedAt: 2026-08-17
 ---
 
 # 架构总览
@@ -26,7 +26,7 @@ lastReviewedAt: 2026-06-03
 | ORM | Drizzle | 强制 |
 | Auth | Better Auth + Drizzle adapter | 强制 |
 | Logging | LogLayer | 强制 |
-| Testing | Vitest | 推荐 |
+| Testing | Vitest + Playwright Test + Testcontainers | 推荐 |
 | OpenAPI 治理 | Redocly CLI + Spectral + OpenAPI Generator | 推荐 |
 | 边界治理 | `eslint-plugin-boundaries` 或 `import/no-restricted-paths` | 推荐 |
 | 可观测增强 | OpenTelemetry plugin | 可选 |
@@ -95,6 +95,12 @@ OpenAPI 不是附属品，而是 API contract 的源码真相。
 - 响应体 `meta.requestId`
 - 访问日志
 - 错误日志
+
+## Playwright E2E 边界
+
+`apps/e2e` 是独立的验证 workspace，不属于 backend/frontend 生产运行时，也不向业务 feature 注入测试抽象。runner 负责临时 PostgreSQL、migration/seed、backend dist、Vite preview、认证状态和服务清理；测试只通过真实 HTTP 和浏览器行为验证跨层哨兵流程。
+
+模板处于开发阶段时，E2E 只锁定认证、授权、Dashboard 和项目 CRUD 等高价值基线；新增业务 feature 应先补自身 unit/contract 测试，只有跨层回归风险明确时再增加 E2E 用例。浏览器失败产物保留在 `apps/e2e/test-results`，backend/Vite 日志保留在 `apps/e2e/service-logs`，不建立像素截图基线。
 
 ## Mermaid：请求生命周期
 

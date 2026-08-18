@@ -21,10 +21,11 @@
 | lint | `pnpm lint` |
 | 前后端单元测试 | `pnpm test` |
 | 前后端 build | `pnpm build` |
+| Playwright E2E | `pnpm test:e2e`（需 Docker；首次运行需安装浏览器） |
 | 后端集成测试 | `pnpm --filter backend test:integration`(需 Docker) |
 | 前端生成 API | `pnpm --filter frontend gen:api` |
 
-集成测试用 testcontainers,需 Docker daemon 运行;默认 `pnpm --filter backend test` 只跑单元测试。
+集成测试和 Playwright E2E 用 Testcontainers,需 Docker daemon 运行;默认 `pnpm --filter backend test` 只跑单元测试。E2E 位于独立 `apps/e2e` workspace，验证 build/preview 产物和代表性认证、授权、Dashboard、项目 CRUD 哨兵流程，不把全部业务页面固化为模板门禁。
 
 ## 文档路由
 

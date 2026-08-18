@@ -33,6 +33,16 @@ lastReviewedAt: 2026-08-17
 
 三个 job 都使用 15 分钟超时、只读 `contents` 权限，并禁止 checkout 持久化凭据。PR 同一编号的新运行会取消旧运行；main push 不互相取消，避免主分支留下未验证状态。pnpm store 由 `actions/setup-node` 缓存，不缓存完整 `node_modules`。
 
+真实浏览器门禁独立于快速质量流水线，见 `.github/workflows/e2e.yml`：
+
+- PR 和 main push 运行 Chromium；
+- 每周定时运行 Chromium、Firefox、WebKit；
+- 每个浏览器矩阵 job 在下载浏览器前先执行 E2E workspace typecheck 和无需 Docker/浏览器的 runner lifecycle 单测；
+- runner 使用 Testcontainers 临时 PostgreSQL，构建后端 dist 与前端 Vite preview，再运行代表性认证、授权、Dashboard 和项目 CRUD 哨兵流程；
+- 上传 `playwright-report`、`test-results`（screenshot/trace/video）和独立的 `service-logs`（backend/Vite），便于定位浏览器、前端或后端链路问题；服务日志不放进 Playwright 会清理的 outputDir。
+
+E2E 不并入根 `pnpm test`，避免 Docker 和浏览器启动成本拖慢本地快速回路；模板仍在开发期，因此只锁定跨层高价值基线，不把全部业务页面固化为长期门禁。
+
 第三方 Actions 固定到对应 major tag 当前解引用后的完整 commit SHA，行尾注释保留可读版本。`.github/dependabot.yml` 每周检查 `github-actions` 更新并把同批更新归组，避免 SHA 固定后失去自动升级路径。
 
 未实现：独立 route tests、通用 OpenAPI lint/validate、外部 SDK smoke test 和 deploy（模板无部署目标）。OpenAPI 静态导出和已提交前端生成物一致性已经是强制门禁，不能再描述为“未生成”。

@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-07-08
+lastReviewedAt: 2026-08-17
 ---
 
 # 测试策略
@@ -116,15 +116,15 @@ tests/
   contract/
   integration/
   route/
-  e2e/
 ```
 
 适合：
 
 - OpenAPI contract test
 - 跨 feature integration
-- e2e
 - test helpers
+
+跨前后端的真实浏览器 E2E 统一位于独立的 `apps/e2e` workspace，不放入后端 `tests/`。其范围、runner 和 CI 约定见[前端测试规范](../frontend/testing.md#playwright-e2e-基础设施)。
 
 ## OpenAPI contract test
 
