@@ -43,7 +43,7 @@ export function RoleAssignmentRow({ assignment, canEdit, canRevoke, busy, onEdit
             {canEdit && (
               <Button variant="ghost" size="sm" onClick={onEdit}>
                 <Pencil data-icon="inline-start" />
-                编辑
+                修改有效期
               </Button>
             )}
             {canRevoke && (

@@ -1,7 +1,33 @@
 import type { UserSummary } from "@/api/globals";
 import { useMemo } from "react";
 
-const TAB_VALUES = ["info", "roles", "direct", "effective", "audit"] as const;
+export const USER_DETAIL_TABS = ["overview", "access", "audit"] as const;
+export type UserDetailTab = (typeof USER_DETAIL_TABS)[number];
+
+export const USER_ACCESS_VIEWS = ["config", "effective"] as const;
+export type UserAccessView = (typeof USER_ACCESS_VIEWS)[number];
+
+/** 解析访问权限内部视图，并兼容旧的 roles/direct/effective 深链。 */
+export function parseUserAccessView(value: unknown, legacyTab?: unknown): UserAccessView {
+  if (value === "config" || value === "effective") {
+    return value;
+  }
+  return legacyTab === "effective" ? "effective" : "config";
+}
+
+/** 兼容旧用户详情深链；新导航只写规范的三个 Tab 值。 */
+export function parseUserDetailTab(value: unknown): UserDetailTab | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  if (value === "overview" || value === "info") {
+    return "overview";
+  }
+  if (value === "access" || value === "roles" || value === "direct" || value === "effective") {
+    return "access";
+  }
+  return value === "audit" ? "audit" : undefined;
+}
 
 interface UseUserSelectionArgs {
   selectedUserId?: string;
@@ -24,7 +50,7 @@ export function useUserSelection({ selectedUserId, users, orgParam, tab, homeOrg
     [users, selectedUserId],
   );
   const orgId = orgParam ?? selectedUser?.orgId ?? homeOrgId;
-  const activeTab = tab !== undefined && (TAB_VALUES as readonly string[]).includes(tab) ? tab : "info";
+  const activeTab = parseUserDetailTab(tab) ?? "overview";
 
   return { selectedUser, orgId, activeTab };
 }

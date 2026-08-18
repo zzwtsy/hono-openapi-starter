@@ -1,5 +1,5 @@
-import type { Role } from "@/api/globals";
-import { actionDelegationMiddleware, useWatcher } from "alova/client";
+import type { Role, UserPermissionsResult } from "@/api/globals";
+import { useWatcher } from "alova/client";
 import { useMemo, useState } from "react";
 import Apis from "@/api";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
@@ -12,31 +12,14 @@ interface UseRoleAssignmentsArgs {
   orgId: string;
   roles: Role[];
   currentUserId: string;
+  effectiveResult?: UserPermissionsResult;
 }
 
-export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, currentUserId }: UseRoleAssignmentsArgs) {
+export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, currentUserId, effectiveResult }: UseRoleAssignmentsArgs) {
   const {
-    canReadAssignments,
     canGrantRoleAssignments: canGrant,
     canRevokeAssignments: canRevoke,
   } = useIamUserCapabilities(currentUserId, userId, userHomeOrgId, orgId);
-  const {
-    data: assignments,
-    loading,
-    error,
-    send,
-  } = useWatcher(
-    () => Apis.IAM.listUserRoles({ pathParams: { userId }, params: { orgId } }),
-    [orgId],
-    { immediate: canReadAssignments, middleware: actionDelegationMiddleware(IAM_ACTIONS.userRoles) },
-  );
-  // 当前有效权限(与 EffectivePermissionsPanel 同 key,alova 自动共享缓存),用于授予预览
-  const { data: effectiveResult } = useWatcher(
-    () => Apis.IAM.listUserPermissions({ pathParams: { userId }, params: { orgId } }),
-    [orgId],
-    { immediate: canReadAssignments, middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
-  );
-
   const [selectedRoleId, setSelectedRoleId] = useState("");
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
@@ -68,7 +51,7 @@ export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, curren
 
   const assignRole = async () => {
     if (selectedRoleId === "" || assigning) {
-      return;
+      return false;
     }
     const ok = await runWithToast(
       () => Apis.IAM.assignUserRole({
@@ -83,6 +66,7 @@ export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, curren
       setEditingRoleId(null);
       refresh();
     }
+    return ok;
   };
 
   const startEdit = (assignment: { roleId: string; expiresAt: string | null }) => {
@@ -110,10 +94,6 @@ export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, curren
   return {
     canGrant,
     canRevoke,
-    assignments,
-    loading,
-    error,
-    send,
     selectedRoleId,
     setSelectedRoleId,
     expiresAt,

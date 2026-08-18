@@ -1,23 +1,24 @@
-import type { PermissionSource } from "@/api/globals";
-import { actionDelegationMiddleware, useWatcher } from "alova/client";
+import type { UserAccessQueryState } from "../../hooks/use-user-access-data";
+import type { PermissionSource, UserPermissionsResult } from "@/api/globals";
 import { format } from "date-fns";
-import { CalendarClock, CircleAlert, KeyRound } from "lucide-react";
-import { useState } from "react";
-import Apis from "@/api";
+import { CircleAlert, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from "@/components/ui/item";
-import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCan } from "@/hooks/use-permissions";
-import { groupByResource } from "../../lib/group-by-resource";
-import { IAM_ACTIONS } from "../../lib/iam-actions";
-import { PermissionGroupLayout } from "../permission-group-layout";
 
-function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange, canReadRole, canReadOrg }: {
+interface EffectivePermissionsPanelProps {
+  query: UserAccessQueryState<UserPermissionsResult>;
+  getOrgPath: (orgId: string) => string;
+  onNavigateRole: (roleId: string, orgId?: string) => void;
+  onOrgIdChange: (orgId: string) => void;
+}
+
+function SourceLine({ source, getOrgPath, onNavigateRole, onOrgIdChange, canReadRole, canReadOrg }: {
   source: PermissionSource;
   getOrgPath: (orgId: string) => string;
   onNavigateRole: (roleId: string, orgId?: string) => void;
@@ -25,207 +26,158 @@ function SourceBadge({ source, getOrgPath, onNavigateRole, onOrgIdChange, canRea
   canReadRole: boolean;
   canReadOrg: boolean;
 }) {
-  const [now] = useState(() => Date.now());
-  const roleId = source.roleId;
-  const roleBadge = source.type === "role" && roleId !== null && canReadRole
-    ? (
-        <Tooltip>
-          <TooltipTrigger render={
-            <Badge variant="secondary" className="text-xs hover:bg-accent" />
-          }
-          >
-            <button
-              type="button"
-              className="cursor-pointer"
-              onClick={() => { onNavigateRole(roleId, source.orgId); }}
-            >
-              {source.roleName}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>查看角色详情</TooltipContent>
-        </Tooltip>
-      )
-    : <Badge variant="secondary" className="text-xs">{source.type === "role" ? source.roleName : "直接"}</Badge>;
-
   return (
-    <span className="inline-flex items-center gap-0.5">
-      {roleBadge}
-      {canReadOrg
-        ? (
-            <Tooltip>
-              <TooltipTrigger render={
-                <Badge variant="outline" className="text-xs text-muted-foreground hover:bg-accent" />
-              }
-              >
-                <button
-                  type="button"
-                  className="cursor-pointer"
-                  onClick={() => { onOrgIdChange(source.orgId); }}
-                >
-                  @
-                  {getOrgPath(source.orgId)}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>切到此组织视角</TooltipContent>
-            </Tooltip>
-          )
-        : (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              @
-              {getOrgPath(source.orgId)}
-            </Badge>
-          )}
-      {source.expiresAt != null && (
-        <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-          <CalendarClock className="size-3" />
-          {new Date(source.expiresAt).getTime() <= now ? "已过期" : format(new Date(source.expiresAt), "yyyy-MM-dd")}
-        </span>
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="min-w-0 whitespace-normal text-muted-foreground">
+        {source.type === "role" ? `角色：${source.roleName ?? "未知角色"}` : "直接允许"}
+        {" · "}
+        {getOrgPath(source.orgId)}
+        {source.expiresAt !== null ? ` · 至 ${format(new Date(source.expiresAt), "yyyy-MM-dd")}` : ""}
+      </span>
+      {source.type === "role" && source.roleId !== null && canReadRole && (
+        <Button type="button" variant="link" size="xs" className="h-auto px-0" onClick={() => { onNavigateRole(source.roleId!, source.orgId); }}>查看角色</Button>
       )}
-    </span>
+      {canReadOrg && (
+        <Button type="button" variant="link" size="xs" className="h-auto px-0" onClick={() => { onOrgIdChange(source.orgId); }}>切换到此组织视角</Button>
+      )}
+    </div>
   );
 }
 
-interface EffectivePermissionsPanelProps {
-  userId: string;
-  orgId: string;
+function PermissionSources({ sources, getOrgPath, onNavigateRole, onOrgIdChange, canReadRole, canReadOrg }: {
+  sources: PermissionSource[];
   getOrgPath: (orgId: string) => string;
   onNavigateRole: (roleId: string, orgId?: string) => void;
   onOrgIdChange: (orgId: string) => void;
+  canReadRole: boolean;
+  canReadOrg: boolean;
+}) {
+  if (sources.length <= 1) {
+    const source = sources[0];
+    return source === undefined ? <span className="text-muted-foreground">无来源信息</span> : <SourceLine source={source} getOrgPath={getOrgPath} onNavigateRole={onNavigateRole} onOrgIdChange={onOrgIdChange} canReadRole={canReadRole} canReadOrg={canReadOrg} />;
+  }
+  return (
+    <Popover>
+      <PopoverTrigger render={<Button type="button" variant="outline" size="sm" />}>
+        {sources.length}
+        {" "}
+        个来源
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-96 max-w-[calc(100vw-2rem)]">
+        <PopoverHeader><PopoverTitle>权限来源</PopoverTitle></PopoverHeader>
+        <div className="flex flex-col gap-2">
+          {sources.map(source => (
+            <SourceLine key={`${source.type}-${source.roleId ?? "direct"}-${source.orgId}-${source.expiresAt ?? "permanent"}`} source={source} getOrgPath={getOrgPath} onNavigateRole={onNavigateRole} onOrgIdChange={onOrgIdChange} canReadRole={canReadRole} canReadOrg={canReadOrg} />
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
-/**
- * 有效权限面板:后端 listUserPermissions 直接返回带来源链的结构
- * (effective + denied),无需前端 N+1 拼。来源 badge 可点击跳转。
- */
-export function EffectivePermissionsPanel({ userId, orgId, getOrgPath, onNavigateRole, onOrgIdChange }: EffectivePermissionsPanelProps) {
-  const canReadAssignments = useCan("assignments.read");
+export function EffectivePermissionsPanel({ query, getOrgPath, onNavigateRole, onOrgIdChange }: EffectivePermissionsPanelProps) {
   const canReadRoles = useCan("roles.read");
   const canReadOrgs = useCan("organizations.read");
-  const {
-    data: result,
-    loading,
-    error,
-    send,
-  } = useWatcher(
-    () => Apis.IAM.listUserPermissions({ pathParams: { userId }, params: { orgId } }),
-    [orgId],
-    { immediate: canReadAssignments, middleware: actionDelegationMiddleware(IAM_ACTIONS.userPermissions) },
-  );
 
-  if (!canReadAssignments) {
-    return (
-      <Empty>
-        <EmptyMedia variant="icon"><KeyRound /></EmptyMedia>
-        <EmptyHeader>
-          <EmptyTitle>无权限</EmptyTitle>
-          <EmptyDescription>你需要 assignments.read 权限查看有效权限。</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
-  if (error !== null && result === undefined) {
+  if (query.error != null && query.data === undefined) {
     return (
       <div className="flex flex-col items-start gap-3">
         <Alert variant="destructive">
           <CircleAlert />
           <AlertTitle>加载失败</AlertTitle>
-          <AlertDescription>无法获取用户权限。</AlertDescription>
+          <AlertDescription>无法获取用户的生效权限。</AlertDescription>
         </Alert>
-        <Button variant="outline" size="sm" onClick={() => { void send(); }}>重试</Button>
+        <Button variant="outline" size="sm" onClick={query.retry}>重试</Button>
       </div>
     );
   }
-  if (loading && result === undefined) {
-    return <Skeleton className="h-20 w-full" />;
-  }
+  if (query.loading && query.data === undefined)
+    return <Skeleton className="h-40 w-full" />;
 
-  const effective = result?.effective ?? [];
-  const denied = result?.denied ?? [];
-  const groups = groupByResource(effective, p => p.permission.resourceCode);
+  const effective = query.data?.effective ?? [];
+  const denied = query.data?.denied ?? [];
+  const sourcesProps = { getOrgPath, onNavigateRole, onOrgIdChange, canReadRole: canReadRoles, canReadOrg: canReadOrgs };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2">
-        <h4 className="text-sm font-medium">有效权限</h4>
+    <div className="flex flex-col gap-6">
+      <section className="flex flex-col gap-3" aria-labelledby="effective-permissions-title">
+        <div className="flex items-center justify-between gap-3">
+          <h3 id="effective-permissions-title" className="text-sm font-semibold">当前生效权限</h3>
+          <Badge variant="secondary">
+            {effective.length}
+            {" "}
+            项
+          </Badge>
+        </div>
         {effective.length === 0
           ? (
-              <Empty className="min-h-28 p-4">
+              <Empty className="min-h-24 p-4">
                 <EmptyMedia variant="icon"><KeyRound /></EmptyMedia>
                 <EmptyHeader>
-                  <EmptyTitle>暂无权限</EmptyTitle>
+                  <EmptyTitle>暂无生效权限</EmptyTitle>
                   <EmptyDescription>该用户在此组织下没有有效权限。</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             )
           : (
-              <PermissionGroupLayout maxColumns={2}>
-                {[...groups.entries()].map(([resource, perms]) => (
-                  <section key={resource} className="mb-4 flex min-w-0 break-inside-avoid flex-col gap-1.5 rounded-lg border p-3">
-                    <span className="text-xs font-medium text-muted-foreground">{perms[0]?.permission.resourceLabel ?? "其他资源"}</span>
-                    <ItemGroup>
-                      {perms.map(p => (
-                        <Item key={p.permission.code} size="xs">
-                          <ItemContent>
-                            <ItemTitle>{p.permission.label}</ItemTitle>
-                            <ItemDescription className="flex flex-wrap items-center gap-1.5">
-                              {p.sources.map(s => (
-                                <SourceBadge
-                                  key={`${s.type}-${s.roleId ?? "direct"}-${s.orgId}`}
-                                  source={s}
-                                  getOrgPath={getOrgPath}
-                                  onNavigateRole={onNavigateRole}
-                                  onOrgIdChange={onOrgIdChange}
-                                  canReadRole={canReadRoles}
-                                  canReadOrg={canReadOrgs}
-                                />
-                              ))}
-                            </ItemDescription>
-                          </ItemContent>
-                        </Item>
-                      ))}
-                    </ItemGroup>
-                  </section>
-                ))}
-              </PermissionGroupLayout>
-            )}
-      </div>
-
-      {denied.length > 0 && (
-        <>
-          <Separator />
-          <div className="flex flex-col gap-2">
-            <h4 className="text-sm font-medium text-muted-foreground">已被拒绝(deny 抵消)</h4>
-            <p className="text-xs text-muted-foreground">以下权限本会生效,但被直接 deny 扣掉。撤销对应 deny 可恢复。</p>
-            <div className="flex flex-col gap-1.5">
-              {denied.map(d => (
-                <div key={d.permission.code} className="flex flex-wrap items-center gap-1.5 text-sm">
-                  <span className="text-muted-foreground line-through">{d.permission.label}</span>
-                  <Badge variant="destructive" className="text-xs">已被拒绝</Badge>
-                  {d.suppressedSources.map(s => (
-                    <SourceBadge
-                      key={`denied-${s.type}-${s.roleId ?? "direct"}-${s.orgId}`}
-                      source={s}
-                      getOrgPath={getOrgPath}
-                      onNavigateRole={onNavigateRole}
-                      onOrgIdChange={onOrgIdChange}
-                      canReadRole={canReadRoles}
-                      canReadOrg={canReadOrgs}
-                    />
+              <Table className="min-w-2xl table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[30%]">权限</TableHead>
+                    <TableHead className="w-[22%]">资源</TableHead>
+                    <TableHead>来源</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {effective.map(item => (
+                    <TableRow key={item.permission.code}>
+                      <TableCell className="whitespace-normal font-medium">{item.permission.label}</TableCell>
+                      <TableCell className="whitespace-normal text-muted-foreground">{item.permission.resourceLabel}</TableCell>
+                      <TableCell className="whitespace-normal"><PermissionSources sources={item.sources} {...sourcesProps} /></TableCell>
+                    </TableRow>
                   ))}
-                  <span className="text-xs text-muted-foreground">
-                    被
-                    {" "}
-                    {d.deniedBy.map(d => getOrgPath(d.orgId)).join("、")}
-                    {" "}
-                    拒绝
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+                </TableBody>
+              </Table>
+            )}
+      </section>
+
+      <section className="flex flex-col gap-3" aria-labelledby="denied-permissions-title">
+        <div className="flex items-center justify-between gap-3">
+          <h3 id="denied-permissions-title" className="text-sm font-semibold">被拒绝权限</h3>
+          <Badge variant="secondary">
+            {denied.length}
+            {" "}
+            项
+          </Badge>
+        </div>
+        {denied.length === 0
+          ? <Empty className="min-h-16 p-3"><EmptyHeader><EmptyTitle>没有被拒绝的权限</EmptyTitle></EmptyHeader></Empty>
+          : (
+              <Table className="min-w-3xl table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[24%]">权限</TableHead>
+                    <TableHead>被抑制来源</TableHead>
+                    <TableHead className="w-[28%]">拒绝来源</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {denied.map(item => (
+                    <TableRow key={item.permission.code}>
+                      <TableCell className="whitespace-normal">
+                        <span className="font-medium line-through">{item.permission.label}</span>
+                        <Badge variant="destructive" className="ml-2">已拒绝</Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-normal"><PermissionSources sources={item.suppressedSources} {...sourcesProps} /></TableCell>
+                      <TableCell className="whitespace-normal text-muted-foreground">
+                        {item.deniedBy.map(source => `${getOrgPath(source.orgId)}${source.expiresAt !== null ? `（至 ${format(new Date(source.expiresAt), "yyyy-MM-dd")}）` : ""}`).join("、")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+      </section>
     </div>
   );
 }

@@ -74,9 +74,11 @@ describe("IAM 默认选择高亮", () => {
       <UsersPage
         homeOrgId="org-1"
         currentUserId="current-user"
+        accessView="config"
         onSelectedUserChange={vi.fn()}
         onOrgIdChange={vi.fn()}
         onTabChange={vi.fn()}
+        onAccessViewChange={vi.fn()}
         onNavigateRole={vi.fn()}
         onTransferred={vi.fn()}
         renderAuditTimeline={() => null}

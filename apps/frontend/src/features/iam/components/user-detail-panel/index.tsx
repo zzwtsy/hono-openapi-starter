@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { UserAccessView, UserDetailTab } from "../../hooks/use-user-selection";
 import type { IamDetailMode } from "../iam-workbench";
 import type { Role, UserSummary } from "@/api/globals";
 import { Ban, CircleCheck, KeyRound, Pencil, Shuffle } from "lucide-react";
@@ -6,17 +7,13 @@ import { useState } from "react";
 import Apis from "@/api";
 import { ResourceActions } from "@/components/shared/resource-actions";
 import { Badge } from "@/components/ui/badge";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { hasPermission } from "@/lib/permissions";
 import { useIamUserCapabilities, useTargetCapabilities } from "../../hooks/use-iam-capabilities";
 import { IAM_ACTIONS, refreshIam } from "../../lib/iam-actions";
 import { IamDetailSurface } from "../iam-detail-surface";
-import { DirectPermissionsTab } from "./direct-permissions-tab";
-import { EffectivePermissionsPanel } from "./effective-permissions-panel";
-import { RoleAssignmentsTab } from "./role-assignments-tab";
+import { UserAccessPanel } from "./user-access-panel";
 import { UserDialogs } from "./user-dialogs";
 import { UserInfoTab } from "./user-info-tab";
 
@@ -34,8 +31,10 @@ interface UserDetailPanelProps {
   getOrgPath: (orgId: string) => string;
   currentUserId: string;
   roles: Role[];
-  tab: string;
-  onTabChange: (tab: string) => void;
+  tab: UserDetailTab;
+  accessView: UserAccessView;
+  onTabChange: (tab: UserDetailTab) => void;
+  onAccessViewChange: (view: UserAccessView) => void;
   onNavigateRole: (roleId: string, orgId?: string) => void;
   onTransferred?: (newOrgId: string) => void;
   /** 操作历史 Tab 内容(由 routes 层传入,避免 features 间依赖)。 */
@@ -48,8 +47,11 @@ interface UserDetailTabsProps {
   currentUserId: string;
   getOrgPath: (orgId: string) => string;
   canReadAssignments: boolean;
-  activeTab: string;
-  onTabChange: (tab: string) => void;
+  activeTab: UserDetailTab;
+  accessView: UserAccessView;
+  onTabChange: (tab: UserDetailTab) => void;
+  onAccessViewChange: (view: UserAccessView) => void;
+  orgOptions: OrgOption[];
   roles: Role[];
   onNavigateRole: (roleId: string, orgId?: string) => void;
   onOrgIdChange: (orgId: string) => void;
@@ -63,61 +65,47 @@ function UserDetailTabs({
   getOrgPath,
   canReadAssignments,
   activeTab,
+  accessView,
   onTabChange,
+  onAccessViewChange,
+  orgOptions,
   roles,
   onNavigateRole,
   onOrgIdChange,
   auditTabContent,
 }: UserDetailTabsProps) {
   return (
-    <Tabs value={activeTab} onValueChange={onTabChange} className="min-h-0 flex-1">
+    <Tabs value={activeTab} onValueChange={value => onTabChange(value as UserDetailTab)} className="min-h-0 flex-1">
       <div className="shrink-0 overflow-x-auto pb-1">
         <TabsList variant="line" className="min-w-max justify-start">
-          <TabsTrigger value="info">信息</TabsTrigger>
-          {canReadAssignments && (
-            <>
-              <TabsTrigger value="roles">角色授权</TabsTrigger>
-              <TabsTrigger value="direct">直接授权</TabsTrigger>
-              <TabsTrigger value="effective">有效权限</TabsTrigger>
-            </>
-          )}
-          <TabsTrigger value="audit">操作历史</TabsTrigger>
+          <TabsTrigger value="overview">概览</TabsTrigger>
+          {canReadAssignments && <TabsTrigger value="access">访问权限</TabsTrigger>}
+          <TabsTrigger value="audit">操作记录</TabsTrigger>
         </TabsList>
       </div>
-      <TabsContent value="info" className="min-h-0 flex-1 overflow-y-auto pt-3">
+      <TabsContent value="overview" className="min-h-0 flex-1 overflow-y-auto pt-3">
         <div className="max-w-3xl">
           <UserInfoTab user={user} />
         </div>
       </TabsContent>
       {canReadAssignments && (
-        <>
-          <TabsContent value="roles" className="min-h-0 flex-1 overflow-y-auto pt-3">
-            <div className="max-w-3xl">
-              <RoleAssignmentsTab
-                userId={user.id}
-                userHomeOrgId={user.orgId}
-                orgId={orgId}
-                roles={roles}
-                currentUserId={currentUserId}
-                onNavigateRole={onNavigateRole}
-              />
-            </div>
-          </TabsContent>
-          <TabsContent value="direct" className="min-h-0 flex-1 overflow-y-auto pt-3">
-            <div className="max-w-3xl">
-              <DirectPermissionsTab userId={user.id} userHomeOrgId={user.orgId} orgId={orgId} currentUserId={currentUserId} />
-            </div>
-          </TabsContent>
-          <TabsContent value="effective" className="min-h-0 flex-1 overflow-y-auto pt-3">
-            <EffectivePermissionsPanel
-              userId={user.id}
-              orgId={orgId}
-              getOrgPath={getOrgPath}
-              onNavigateRole={onNavigateRole}
-              onOrgIdChange={onOrgIdChange}
-            />
-          </TabsContent>
-        </>
+        <TabsContent value="access" className="min-h-0 flex-1 overflow-y-auto pt-3">
+          <UserAccessPanel
+            key={`${user.id}:${orgId}`}
+            userId={user.id}
+            userName={user.name}
+            userHomeOrgId={user.orgId}
+            orgId={orgId}
+            orgOptions={orgOptions}
+            currentUserId={currentUserId}
+            roles={roles}
+            getOrgPath={getOrgPath}
+            onOrgIdChange={onOrgIdChange}
+            onNavigateRole={onNavigateRole}
+            view={accessView}
+            onViewChange={onAccessViewChange}
+          />
+        </TabsContent>
       )}
       <TabsContent value="audit" className="min-h-0 flex-1 overflow-y-auto pt-3">
         <div className="max-w-4xl">{auditTabContent}</div>
@@ -136,7 +124,9 @@ export function UserDetailPanel({
   currentUserId,
   roles,
   tab,
+  accessView,
   onTabChange,
+  onAccessViewChange,
   onNavigateRole,
   onTransferred,
   auditTabContent,
@@ -166,7 +156,7 @@ export function UserDetailPanel({
 
   const disabled = user.disabled === true;
   const isSelf = user.id === currentUserId;
-  const activeTab = !canReadAssignments && ["roles", "direct", "effective"].includes(tab) ? "info" : tab;
+  const activeTab: UserDetailTab = !canReadAssignments && tab === "access" ? "overview" : tab;
   const actions = [
     { id: "edit", allowed: canUpdate, label: "编辑", icon: Pencil, onClick: () => { setEditing(true); } },
     { id: "transfer", allowed: canUpdate && !isSelf, label: "调岗", icon: Shuffle, onClick: () => { setTransferring(true); } },
@@ -200,34 +190,6 @@ export function UserDetailPanel({
         : <Badge variant="secondary">正常</Badge>}
       actions={<ResourceActions label={`${user.name} 的操作`} items={actions} />}
     >
-      <div className="max-w-3xl shrink-0 pb-2">
-        <Field>
-          <FieldLabel htmlFor="org-select">授权视角组织</FieldLabel>
-          <Select
-            items={orgOptions}
-            value={orgId}
-            onValueChange={(val) => {
-              if (val != null) {
-                onOrgIdChange(val);
-              }
-            }}
-          >
-            <SelectTrigger id="org-select" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {orgOptions.map(item => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-      </div>
-
       <UserDetailTabs
         user={user}
         orgId={orgId}
@@ -235,7 +197,10 @@ export function UserDetailPanel({
         getOrgPath={getOrgPath}
         canReadAssignments={canReadAssignments}
         activeTab={activeTab}
+        accessView={accessView}
         onTabChange={onTabChange}
+        onAccessViewChange={onAccessViewChange}
+        orgOptions={orgOptions}
         roles={roles}
         onNavigateRole={onNavigateRole}
         onOrgIdChange={onOrgIdChange}

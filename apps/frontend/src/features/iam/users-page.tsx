@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { UserAccessView, UserDetailTab } from "./hooks/use-user-selection";
 import type { UserSummary } from "@/api/globals";
 import { actionDelegationMiddleware, useRequest } from "alova/client";
 import { Plus, Users } from "lucide-react";
@@ -21,12 +22,14 @@ import { IAM_ACTIONS, refreshIam } from "./lib/iam-actions";
 interface UsersPageProps {
   selectedUserId?: string;
   orgId?: string;
-  tab?: string;
+  tab?: UserDetailTab;
+  accessView: UserAccessView;
   homeOrgId: string;
   currentUserId: string;
   onSelectedUserChange: (userId: string) => void;
   onOrgIdChange: (orgId: string) => void;
-  onTabChange: (tab: string) => void;
+  onTabChange: (tab: UserDetailTab) => void;
+  onAccessViewChange: (view: UserAccessView) => void;
   onNavigateRole: (roleId: string, orgId?: string) => void;
   onTransferred: (orgId: string) => void;
   renderAuditTimeline: (userId: string) => ReactNode;
@@ -36,11 +39,13 @@ export function UsersPage({
   selectedUserId,
   orgId: orgParam,
   tab,
+  accessView,
   homeOrgId,
   currentUserId,
   onSelectedUserChange,
   onOrgIdChange,
   onTabChange,
+  onAccessViewChange,
   onNavigateRole,
   onTransferred,
   renderAuditTimeline,
@@ -109,7 +114,9 @@ export function UsersPage({
                 currentUserId={currentUserId}
                 roles={roles ?? []}
                 tab={activeTab}
+                accessView={accessView}
                 onTabChange={onTabChange}
+                onAccessViewChange={onAccessViewChange}
                 onNavigateRole={onNavigateRole}
                 onTransferred={onTransferred}
                 auditTabContent={renderAuditTimeline(selectedUser.id)}
