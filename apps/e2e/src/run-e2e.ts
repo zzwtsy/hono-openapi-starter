@@ -1,3 +1,9 @@
+/**
+ * 编排 Playwright E2E 所需的一次性 PostgreSQL、构建/迁移、预览服务与统一清理。
+ *
+ * 仅负责基础设施生命周期，不定义测试断言；任一阶段失败或收到退出信号时停止后续阶段，
+ * 并在 `run()` 的 finally 中回收子进程、完成日志 flush 和停止容器。
+ */
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import type { Buffer } from "node:buffer";
 
@@ -271,6 +277,7 @@ async function main(signal: AbortSignal): Promise<void> {
     .withUsername("e2e")
     .withPassword("e2e")
     .start();
+  // Testcontainers 启动不接受 AbortSignal；返回后重新检查，让迟到容器进入 finally 清理。
   signal.throwIfAborted();
   const env = baseEnvironment(container.getConnectionUri());
 
@@ -309,6 +316,7 @@ async function main(signal: AbortSignal): Promise<void> {
   );
 }
 
+// 退出码遵循 shell 的 128 + signal number 约定：SIGINT=130，SIGTERM=143。
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
     if (requestedExitCode == null) {

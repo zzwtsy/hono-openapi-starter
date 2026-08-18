@@ -5,6 +5,7 @@ export const E2E_ROOT = path.resolve(import.meta.dirname, "..");
 export const REPO_ROOT = path.resolve(E2E_ROOT, "../..");
 export const AUTH_DIR = path.join(E2E_ROOT, ".auth");
 export const TEST_RESULTS_DIR = path.join(E2E_ROOT, "test-results");
+// Playwright 会清空 outputDir；服务日志必须独立保存，避免测试启动时被删除。
 export const SERVICE_LOG_DIR = path.join(E2E_ROOT, "service-logs");
 
 export const BACKEND_URL = "http://localhost:3001";
@@ -26,6 +27,7 @@ export const RESTRICTED_USER = {
 export const ADMIN_STATE = path.join(AUTH_DIR, "seed-admin.json");
 export const RESTRICTED_STATE = path.join(AUTH_DIR, "restricted.json");
 
+// 各 project 使用独立的 RFC 5737 文档地址，避免并行认证共享后端限流额度。
 const PROJECT_CLIENT_IPS: Readonly<Record<string, string>> = {
   setup: "192.0.2.10",
   chromium: "192.0.2.20",

@@ -2,8 +2,10 @@ const POLL_INTERVAL_MS = 500;
 const READINESS_TIMEOUT_MS = 120_000;
 const REQUEST_TIMEOUT_MS = 2_000;
 
+/** 可参与 readiness 竞速的最小服务生命周期视图。 */
 export interface ReadinessService {
   name: string;
+  /** 服务运行时保持 pending；正常退出时 resolve，异常退出时以原始错误 reject。 */
   exit: Promise<void>;
 }
 
@@ -66,6 +68,12 @@ async function waitForUrl(url: string, signal: AbortSignal): Promise<void> {
   throw new Error(`Timed out waiting for ${url}: ${lastError}`);
 }
 
+/**
+ * 等待 HTTP 2xx readiness，同时监听服务提前退出与外部取消。
+ *
+ * @throws 服务正常提前退出时生成包含服务名和 URL 的错误；异常退出与取消分别传播原始错误
+ * 和 abort reason；超时时错误包含最后一次探测失败原因。
+ */
 export async function waitForService(
   service: ReadinessService,
   url: string,
@@ -89,6 +97,7 @@ export async function waitForService(
   try {
     await Promise.race([readiness, prematureExit]);
   } finally {
+    // 竞速结束后取消并回收轮询 Promise，避免遗留 timer 或未处理 rejection。
     pollingController.abort(new Error(`${service.name} readiness wait finished`));
     await readiness.catch(() => {});
   }
