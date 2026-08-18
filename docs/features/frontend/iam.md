@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-08-14
+lastReviewedAt: 2026-08-18
 ---
 
 # 前端 IAM
@@ -24,9 +24,9 @@ IAM 前端提供角色、组织和用户授权管理界面。三个页面统一�
 | --- | --- | --- | --- |
 | `/iam/roles?role=<id>&tab=info\|permissions\|users` | `requirePermission("roles.read")` | `listRoles` | `RoleListPanel` + `RoleDetailPanel` |
 | `/iam/organizations?org=<id>` | `requirePermission("organizations.read")` | `listOrganizations` | `OrganizationExplorer` |
-| `/iam/users?user=<id>&org=<id>&tab=info\|roles\|direct\|effective\|audit` | `requirePermission("users.read")` | `listUsers` | `UserListPanel` + `UserDetailPanel` |
+| `/iam/users?user=<id>&org=<id>&tab=overview\|access\|audit&accessView=config\|effective` | `requirePermission("users.read")` | `listUsers` | `UserListPanel` + `UserDetailPanel` |
 
-组织路由的 `org` 搜索参数保存当前选中组织。参数缺失或指向不存在的 ID 时，页面回退到第一个根组织并修正 URL。用户/角色路由的 `user`/`role` 保存当前选中项（缺失时回退首条），`tab` 保存详情面板当前 Tab（缺失默认 `info`），`org`（仅用户）保存授权视角组织（默认被选用户的 home org）——支持深链接与刷新保位。
+组织路由的 `org` 搜索参数保存当前选中组织。参数缺失或指向不存在的 ID 时，页面回退到第一个根组织并修正 URL。用户/角色路由的 `user`/`role` 保存当前选中项（缺失时回退首条），`tab` 保存详情面板当前 Tab；用户默认 `overview`，角色默认 `info`。用户访问权限内部视图由 `accessView` 控制，默认 `config`；旧 `roles`/`direct` 映射到配置视图，旧 `effective` 映射到生效结果，`info` 映射到概览。切换组织或主 Tab 保留 `accessView`，切换用户会回到概览并在下次进入访问权限时使用默认配置视图。`org` 保存授权视角组织（默认被选用户的 home org），支持深链接与刷新保位。
 
 侧栏「用户」：`permission: "users.read"`（非 `roles.read` / `organizations.read`）。
 
@@ -57,10 +57,11 @@ features/iam/
         index.tsx
         use-role-permissions.ts
       role-users-tab.tsx
-    user-detail-panel/                  # 用户详情(目录):组织选择器 + 信息 / 角色授权 / 直接授权 / 有效权限 / 审计
-      index.tsx                         # 容器:组织选择器 + Tabs + 编辑/重置/禁用对话框
+    user-detail-panel/                  # 用户详情(目录):概览 / 访问权限 / 操作记录
+      index.tsx                         # 容器:三 Tabs + 编辑/重置/禁用对话框
+      user-access-panel.tsx             # 组织视角 + 授权配置/生效结果内部 Tabs
       user-info-tab.tsx
-      effective-permissions-panel.tsx   # 含 SourceBadge
+      effective-permissions-panel.tsx   # 生效/拒绝权限 Table + 来源 Popover
       role-assignments-tab.tsx
       role-assignment-row.tsx
       direct-permissions-tab.tsx
@@ -70,6 +71,7 @@ features/iam/
   hooks/                                # 业务 hook
     use-user-page-state.ts              # orgOptions/getOrgPath 派生(从 route 下放)
     use-iam-capabilities.ts             # 用户授权读/授予/撤销能力矩阵
+    use-user-access-data.ts             # 集中编排三组用户授权 GET 状态
   lib/                                  # feature 内工具
     focus-first-invalid-control.ts      # 无效提交聚焦当前表单首个错误控件
     organization-tree.ts                # 树索引、祖先/后代、路径与父节点候选
@@ -95,18 +97,18 @@ features/iam/
 
 ## 用户授权
 
-`UserDetailPanel` 顶部「授权视角组织」选择器（操作者管理子树内 org，带路径）+ 信息、角色、直接、有效权限、操作历史 Tab 管理某用户。`org`/`tab` 进 URL，支持深链接；非法或无 `assignments.read` 的授权 Tab 回退到信息且不发起授权请求。切换视角组织或调岗后，三个授权 Tab（角色/直接/有效权限）用 `useWatcher` 监听 `orgId` 自动重拉数据。调岗成功后 URL `org` 参数同步设为新 org，防止视角卡在旧 org。
+`UserDetailPanel` 将原五个入口收敛为「概览 / 访问权限 / 操作记录」。只有具备 `assignments.read` 时显示访问权限；无权限的旧授权深链接回退到概览且不发起授权请求。「访问权限」先明确组织视角，并常驻提示所有授权操作作用于该组织；内部用「授权配置 / 生效结果」Tabs 分开操作任务与验证任务，默认进入授权配置。角色、例外和生效结果三个 GET 由 `useUserAccessData` 集中编排，组织变化时同时刷新；各区块独立处理加载、失败、重试和空状态，单个失败不阻塞其余内容。
 
-- **有效权限**：后端 `IAM.listUserPermissions` 直接返回带来源链的结构（`effective` + `denied`），无需前端 N+1 拼。每条权限展示来源 badge；有对应读权限时角色名可跳转角色详情、组织可切到该 org 视角，否则显示纯文本。祖先继承的权限来源 orgId 即祖先组织。被 deny 抵消的权限单独成区，标注本会来自的来源（`suppressedSources`）与哪些 org deny（`deniedBy`）。
-- **角色授权**：列出已授角色（`listUserRoles`，含过期，角色名可点击跳转） + 确认后逐条撤销（`deleteUserRole`） + 授角色表单（角色 Select + 过期 DatePicker + `assignUserRole`）。选中角色后内联预览其权限，并对比当前有效权限高亮「授予后将新增」的权限，消除盲选；本人授权不显示撤销。
-- **直接授权**：列出已授直接权限（`listUserDirectPermissions`，含 effect/过期） + 确认后逐条撤销（`deleteUserPermission`） + 授直接权限表单（权限 Select + effect allow/deny ToggleGroup + 过期 DatePicker + `assignUserPermission`）。deny = 阻止部分权限；权限目录只在具备 `permissions.read` 时加载。
-- **有效期编辑**：角色和直接授权行均提供「编辑」入口；编辑时保留角色/权限身份，只修改 effect 或 `expiresAt`，清除 DatePicker 即发送 `null`，将有限期授权恢复为永久。新授时留空仍表示永久，重复授予省略 `expiresAt` 则保留原值。
+- **授权配置**：角色授权置于首屏，例外规则直接展示，不使用业务 Card 嵌套或 Accordion。摘要只使用中性文本和 secondary Badge。角色与例外的新增/编辑均使用标准居中 Dialog，标题下显示用户与完整组织路径；mutation 期间禁用提交与关闭，失败保留输入。角色权限变化只在“查看明细”中只读展开。
+- **例外规则**：信息图标只解释概念且支持键盘聚焦。选择 deny 后立即显示 destructive Alert，列出当前会被覆盖的角色来源；关键风险不藏在 Tooltip。直接授权仍是特殊补充/拒绝手段，不作为常规授权首选。
+- **生效结果**：后端 `IAM.listUserPermissions` 直接返回 `effective + denied`，前端不做 N+1。全宽 Table 展示权限、资源和来源；单来源直接显示角色与组织，多来源使用 Popover，避免逐行 Accordion 扩张页面。有对应读权限时显示“查看角色”和“切换到此组织视角”，否则保持纯文本。被 deny 抵消的权限单列展示被抑制来源与拒绝来源；无拒绝项时显示紧凑空状态。
+- **有效期编辑**：角色行提供「修改有效期」，例外行提供「编辑」。编辑时身份只读，清除 DatePicker 显式发送 `null`；新增留空省略 `expiresAt`，保留现有续期语义。
 
 **组织选择器**解决「祖先 org 授的授权在 home org 视角不可见不可撤销」：`listUserRoles`/`listUserDirectPermissions` 用 `eq(orgId)` 只返回该 org 直接授权，有效权限走祖先继承 CTE；切换组织选择器可逐个 org 查看直接授权与生效全集，来源 badge 的组织点击可快速跳到祖先 org 视角。
 
-过期用 DatePicker（react-day-picker v10 + Base UI Popover 薄包装），日期粒度；已过期记录明确标记。授予/撤销后 alova `hitSource` 自动失效对应 GET。查看授权需 `assignments.read`；角色授予还需 `roles.read`，直接权限授予还需 `permissions.read`；无对应写权限的控件不显示，且对自己的行隐藏撤销。后端 `deleteUserRole`/`deleteUserPermission` 禁止对自己操作，防自我降级锁死。资源操作历史使用 by-resource API 的资源读权限，不额外要求 `audit.read`。
+过期用 DatePicker（react-day-picker v10 + Base UI Popover 薄包装），日期粒度；已过期记录明确标记。授予/撤销后通过 `IAM_ACTIONS` 主动刷新相关 watcher；仅依赖 `hitSource` 删除缓存不足以更新已挂载视图。查看授权需 `assignments.read`；角色授予还需 `roles.read`，直接权限授予还需 `permissions.read`，无能力时不请求受限 catalog；无对应写权限的控件不显示，且对自己的行隐藏撤销。后端 `deleteUserRole`/`deleteUserPermission` 禁止对自己操作，防自我降级锁死。资源操作历史使用 by-resource API 的资源读权限，不额外要求 `audit.read`。
 
-角色权限配置保留本地勾选草稿：多项新增、当前结果全选和全选撤销均在一次点击「保存」时调用一次 `PATCH /api/v1/roles/{roleId}/permissions`，body 为新增/撤销差量；成功后以服务端返回值更新基线，失败时保留草稿并可重试。代码角色始终只读。只有新增或只有撤销时分别使用对应方向权限，混合变更需同时具备两种角色权限写权限。
+角色权限配置默认是查看态，仅呈现已授权限；自定义角色通过“编辑权限”显式进入矩阵。编辑器显示新增/撤销摘要，并在具备 `assignments.read` 时预览已授用户影响范围。多项变更仍只在一次“保存更改”中调用一次差量 `PATCH /api/v1/roles/{roleId}/permissions`；失败保留草稿。切换角色/Tab、关闭移动详情、侧栏导航、浏览器后退或关闭页面时，未保存草稿均有离开确认。界面称 `code` 角色为“系统内置”、`instance` 角色为“自定义”，底层契约不变。
 
 > 续期语义：重复授角色/权限时，提供 `expiresAt` 则更新（续期），省略则保留原过期时间，显式传 `null` 则清空为永久。管理 UI 通过编辑入口支持有限期与永久之间双向切换。
 
@@ -122,11 +124,11 @@ features/iam/
 | --- | --- | --- |
 | 进页 / 列表 | `users.read` | 路由守卫 + 侧栏 |
 | 新建 | `users.create` | 顶部「新建用户」→ Dialog + `user-form`（name/email/password） |
-| 编辑 | `users.update` | UserDetailPanel 信息 Tab「编辑」→ `user-form`（name/email，无密码） |
-| 调岗 | `users.update` | 信息 Tab「调岗」-> Dialog 选目标组织 + `transferUserOrganization`（非自己;旧独有 grant 自动清理,共同祖先保留） |
-| 重置密码 | `users.reset-password` | 信息 Tab「重置密码」→ `reset-password-dialog`（newPassword min 8） |
-| 禁用 | `users.disable` | 信息 Tab AlertDialog 确认；**禁止对自己**（按钮隐藏；后端亦 403） |
-| 启用 | `users.enable` | 信息 Tab（已禁用用户显示「启用」） |
+| 编辑 | `users.update` | 用户详情头部「编辑」→ `user-form`（name/email，无密码） |
+| 调岗 | `users.update` | 用户详情头部「调岗」-> Dialog 选目标组织 + `transferUserOrganization`（非自己;旧独有 grant 自动清理,共同祖先保留） |
+| 重置密码 | `users.reset-password` | 用户详情头部「重置密码」→ `reset-password-dialog`（newPassword min 8） |
+| 禁用 | `users.disable` | 用户详情头部 AlertDialog 确认；**禁止对自己**（按钮隐藏；后端亦 403） |
+| 启用 | `users.enable` | 已禁用用户在详情头部显示「启用」 |
 | 授权 | `assignments.read` + `roles.read` + `permissions.read` + (`assignments.grant` 或 `assignments.revoke`) | 见上节 |
 
 - **disabled badge**：`disabled === true` → destructive「已禁用」，否则 secondary「正常」。
@@ -151,7 +153,7 @@ features/iam/
 - 搜索遵循 Headless Tree 原生语义：高亮匹配、移动焦点，不从 DOM 中过滤非匹配节点。
 - 支持 Up/Down、Left/Right、Home/End、Enter/Space 和输入搜索；焦点状态与选中状态分离显示。
 
-角色权限编辑器的资源分组使用自平衡 CSS 分栏：移动端单列、`xl` 两列、`2xl` 三列；用户有效权限复用相同布局并最多两列。每个资源组保持不可拆分，权限数量不同不会再由同一 Grid 行的最大高度制造空洞。权限草稿滚动区与差量保存条分离，保存条在有差量时保持可见，仍只发送一次批量 PATCH。操作历史限制阅读宽度，详情展开入口使用自适应宽度的 link Button。
+角色权限编辑器的资源分组使用自平衡 CSS 分栏：移动端单列、`xl` 两列、`2xl` 三列。用户生效结果使用全宽 Table；窄屏由 Table 容器横向滚动，来源文本可换行，不给页面增加第二个横向滚动。权限草稿滚动区与差量保存条分离，保存条在编辑态保持可见，仍只发送一次批量 PATCH。操作记录限制阅读宽度，详情展开入口使用自适应宽度的 link Button。
 
 ## API 与缓存
 
