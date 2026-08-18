@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-08-17
+lastReviewedAt: 2026-08-18
 ---
 
 # CI/CD、安全与可观测性
@@ -42,6 +42,14 @@ lastReviewedAt: 2026-08-17
 - 上传 `playwright-report`、`test-results`（screenshot/trace/video）和独立的 `service-logs`（backend/Vite），便于定位浏览器、前端或后端链路问题；服务日志不放进 Playwright 会清理的 outputDir。
 
 E2E 不并入根 `pnpm test`，避免 Docker 和浏览器启动成本拖慢本地快速回路；模板仍在开发期，因此只锁定跨层高价值基线，不把全部业务页面固化为长期门禁。
+
+## Actions 运行记录清理
+
+`.github/workflows/cleanup-action-runs.yml` 每周一在 E2E 定时任务之后删除已完成且超过 30 天的 workflow runs，单次最多处理 GitHub API 返回的 100 条记录。它与 artifact/log retention 是两个边界：E2E 上传产物保留 14 天；清理任务删除满足条件的整条 run 及其关联日志和 artifacts。
+
+该 workflow 也支持手动触发，默认 `dry_run=true`，只输出 `would-delete` 候选项；明确改为 `false` 才执行删除。定时任务直接清理，且只查询 `completed`，因此不会触碰排队、执行中或当前清理任务。删除不可恢复，30 天窗口内应完成必要排障。
+
+该 workflow 是现有只读 CI/E2E 权限的明确例外：它需要 `actions: write` 调用 GitHub REST API，但 `contents` 仍为只读，且不响应 push 或 pull request，避免 PR 代码获得写权限执行机会。实现直接使用 runner 预装的 `gh`，不 checkout 仓库，也不引入第三方清理 Action。
 
 第三方 Actions 固定到对应 major tag 当前解引用后的完整 commit SHA，行尾注释保留可读版本。`.github/dependabot.yml` 每周检查 `github-actions` 更新并把同批更新归组，避免 SHA 固定后失去自动升级路径。
 
