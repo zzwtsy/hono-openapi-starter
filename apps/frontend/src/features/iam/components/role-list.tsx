@@ -91,8 +91,8 @@ export function RoleListPanel({ selectedRoleId, roles, loading, error, onRetry, 
                               </ItemContent>
                               <ItemActions>
                                 {role.source === "code"
-                                  ? <Badge variant="secondary">代码</Badge>
-                                  : <Badge variant="outline">实例</Badge>}
+                                  ? <Badge variant="secondary">系统内置</Badge>
+                                  : <Badge variant="outline">自定义</Badge>}
                               </ItemActions>
                             </Item>
                           ))}

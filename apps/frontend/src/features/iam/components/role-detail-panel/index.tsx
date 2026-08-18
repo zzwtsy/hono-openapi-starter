@@ -26,9 +26,10 @@ interface RoleDetailPanelProps {
   onNavigateUser: (userId: string, orgId: string) => void;
   getOrgPath: (orgId: string) => string;
   isSystemRootUser: boolean;
+  onPermissionsDirtyChange?: (dirty: boolean) => void;
 }
 
-export function RoleDetailPanel({ mode, role, tab, onTabChange, onNavigateUser, getOrgPath, isSystemRootUser }: RoleDetailPanelProps) {
+export function RoleDetailPanel({ mode, role, tab, onTabChange, onNavigateUser, getOrgPath, isSystemRootUser, onPermissionsDirtyChange }: RoleDetailPanelProps) {
   const hasUpdatePermission = useCan("roles.update");
   const hasDeletePermission = useCan("roles.delete");
   const canUpdate = isSystemRootUser && hasUpdatePermission;
@@ -61,11 +62,11 @@ export function RoleDetailPanel({ mode, role, tab, onTabChange, onNavigateUser, 
       status={role.source === "code"
         ? (
             <Tooltip>
-              <TooltipTrigger render={<Badge variant="secondary">代码</Badge>} />
-              <TooltipContent>代码同步角色，不可修改或删除</TooltipContent>
+              <TooltipTrigger render={<Badge variant="secondary">系统内置</Badge>} />
+              <TooltipContent>由应用代码同步，不可修改或删除</TooltipContent>
             </Tooltip>
           )
-        : <Badge variant="outline">实例</Badge>}
+        : <Badge variant="outline">自定义</Badge>}
       actions={role.source === "instance" && (canUpdate || canDelete)
         ? (
             <div className="flex items-center gap-1">
@@ -99,7 +100,7 @@ export function RoleDetailPanel({ mode, role, tab, onTabChange, onNavigateUser, 
           </div>
         </TabsContent>
         <TabsContent value="permissions" className="min-h-0 flex-1 pt-3">
-          <RolePermissionsTab key={role.id} role={role} isSystemRootUser={isSystemRootUser} />
+          <RolePermissionsTab key={role.id} role={role} isSystemRootUser={isSystemRootUser} onDirtyChange={onPermissionsDirtyChange} />
         </TabsContent>
         <TabsContent value="users" className="min-h-0 flex-1 overflow-y-auto pt-3">
           <div className="max-w-4xl">

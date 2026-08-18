@@ -21,11 +21,11 @@ export function RoleInfoTab({ role }: { role: Role }) {
             {role.source === "code"
               ? (
                   <Tooltip>
-                    <TooltipTrigger render={<Badge variant="secondary">代码</Badge>} />
-                    <TooltipContent>代码同步角色，不可修改或删除</TooltipContent>
+                    <TooltipTrigger render={<Badge variant="secondary">系统内置</Badge>} />
+                    <TooltipContent>由应用代码同步，不可修改或删除</TooltipContent>
                   </Tooltip>
                 )
-              : <Badge>实例</Badge>}
+              : <Badge>自定义</Badge>}
           </dd>
         </div>
         <div className="flex flex-col gap-1">
