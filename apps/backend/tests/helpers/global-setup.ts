@@ -9,7 +9,7 @@ import { runMigrations } from "../../src/db/run-migrations.js";
  * 让 worker 里的全局 `db`(db/client.ts)自动连容器。teardown 停容器。
  *
  * 同时设置 `EnvSchema` 其余必需 env(测试专用值),让 env.ts 校验通过——不依赖 .env.test 文件。
- * 见 [测试策略](../../../docs/conventions/testing-strategy.md) 集成测试基础设施。
+ * 见 [测试策略](../../../../docs/conventions/backend/testing-strategy.md) 集成测试基础设施。
  */
 
 /**

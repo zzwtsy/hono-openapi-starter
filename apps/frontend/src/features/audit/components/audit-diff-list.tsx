@@ -12,8 +12,6 @@ import { cn } from "@/lib/utils";
  * - 值渲染:`_names` 关联名称优先于裸 id;对象/数组 JSON 截断 120 + 展开;长文本折叠
  * - 数组输入(before/after 为数组,如权限列表):单行摘要,不逐项 diff
  * - 「格式化 / 原始」切换兜底完整 JSON
- *
- * 调研依据:audit-frontend-polish-stage2.md(diff viewer a11y / GitHub audit payload 双视图)。
  */
 
 interface AuditDiffListProps {

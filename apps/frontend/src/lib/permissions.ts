@@ -1,8 +1,7 @@
 import type { PermissionCode } from "@/types/permissions";
 
 /**
- * 纯权限谓词,供路由 beforeLoad 守卫(`require-permission`)与侧边栏导航过滤共用,
- * 收敛原本散落 4+ 处的 `auth.permissionCodes?.includes("x") === true` null-handling 惯用法。
+ * 纯权限谓词，供路由 beforeLoad 守卫(`require-permission`)与侧边栏导航过滤共用。
  *
  * 不在前端再维护权限名单:`PermissionCode` 来自后端契约生成(见 `@/types/permissions`)。
  */

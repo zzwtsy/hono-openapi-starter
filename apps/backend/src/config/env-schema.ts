@@ -13,71 +13,48 @@ export const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
   PORT: z.coerce.number().default(3001),
 
-  // --- 日志相关配置 ---
+  // 日志配置。
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]),
-  /** 保留的最大日志文件数量 (默认: 90) */
   LOG_MAX_FILES: z.coerce.number().default(90),
 
-  // --- 数据库相关配置 ---
+  // 数据库配置。
   DATABASE_URL: z.string(),
 
-  // --- Better Auth 相关配置 ---
-  /** 认证服务的密钥, 长度必须至少 32 位 */
+  // Better Auth 配置。
+  /** 认证会话签名密钥；校验失败时只显示掩码值。 */
   BETTER_AUTH_SECRET: z.string().min(32),
-  /** 认证服务的公网访问地址 */
   BETTER_AUTH_URL: z.url(),
-  /** 可信任的来源列表 `,` 逗号分隔 */
+  /** 可信来源列表，多个来源用逗号分隔。 */
   BETTER_AUTH_TRUSTED_ORIGINS: z.string().optional(),
 
-  // --- API 与文档相关配置 ---
+  // API 与文档配置。
   /** 允许的前端来源列表，逗号分隔；留空则放行所有来源 */
   CORS_ORIGINS: z.string().optional(),
   /** 生产环境是否公开 /openapi.json（默认关闭，避免暴露端点结构） */
   OPENAPI_PUBLIC: z.stringbool().default(false),
 
-  // --- 审计日志相关配置 ---
+  // 审计日志配置。
   /** 审计日志保留天数(0 = 永久保留,默认 90 天)。查询时惰性过滤 + 定时物理删除。 */
   AUDIT_LOG_RETENTION_DAYS: z.coerce.number().int().min(0).default(90),
 
-  // --- bootstrap（首次部署造第一个 admin，用后可清除密码）---
-  /** bootstrap：首个 admin 邮箱 */
+  // 首次部署 bootstrap 配置。
   BOOTSTRAP_ADMIN_EMAIL: z.email().optional(),
-  /** bootstrap：首个 admin 密码（至少 8 位） */
+  /** 首个 admin 密码；bootstrap 成功后应从部署环境移除。 */
   BOOTSTRAP_ADMIN_PASSWORD: z.string().min(8).optional(),
-  /** bootstrap：根组织 ID */
   BOOTSTRAP_ROOT_ORG_ID: z.string().default("org-root"),
 });
 
-/** 应用启动时环境变量的最终类型。 */
 export type Env = z.infer<typeof EnvSchema>;
 
-/**
- * 从 Zod issue 中提取环境变量键名。
- *
- * @param issue Zod 校验失败条目。
- * @returns 首层路径键名，缺失时返回 `ROOT`。
- */
 function getIssueKey(issue: z.core.$ZodIssue): string {
   const key = issue.path[0];
   return typeof key === "string" && key.length > 0 ? key : "ROOT";
 }
 
-/**
- * 判断变量名是否属于敏感信息。
- *
- * @param key 环境变量名。
- * @returns 是否需要脱敏显示。
- */
 function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEY_PATTERN.test(key);
 }
 
-/**
- * 对敏感值进行部分掩码处理。
- *
- * @param value 原始字符串值。
- * @returns 脱敏后的字符串。
- */
 function maskSensitiveValue(value: string): string {
   if (value.length <= 4)
     return "****";
@@ -85,12 +62,6 @@ function maskSensitiveValue(value: string): string {
   return `${value.slice(0, 2)}${"*".repeat(value.length - 4)}${value.slice(-2)}`;
 }
 
-/**
- * 截断过长展示值，避免启动日志过大。
- *
- * @param value 待展示字符串。
- * @returns 截断后的字符串。
- */
 function truncateValue(value: string): string {
   if (value.length <= MAX_DISPLAY_VALUE_LENGTH)
     return value;
@@ -98,13 +69,6 @@ function truncateValue(value: string): string {
   return `${value.slice(0, MAX_DISPLAY_VALUE_LENGTH)}...`;
 }
 
-/**
- * 格式化单个环境变量的错误展示值。
- *
- * @param key 环境变量键名。
- * @param issue 对应校验错误。
- * @returns 脱敏并截断后的可读值。
- */
 function formatIssueValue(key: string, issue: z.core.$ZodIssue): string {
   const rawValue = issue.input ?? (key !== "ROOT" ? process.env[key] : undefined);
 
@@ -119,13 +83,7 @@ function formatIssueValue(key: string, issue: z.core.$ZodIssue): string {
   return truncateValue(value);
 }
 
-/**
- * 拼接环境变量校验失败的完整提示信息。
- *
- * @param error Zod 错误对象。
- * @param envFileHint 当前加载 env 文件的路径提示。
- * @returns 可直接输出到终端的多行文本。
- */
+/** 格式化环境变量校验错误；敏感值使用掩码，其他过长值会被截断。 */
 export function formatEnvValidationError(error: z.ZodError, envFileHint: string): string {
   const lines = [`❌ 环境变量校验失败 (${error.issues.length} 项)`, ""];
 
@@ -144,7 +102,6 @@ export function formatEnvValidationError(error: z.ZodError, envFileHint: string)
   return lines.join("\n");
 }
 
-/** 对环境变量做安全解析，返回 Zod 标准结果。 */
 export function safeParseEnv(rawEnv: NodeJS.ProcessEnv) {
   return EnvSchema.safeParse(rawEnv);
 }

@@ -84,7 +84,7 @@ describe("IAM user routes", () => {
     mockTransferUserOrganization.mockImplementation(async () => requirePermission("users.update"));
   });
 
-  // --- 用户列表 ---
+  // 用户列表。
   it("listUsers 无 users.read 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -111,7 +111,7 @@ describe("IAM user routes", () => {
     expect(mockListUsers).toHaveBeenCalledWith("org-1");
   });
 
-  // --- 用户管理 ---
+  // 用户管理。
   const mockUserSummary = {
     id: "u-2",
     name: "b",
@@ -243,7 +243,7 @@ describe("IAM user routes", () => {
     expect(mockEnableUser).toHaveBeenCalledWith("org-1", "u-2");
   });
 
-  // --- 调岗 ---
+  // 调整用户所属组织。
   it("transferUserOrganization 无 users.update 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);

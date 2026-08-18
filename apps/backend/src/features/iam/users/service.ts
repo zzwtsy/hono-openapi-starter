@@ -112,7 +112,7 @@ export const UserService = {
       return requireUserInSubtree(actor.orgId, userId);
     }
     // 事务内 select 查重 + update + returning:email 改名查重排除自身,压窄 TOCTOU 窗口,
-    // unique 约束兜底(B2 D4,对齐 createRole/projects.update)。returning 拿更新后数据,
+    // 数据库 unique 约束继续兜底并发写入。returning 获取更新后数据，
     // 不在事务内用全局 db 重查(读不到未提交更改)。
     const [updated] = await db.transaction(async (tx) => {
       await tx.execute(acquireSharedTopologyLock());
@@ -154,7 +154,7 @@ export const UserService = {
   async resetPassword(actor: IamActor, userId: string, newPassword: string) {
     const passwordHash = await hashPassword(newPassword);
     // 事务保证 update password + delete session 原子:delete 失败则 password 回滚,
-    // 避免密码已改但旧 session 仍有效(B2 D1,与 disableUser 同构)。
+    // 密码变更与 session 失效必须保持原子，避免旧 session 在新密码生效后继续使用。
     await db.transaction(async (tx) => {
       await tx.execute(acquireSharedTopologyLock());
       const target = await requireUserInSubtree(actor.orgId, userId);
@@ -178,7 +178,7 @@ export const UserService = {
   async disableUser(actor: IamActor, userId: string) {
     assertNotSelf(actor.id, userId, "USER_CANNOT_DISABLE_SELF");
     // 事务保证 update disabled + delete session 原子:delete 失败则 disabled 回滚,
-    // 避免"disabled=true 但旧 session 仍有效"的安全语义破坏(B2 D1)。
+    // 禁用状态与 session 失效必须保持原子，避免已禁用账号继续使用旧 session。
     // returning 拿更新后数据,省一次 requireUserInSubtree 查询。
     const updated = await db.transaction(async (tx) => {
       await tx.execute(acquireSharedTopologyLock());

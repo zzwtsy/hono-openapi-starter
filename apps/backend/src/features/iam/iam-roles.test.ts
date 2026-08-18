@@ -95,7 +95,7 @@ describe("IAM role routes", () => {
     mockDeleteRolePermission.mockImplementation(async () => requirePermission("roles.revoke-permissions"));
   });
 
-  // --- 角色列表 ---
+  // 角色列表。
   it("listRoles 有 roles.read 返回角色列表", async () => {
     authed();
     mockListRoles.mockResolvedValue([mockRole]);
@@ -106,7 +106,7 @@ describe("IAM role routes", () => {
     expect(body.data[0].name).toBe("viewer");
   });
 
-  // --- 建角色 ---
+  // 创建角色。
   it("createRole 无 roles.create 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -132,7 +132,7 @@ describe("IAM role routes", () => {
     expect(mockCreateRole).toHaveBeenCalledWith({ name: "viewer" });
   });
 
-  // --- 改角色 ---
+  // 修改角色。
   it("updateRole 无 roles.update 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -170,7 +170,7 @@ describe("IAM role routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // --- 删角色 ---
+  // 删除角色。
   it("deleteRole 无 roles.delete 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -188,7 +188,7 @@ describe("IAM role routes", () => {
     expect(mockDeleteRole).toHaveBeenCalledWith("r-1");
   });
 
-  // --- 角色权限列表 ---
+  // 角色权限列表。
   it("listRolePermissions 无 roles.read 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -216,7 +216,7 @@ describe("IAM role routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // --- 给角色配权限 ---
+  // 为角色分配权限。
   it("assignRolePermissions 无 roles.assign-permissions 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -245,7 +245,7 @@ describe("IAM role routes", () => {
     expect(mockAssignRolePermissions).toHaveBeenCalledWith("r-1", ["projects.read"]);
   });
 
-  // --- 批量更新角色权限 ---
+  // 批量更新角色权限。
   it("updateRolePermissions 新增方向无权限返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -313,7 +313,7 @@ describe("IAM role routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // --- 撤角色权限 ---
+  // 撤销角色权限。
   it("deleteRolePermission 无 roles.revoke-permissions 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);

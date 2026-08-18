@@ -55,7 +55,7 @@ export const errorRegistry = {
     expose: false,
   },
 
-  // --- 业务错误码（DOMAIN_REASON）：恢复业务语义，客户端可按 code 精确处理 ---
+  // 业务错误码（DOMAIN_REASON）：恢复业务语义，客户端可按 code 精确处理。
   // USER
   USER_NOT_FOUND: { status: 404, defaultMessage: "User not found", expose: true },
   USER_EMAIL_ALREADY_EXISTS: { status: 409, defaultMessage: "Email already exists", expose: true },

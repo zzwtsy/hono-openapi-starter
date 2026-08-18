@@ -64,7 +64,7 @@ describe("system-settings routes", () => {
     vi.resetAllMocks();
   });
 
-  // --- list ---
+  // 列表。
   it("无 session 时 list 返回 401", async () => {
     mockGetSession.mockResolvedValue(null);
 
@@ -95,7 +95,7 @@ describe("system-settings routes", () => {
     expect(mockList).toHaveBeenCalledWith();
   });
 
-  // --- update(registry 当前空:无可用配置项,任意 key 被 schema 拒) ---
+  // registry 为空时没有可更新项，任意 key 都会被 schema 拒绝。
   it("无权限时 update 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);

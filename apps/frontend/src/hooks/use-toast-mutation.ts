@@ -7,8 +7,7 @@ interface ToastMutationOptions {
 }
 
 /**
- * mutation 包装:统一 try/catch + toast(success/error)+ busy 状态,
- * 消除各 mutation 散落的样板(见 code-style §7)。
+ * mutation 执行期间独占 busy 状态，并统一展示 success/error toast。
  *
  * `mutate` 返回 boolean(成功/失败),调用方据此做后续(清选中 / 刷新列表)。
  * 多个独立 mutation 各自调用一次本 hook,避免共享同一 busy。

@@ -47,7 +47,7 @@ export const OrganizationService = {
 
   /** 改组织(改 parentId 时防环:新 parent 的祖先集含自身则成环,拒绝)。 */
   async updateOrganization(actor: IamActor, id: string, input: { name?: string; parentId?: string }) {
-    // 防环 CTE 检查与 update 同事务:避免检查后、update 前的窗口被并发改 parentId 成环(B2 D4)。
+    // 防环 CTE 检查与 update 必须在同一事务内，避免并发改 parentId 重新引入环。
     return db.transaction(async (tx) => {
       await tx.execute(acquireExclusiveTopologyLock());
       await assertTargetPermission(actor, "organizations.update", id);

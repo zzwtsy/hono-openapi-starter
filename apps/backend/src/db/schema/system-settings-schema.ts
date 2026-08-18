@@ -17,7 +17,7 @@ import { updatedAtColumn } from "./shared/index.js";
  * key 天然主键,无 id/createdAt;updatedAt 记录最后修改时间。
  * `updatedByUserId` 引用 user.id(set null on delete),审计追踪修改者。
  *
- * 设计见 [ADR-0007](../../../docs/adr/0007-runtime-config-control.md)。
+ * 设计见 [ADR-0007](../../../../../docs/adr/0007-runtime-config-control.md)。
  */
 export const systemSettings = pgTable("system_settings", {
   key: text("key").primaryKey(),

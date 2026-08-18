@@ -13,11 +13,6 @@ interface OrganizationTreeItemProps {
   onSelect: (id: string) => void;
 }
 
-/**
- * 单个组织树项渲染:展开/折叠按钮、组织图标、名称(搜索匹配高亮)。
- *
- * 从 organization-tree map 段抽出(L143-195),降低父组件行数。
- */
 export function OrganizationTreeItem({ item, onSelect }: OrganizationTreeItemProps) {
   const organization = item.getItemData().organization;
   if (organization === undefined) {

@@ -8,7 +8,7 @@ import { createdAtColumn, idColumn, updatedAtColumn } from "./shared/index.js";
 /**
  * 权限层 6 表(自建,与 Better Auth 解耦,唯一联系是 user.id 外键)。
  *
- * 设计见 [权限层规范](../../../docs/conventions/authorization.md)、ADR-0004。
+ * 设计见 [权限层规范](../../../../../docs/conventions/backend/authorization.md)、ADR-0004。
  * 列名 snake_case,id 用 text PK,时间戳用 shared helper(均带时区)。
  * 外键列均建索引:checkPermission 按 user_id/org_id/role_id/parent_id 过滤或 JOIN。
  */

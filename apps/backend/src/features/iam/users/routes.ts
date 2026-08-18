@@ -38,7 +38,6 @@ export const listUsersRoute = createRoute({
   },
 });
 
-// --- 用户管理 ---
 export const createUserRoute = createRoute({
   method: "post",
   path: "/users",

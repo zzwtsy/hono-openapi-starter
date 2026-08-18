@@ -11,7 +11,6 @@ import { IAM_ACTIONS, refreshIam } from "../../../lib/iam-actions";
 /**
  * 角色权限编辑态:权限目录 + 已授 + diff 编辑 + 保存。
  *
- * 从 RolePermissionsTab 抽出,消函数级超标([code-style §4])。
  * prevInitial 保留:granted 刷新(submit 成功 / refresh)后重置 working 编辑态
  * (role 切换由容器 key={role.id} remount 处理),React 官方 adjusting-state 模式。
  */

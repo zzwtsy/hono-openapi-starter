@@ -229,7 +229,7 @@ describe("iam user management", () => {
     const sessionsAfter = await db.select().from(session).where(eq(session.userId, created.id));
     expect(sessionsAfter).toHaveLength(0);
 
-    // 旧 session token 立即失效(B2 D1,与 disableUser 同构)。
+    // 密码重置成功后，已有 session token 必须立即失效。
     const staleSession = await auth.api.getSession({
       headers: { authorization: `Bearer ${oldToken}` },
     });
@@ -268,7 +268,7 @@ describe("iam user management", () => {
     expect(sessions).toHaveLength(0);
 
     // 旧 session token 立即失效:getSession 查不到行返回 null(未开 cookieCache,删行即失效)。
-    // 这是"禁用用户后旧 session 仍有效"漏洞的核心证明(B2 D1)。
+    // 禁用用户后，已有 session token 必须立即失效。
     const staleSession = await auth.api.getSession({
       headers: { authorization: `Bearer ${oldToken}` },
     });

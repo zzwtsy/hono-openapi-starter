@@ -8,7 +8,7 @@ import { createdAtColumn, idColumn, updatedAtColumn } from "./shared/index.js";
  * projects 表:业务项目,属于某组织。
  *
  * `org_id` 外键引用 organizations,按组织查询(索引)。
- * `(org_id, name)` 唯一约束:同组织内项目名唯一,根除并发重名 TOCTOU(B2 D2)。
+ * `(org_id, name)` 唯一约束保证同组织内项目名唯一，并阻止并发写入绕过应用层查重。
  * 不同组织允许重名。
  */
 export const projects = pgTable("projects", {

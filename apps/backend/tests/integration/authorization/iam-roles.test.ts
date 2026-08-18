@@ -150,7 +150,7 @@ describe("iam role management", () => {
   it("updateRole 改名为已存在名抛 ROLE_NAME_CONFLICT", async () => {
     const r1 = await IamService.createRole({ name: "viewer" });
     await IamService.createRole({ name: "editor" });
-    // 改 editor 为 viewer(已存在)-> 409,修复前缺查重会撞 unique 转 500(B2 D4)。
+    // 改为已存在的角色名必须返回业务冲突，而不是泄漏数据库 unique 异常。
     await expect(IamService.updateRole(r1.id, { name: "editor" })).rejects.toMatchObject({ code: "ROLE_NAME_CONFLICT" });
   });
 

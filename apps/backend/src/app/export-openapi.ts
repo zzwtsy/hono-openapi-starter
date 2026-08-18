@@ -1,3 +1,10 @@
+/**
+ * 将当前应用装配产生的 OpenAPI 文档写入调用方指定的 JSON 文件。
+ *
+ * 该命令只装配静态契约，不启动服务或连接数据库，也不会覆盖调用方已设置的环境变量。
+ * 目标必须显式指定为 `.json` 文件；命令会创建父目录并直接写入目标。失败时输出错误并以
+ * 非零状态退出，不负责回滚已创建的目录或目标文件。
+ */
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";

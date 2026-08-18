@@ -86,7 +86,7 @@ describe("IAM assignment routes", () => {
     mockListUserDirectPermissions.mockImplementation(async () => requirePermission("assignments.read"));
   });
 
-  // --- 授用户角色 ---
+  // 授予用户角色。
   it("assignUserRole 无 assignments.grant 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -129,7 +129,7 @@ describe("IAM assignment routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // --- 撤用户角色 ---
+  // 撤销用户角色。
   it("deleteUserRole 无 assignments.revoke 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -165,7 +165,7 @@ describe("IAM assignment routes", () => {
     expect(res.status).toBe(403);
   });
 
-  // --- 直接授权 ---
+  // 直接授权。
   it("assignUserPermission 无 assignments.grant 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -208,7 +208,7 @@ describe("IAM assignment routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // --- 撤直接权限 ---
+  // 撤销直接权限。
   it("deleteUserPermission 无 assignments.revoke 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -244,7 +244,7 @@ describe("IAM assignment routes", () => {
     expect(res.status).toBe(403);
   });
 
-  // --- 用户有效权限全集 ---
+  // 用户有效权限全集。
   it("listUserPermissions 无 assignments.read 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -270,7 +270,7 @@ describe("IAM assignment routes", () => {
     expect(mockListUserEffectivePermissions).toHaveBeenCalledWith("org-1", "u-2", "org-1");
   });
 
-  // --- 用户已授角色记录(原始授权,撤销用) ---
+  // 用户已授角色记录，用于撤销原始授权。
   it("listUserRoles 无 assignments.read 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -296,7 +296,7 @@ describe("IAM assignment routes", () => {
     expect(mockListUserRoles).toHaveBeenCalledWith("org-1", "u-2", "org-1");
   });
 
-  // --- 用户直接授权记录(原始授权,撤销用) ---
+  // 用户直接授权记录，用于撤销原始授权。
   it("listUserDirectPermissions 无 assignments.read 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -322,7 +322,7 @@ describe("IAM assignment routes", () => {
     expect(mockListUserDirectPermissions).toHaveBeenCalledWith("org-1", "u-2", "org-1");
   });
 
-  // --- 读端点 service 抛 NOT_FOUND -> 404(对齐同文件 10 个端点模式,验证 handler->error-handler->HTTP 链路) ---
+  // 读端点将 service 的 NOT_FOUND 映射为 404，验证 handler -> error-handler -> HTTP 链路。
   it("listUserPermissions service 抛 NOT_FOUND 返回 404", async () => {
     authed();
     mockListUserEffectivePermissions.mockRejectedValue(new AppError("COMMON_NOT_FOUND"));
@@ -347,5 +347,5 @@ describe("IAM assignment routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // --- 组织列表 ---
+  // 组织列表。
 });

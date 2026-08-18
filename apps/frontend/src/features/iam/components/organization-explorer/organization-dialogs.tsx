@@ -17,10 +17,6 @@ interface OrganizationDialogsProps {
   onConfirmDelete: () => void;
 }
 
-/**
- * 组织浏览器对话框区:创建 / 编辑 Dialog + 删除确认。
- * 抽出以降低 OrganizationExplorer 函数行数与复杂度(见 code-style §4)。
- */
 export function OrganizationDialogs({
   creatingParentId,
   editing,

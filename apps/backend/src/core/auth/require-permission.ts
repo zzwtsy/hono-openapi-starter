@@ -18,7 +18,7 @@ import { AppError } from "../errors/app-error.js";
  * @throws {AppError} COMMON_UNAUTHORIZED - user 不存在(防御性,requireAuth 应已跑)
  * @throws {AppError} COMMON_FORBIDDEN - user.orgId 为 null(无组织无权限)或权限检查未通过
  *
- * 见 [权限层规范](../../../docs/conventions/authorization.md)、ADR-0004。
+ * 见 [权限层规范](../../../../../docs/conventions/backend/authorization.md)、ADR-0004。
  */
 export function requirePermission(permissionCode: AppPermissionCode, options?: { orgId?: string }) {
   return createMiddleware<AppBindings>(async (c, next) => {

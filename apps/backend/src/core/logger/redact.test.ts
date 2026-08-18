@@ -117,8 +117,8 @@ describe("logger redaction", () => {
 
   it("redacts serialized error fields and sanitizes error text", () => {
     const { entries, logger } = createCaptureLogger();
-    // details 收窄为 ValidationErrorDetail[] 后(B3 D3),不再有任意结构敏感字段;
-    // 阶段2 AppError.message 走 i18n 默认值(无敏感),此用例聚焦 details 保留 + stack 无敏感。
+    // details 只接受 ValidationErrorDetail[]，不包含任意结构的敏感字段；
+    // AppError.message 使用无敏感信息的 i18n 默认值；此用例聚焦 details 保留和 stack 脱敏。
     const error = new AppError("COMMON_CONFLICT", {
       details: [{ path: ["body", "email"], message: "邮箱 password=hidden 无效 for user@example.com" }],
     });

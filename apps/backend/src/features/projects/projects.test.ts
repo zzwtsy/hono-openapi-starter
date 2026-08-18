@@ -77,7 +77,7 @@ describe("projects routes", () => {
     vi.resetAllMocks();
   });
 
-  // --- list ---
+  // 列表。
   it("无 session 时 list 返回 401", async () => {
     mockGetSession.mockResolvedValue(null);
 
@@ -109,7 +109,7 @@ describe("projects routes", () => {
     expect(mockList).toHaveBeenCalledWith("org-1");
   });
 
-  // --- detail ---
+  // 详情。
   it("detail 不存在时返回 404", async () => {
     authed();
     mockGetById.mockRejectedValue(new AppError("COMMON_NOT_FOUND"));
@@ -131,7 +131,7 @@ describe("projects routes", () => {
     expect(body.data.id).toBe("proj-1");
   });
 
-  // --- create ---
+  // 创建。
   it("无 session 时 create 返回 401", async () => {
     mockGetSession.mockResolvedValue(null);
 
@@ -170,7 +170,7 @@ describe("projects routes", () => {
     expect(res.status).toBe(409);
   });
 
-  // --- update ---
+  // 更新。
   it("无权限时 update 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -210,7 +210,7 @@ describe("projects routes", () => {
     expect(res.status).toBe(409);
   });
 
-  // --- delete ---
+  // 删除。
   it("无权限时 delete 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);

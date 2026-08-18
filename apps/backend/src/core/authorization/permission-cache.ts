@@ -17,7 +17,7 @@ export function getPermissionCache(): Map<string, boolean | UserPermissionsResul
 
 /**
  * 请求级权限 cache 中间件:开启 ALS 上下文,同请求内 `PermissionService.check`
- * 共享结果,避免重复递归 CTE。见 [权限层规范](../../../docs/conventions/authorization.md)。
+ * 共享结果,避免重复递归 CTE。见 [权限层规范](../../../../../docs/conventions/backend/authorization.md)。
  */
 export function permissionCacheMiddleware() {
   return createMiddleware<AppBindings>(async (_c, next) => {

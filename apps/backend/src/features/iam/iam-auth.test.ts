@@ -78,7 +78,7 @@ describe("IAM authentication and self-authorization routes", () => {
     vi.resetAllMocks();
   });
 
-  // --- 权限目录 ---
+  // 权限目录。
   it("listPermissions 无 permissions.read 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -97,7 +97,7 @@ describe("IAM authentication and self-authorization routes", () => {
     expect(body.data[0].code).toBe("projects.read");
   });
 
-  // --- 当前用户授权自查 ---
+  // 当前用户授权自查。
   it("getMyAuthorization 未认证返回 401", async () => {
     mockGetSession.mockResolvedValue(null);
 
@@ -138,9 +138,9 @@ describe("IAM authentication and self-authorization routes", () => {
     expect(mockGetMyAuthorization).not.toHaveBeenCalled();
   });
 
-  // --- 无 session 返回 401 ---
+  // 无 session 返回 401。
   // requireAuth 是所有 iam 端点的首个中间件,无 session 时统一 401(先于权限检查与 body 校验)。
-  // 参数化覆盖全部 28 端点,证明 requireAuth 链路完整(此前只测 403,401 路径零覆盖)。
+  // 参数化覆盖此处列出的全部 IAM 端点，验证 requireAuth 的 401 链路。
   const unauthCases: Array<[string, string, string]> = [
     ["get", "/permissions", ""],
     ["get", "/me/authorization", ""],

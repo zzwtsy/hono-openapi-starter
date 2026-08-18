@@ -66,7 +66,7 @@ export const MeService = {
    *
    * - verifyPassword 用 BA 服务端 API(v1.4.11+,catalog ^1.6.23),接收当前 session headers,
    *   返回 boolean;false 抛 USER_INVALID_PASSWORD(401)。
-   * - 事务保证 update password + delete session 原子(与 resetPassword 同构,B2 D1)。
+   * - 事务保证 update password + delete session 原子，避免旧 session 在新密码生效后继续使用。
    * - 无 credential account → USER_NO_CREDENTIAL_ACCOUNT(404,OAuth 用户无密码)。
    */
   async changeMyPassword(

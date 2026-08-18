@@ -28,7 +28,7 @@ export interface AuditSnapshotConfig {
 
 export type AuditSnapshotInput = AuditSnapshotResolver | AuditSnapshotConfig;
 
-/** after 的捕获模式;阶段 2 起不配置时不再默认读取响应体。 */
+/** after 的捕获模式；未配置时不读取响应体。 */
 export type AuditAfterConfig = "response" | "none" | AuditSnapshotInput;
 
 interface AuditConfigBase<TAction extends AuditActionDefinition> {

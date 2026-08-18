@@ -76,7 +76,7 @@ export const AuditService = {
     const conditions = [];
 
     // 管理子树过滤 + 无归属事件:actorOrgId IS NULL(登录失败等全局事件)任何管理员可见。
-    // 旧实现 IN 子树会把 NULL 记录排除掉,安全审计最关心的失败登录反而查不到。
+    // 系统级失败事件没有 actorOrgId；全局审计必须保留这些通常最需要调查的记录。
     conditions.push(or(
       inArray(auditLogs.actorOrgId, query.actorOrgIds),
       isNull(auditLogs.actorOrgId),

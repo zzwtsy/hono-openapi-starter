@@ -51,7 +51,7 @@ describe("errorResponse", () => {
   });
 
   it("未暴露错误不透传调用方 details", () => {
-    // 未暴露错误(COMMON_INTERNAL_ERROR)即使传入 details 也不透传到响应体(B1 D1)。
+    // 未暴露错误即使传入 details 也不能透传到响应体。
     const { body } = errorResponse(mockContext(), "COMMON_INTERNAL_ERROR", {
       details: [{ path: ["internal"], message: "内部错误细节" }],
     }) as MockResponse;

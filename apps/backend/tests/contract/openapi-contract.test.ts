@@ -86,8 +86,8 @@ describe("OpenAPI contract", () => {
     }
   });
 
-  // L1:每个错误响应(非 2xx)必须有 response 级 example,区分各状态码的真实错误码
-  // (此前所有错误响应共用 ErrorEnvelope schema,example 全回退到 validation,401/403/404/409 展示一样)。
+  // 每个非 2xx 错误响应都必须提供 response 级 example，区分各状态码的真实错误码。
+  // 每种错误响应必须使用对应 example，不能统一回退到 validation example。
   it("每个错误响应(非 2xx)有 example", () => {
     for (const op of operations) {
       for (const [code, response] of Object.entries(op.responses ?? {})) {

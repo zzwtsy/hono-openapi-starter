@@ -42,8 +42,7 @@ export function useRoleAssignments({ userId, userHomeOrgId, orgId, roles, curren
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const { mutate: runWithToast, busy: assigning } = useToastMutation();
 
-  // useWatcher 监听 selectedRoleId:选中角色自动用新 roleId 拉权限,
-  // 修此前 sendPreview 闭包用旧 roleId(初始 "")-> 404 -> 显示 0 项权限的 bug。
+  // selectedRoleId 必须作为 watcher 依赖，确保预览请求始终使用当前选中的角色。
   const { data: previewPerms } = useWatcher(
     () => Apis.IAM.listRolePermissions({ pathParams: { roleId: selectedRoleId } }),
     [selectedRoleId],

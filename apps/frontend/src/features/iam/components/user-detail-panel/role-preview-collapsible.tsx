@@ -9,11 +9,6 @@ interface RolePreviewCollapsibleProps {
   newPerms?: PermissionRef[];
 }
 
-/**
- * 选中角色权限预览:展示角色全部权限,高亮用户当前未持有的新增权限。
- *
- * 从 role-assignments-tab 抽出(L98-130),吸收 JSX 条件分支降低父组件 complexity。
- */
 export function RolePreviewCollapsible({ previewPerms, newPerms }: RolePreviewCollapsibleProps) {
   const newPermsSet = new Set(newPerms?.map(permission => permission.code) ?? []);
 

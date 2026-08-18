@@ -11,7 +11,7 @@ import { resetDb } from "../../helpers/db.js";
 
 /**
  * syncAuthorizationCatalog 集成测试:真实 PG(testcontainers)验证从代码同步权限目录 + 标准 admin 角色。
- * 见 [权限层规范](../../../../docs/conventions/authorization.md) 数据生命周期。
+ * 见 [权限层规范](../../../../../docs/conventions/backend/authorization.md) 数据生命周期。
  */
 
 beforeEach(async () => {

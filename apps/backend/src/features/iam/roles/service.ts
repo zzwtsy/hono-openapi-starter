@@ -33,7 +33,6 @@ export const RoleService = {
     return toPermissionRefs(allPermissions.map(permission => permission.code));
   },
 
-  // --- 角色 ---
   async listRoles() {
     return db.select().from(roles).orderBy(asc(roles.name));
   },
@@ -44,8 +43,8 @@ export const RoleService = {
 
   async createRole(actor: IamActor, input: { name: string; description?: string }) {
     await assertSystemRootPermission(actor, "roles.create");
-    // 事务 + onConflictDoNothing + returning 判空:并发同名第二次 insert 冲突返回空,
-    // 抛 COMMON_CONFLICT 而非撞 DB unique 转 500(照 createUser 范本,B2 D4)。
+    // 事务 + onConflictDoNothing + returning 判空将并发同名冲突转换为稳定业务错误，
+    // 避免数据库 unique 异常泄漏为 500。
     const [role] = await db.transaction(async (tx) => {
       const [row] = await tx
         .insert(roles)
@@ -66,8 +65,7 @@ export const RoleService = {
     if (input.name === undefined && input.description === undefined) {
       return getRole(id);
     }
-    // 事务内 select 查重 + update:改名时查同组织(全局)重名排除自身,压窄 TOCTOU 窗口,
-    // unique 约束兜底(B2 D4)。createRole 已查重,update 原缺查重,改名撞 unique 会 500。
+    // 事务内查重压窄 TOCTOU 窗口，数据库 unique 约束继续兜底并发写入。
     return db.transaction(async (tx) => {
       if (input.name !== undefined) {
         const [clash] = await tx

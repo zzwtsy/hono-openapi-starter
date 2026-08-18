@@ -1,3 +1,10 @@
+/**
+ * 为生产首次部署创建唯一根组织、首个管理员账号和对应角色授权。
+ *
+ * 仅处理尚未完成初始化的环境，不负责重置既有账号或替换既有根组织。根组织、账号和授权
+ * 在同一事务中写入；权限目录同步在事务外独立完成。失败时命令以非零状态退出，并在结束时
+ * 尽力关闭数据库连接。
+ */
 import { randomUUID } from "node:crypto";
 import process from "node:process";
 
@@ -11,7 +18,6 @@ import { logger } from "@/core/logger/index.js";
 import { closeDb, db } from "@/db/client.js";
 import { account, organizations, user, userRoles } from "@/db/schema/index.js";
 
-/** 生产首次部署引导：原子创建根组织、首个管理员账号和角色授权。 */
 async function main() {
   const email = env.BOOTSTRAP_ADMIN_EMAIL;
   const password = env.BOOTSTRAP_ADMIN_PASSWORD;

@@ -1,7 +1,7 @@
 import type { AuditAction, AuditLog, ResourceRef } from "@/api/globals";
 
 /**
- * 审计时间格式:绝对时间 + 秒级精度(审计/合规场景,见 audit-frontend-polish-stage2 调研)。
+ * 审计时间使用绝对时间和秒级精度，避免审计与合规场景中的相对时间歧义。
  * 浏览器本地时区渲染;时区消歧由调用方列头标注(如「时间(本地)」)。
  * 模块级 formatter 避免每次 render 重建。
  */

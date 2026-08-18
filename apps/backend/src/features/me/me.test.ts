@@ -90,7 +90,7 @@ describe("me routes", () => {
     expect(mockListEffective).not.toHaveBeenCalled();
   });
 
-  // --- updateMe(PATCH /me)---
+  // updateMe（PATCH /me）。
 
   it("updateMe:未认证返回 401", async () => {
     mockGetSession.mockResolvedValue(null);
@@ -117,7 +117,7 @@ describe("me routes", () => {
     expect(mockUpdateMe).toHaveBeenCalledWith("u-1", { name: "新名字" });
   });
 
-  // --- changeMyPassword(POST /me/password)---
+  // changeMyPassword（POST /me/password）。
 
   it("changeMyPassword:未认证返回 401", async () => {
     mockGetSession.mockResolvedValue(null);

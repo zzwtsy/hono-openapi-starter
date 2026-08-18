@@ -15,7 +15,7 @@ import { resetDb } from "../../helpers/db.js";
 
 /**
  * checkPermission 集成测试:真实 PG(testcontainers)验证递归 CTE 的组织树继承、
- * deny 传播、过期过滤、多角色并集。见 [权限层规范](../../../../docs/conventions/authorization.md)。
+ * deny 传播、过期过滤、多角色并集。见 [权限层规范](../../../../../docs/conventions/backend/authorization.md)。
  *
  * 用全局 `db`:integration worker 里 `DATABASE_URL` 已被 globalSetup 指向容器。
  */

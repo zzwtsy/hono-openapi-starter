@@ -244,7 +244,7 @@ export function getAuditQueueStats(): AuditQueueStats {
   };
 }
 
-// --- 测试辅助(仅 vitest 使用,不在 index.ts 导出) ---
+// 测试辅助，仅供 Vitest 使用，不从 index.ts 导出。
 /** 重置队列内部状态(每个测试用例前调用,确保隔离)。 */
 export function __resetQueueForTest(): void {
   queue.length = 0;

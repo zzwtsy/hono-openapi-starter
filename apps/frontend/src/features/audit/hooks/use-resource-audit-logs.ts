@@ -7,8 +7,8 @@ import Apis from "@/api";
  * by-resource 时间线(cursor 分页,加载更多)。
  *
  * - 资源变化/挂载:useWatcher 自动重取首页(immediate + deps)
- * - 加载更多/刷新:手动 `send(cursor)`(cursor 作为请求参数,不放进 reactive state)
- *   —— 失败时 cursor 不变,再点一次重试同一页(旧实现 cursor 推进后失败无法重试)
+ * - 加载更多/刷新:手动 `send(cursor)`(cursor 作为请求参数,不放进 reactive state)，
+ *   失败时 cursor 保持不变，以便重试同一页
  * - 竞态:alova 默认 abortLast=true,data 只反映最近请求;onSuccess 里再用 requestRef
  *   校验资源一致(双保险),并按请求的 cursor 区分 替换(首页/刷新) vs append(加载更多)
  * - 资源切换时旧列表不展示:page 状态带 resourceKey,渲染时按当前 key 派生(无 reset effect)

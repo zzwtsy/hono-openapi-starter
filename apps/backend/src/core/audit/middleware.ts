@@ -208,9 +208,8 @@ export function audit(config: AuditConfig) {
 
     try {
       await next();
-      // Hono compose 在 handler 抛错时于最内层 dispatch 调用 errorHandler 并把错误挂到
-      // context.error,next() 正常 resolve —— 失败检测以 c.error + c.res.status 为准。
-      // (旧实现依赖 catch,errorCode 对 handler 抛错恒为 undefined——隐性 bug)
+      // Hono compose 在 handler 抛错时于最内层 dispatch 调用 errorHandler，并把错误挂到
+      // context.error；next() 仍正常 resolve，因此失败检测必须以 c.error + c.res.status 为准。
       ({ errorCode, status } = readAuditOutcome(c));
     } catch (e) {
       // 兜底:正常配置下 next() 不 reject(compose 内部消化),仅非 Error 抛错等边界走到这里。

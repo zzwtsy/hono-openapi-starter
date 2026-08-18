@@ -19,7 +19,6 @@ export const listUsersHandler: AppRouteHandler<ListUsersRoute> = async (c) => {
   return successResponse(c, items);
 };
 
-// --- 用户管理 ---
 export const createUserHandler: AppRouteHandler<CreateUserRoute> = async (c) => {
   const actor = requireOrgUser(c);
   const body = c.req.valid("json");

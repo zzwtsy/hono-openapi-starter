@@ -74,7 +74,7 @@ describe("IAM organization routes", () => {
     mockDeleteOrganization.mockImplementation(async () => requirePermission("organizations.delete"));
   });
 
-  // --- 组织列表 ---
+  // 组织列表。
   it("listOrganizations 无 organizations.read 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -93,7 +93,7 @@ describe("IAM organization routes", () => {
     expect(body.data[0].id).toBe("org-root");
   });
 
-  // --- 建组织 ---
+  // 创建组织。
   it("createOrganization 无 organizations.create 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -131,7 +131,7 @@ describe("IAM organization routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // --- 组织详情 ---
+  // 组织详情。
   it("getOrganization 无 organizations.read 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -159,7 +159,7 @@ describe("IAM organization routes", () => {
     expect(res.status).toBe(404);
   });
 
-  // --- 改组织 ---
+  // 修改组织。
   it("updateOrganization 无 organizations.update 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);
@@ -209,7 +209,7 @@ describe("IAM organization routes", () => {
     expect(res.status).toBe(409);
   });
 
-  // --- 删组织 ---
+  // 删除组织。
   it("deleteOrganization 无 organizations.delete 返回 403", async () => {
     authed();
     mockCheck.mockResolvedValue(false);

@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 
-// --- registry:配置项单一来源(类型 + 运行时 + 文档同源) ---
+// 配置 registry：类型、运行时与文档的单一来源。
 // 新增配置项:在 settingRegistry 加一行(key + valueSchema + description),schema 自动派生。
 // 与 AppPermissionRegistry 范式同构:一份 registry 驱动类型/运行时/OpenAPI 三者。
 //
@@ -32,7 +32,7 @@ const allValueSchemas = Object.values(settingRegistry as Record<string, SettingR
 /** 全部 key 的字面量数组(供 z.enum 构造 path 参数校验)。 */
 const allKeys = Object.keys(settingRegistry) as SettingKey[];
 
-// --- API schema ---
+// API schema。
 
 /**
  * key 路径参数:只接受 registry 里已声明的 key,未知 key 直接 400。

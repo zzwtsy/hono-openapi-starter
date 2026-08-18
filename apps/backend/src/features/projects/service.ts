@@ -7,12 +7,12 @@ import { generateId, projects } from "@/db/schema/index.js";
 /**
  * projects feature service:数据访问 + 业务规则。
  *
- * 中等 feature 直接用全局 `db`(见 [开发流程](../../../docs/conventions/development-workflow.md))。
+ * 中等 feature 直接用全局 `db`(见 [开发流程](../../../../../docs/conventions/backend/development-workflow.md))。
  * 权限检查由 `requirePermission` 中间件完成,service 只管数据查询与写操作的归属/重名校验。
  *
  * 归属 scope:所有写操作只作用于 `orgId` 本组织项目;跨组织一律 NOT_FOUND(不泄露存在性)。
  * 重名:同组织内 `name` 唯一,由 DB unique 约束 `projects_org_name_unq` 兜底,
- * service 写路径在事务内用 onConflict/查重显式抛 COMMON_CONFLICT(B2 D2);不同组织允许重名。
+ * service 写路径在事务内用 onConflict/查重显式抛 COMMON_CONFLICT；不同组织允许重名。
  */
 
 /** 取项目(带归属校验);不存在或不属于该组织抛 COMMON_NOT_FOUND。 */
@@ -44,8 +44,8 @@ export const ProjectService = {
 
   /** 创建项目;同组织内重名抛 COMMON_CONFLICT(事务 + onConflict 根除 TOCTOU)。 */
   async create(orgId: string, input: { name: string; description?: string }) {
-    // 事务 + onConflictDoNothing + returning 判空:并发同名第二次 insert 冲突返回空,
-    // 抛 COMMON_CONFLICT 而非撞 DB unique 转 500(照 createUser 范本,B2 D2)。
+    // 事务 + onConflictDoNothing + returning 判空将并发同名冲突转换为稳定业务错误，
+    // 避免数据库 unique 异常泄漏为 500。
     const [project] = await db.transaction(async (tx) => {
       const [row] = await tx
         .insert(projects)
@@ -69,7 +69,7 @@ export const ProjectService = {
     if (input.name === undefined && input.description === undefined) {
       return current;
     }
-    // 事务内 select 查重 + update:压窄 TOCTOU 窗口,unique 约束兜底(B2 D2)。
+    // 事务内查重压窄 TOCTOU 窗口，数据库 unique 约束继续兜底并发写入。
     return db.transaction(async (tx) => {
       if (input.name !== undefined) {
         const [conflict] = await tx

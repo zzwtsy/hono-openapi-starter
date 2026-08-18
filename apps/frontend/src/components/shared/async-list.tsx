@@ -16,10 +16,7 @@ interface AsyncListStateProps {
 }
 
 /**
- * 列表加载态:统一 loading(骨架)/ error(告警 + 重试)两态,
- * 消除各列表逐字复制的 early-return 样板(见 code-style §7)。
- *
- * 判定与原实现一致:仅在 `data === undefined`(无缓存)时显示骨架/告警,
+ * 仅在 `data === undefined`(无缓存)时显示骨架或错误告警；
  * 有缓存数据时直接渲染 children。空状态由 children 自行处理(各 feature 文案/图标不同)。
  */
 export function AsyncListState({ loading, error, data, onRetry, loadingFallback, errorDescription, errorTitle = "加载失败", children }: AsyncListStateProps): ReactNode {
