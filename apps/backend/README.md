@@ -122,8 +122,23 @@ pnpm --filter backend auth:generate:reference
 | 契约测试 | `pnpm --filter backend test:contract` | 验证 OpenAPI 契约 |
 | 集成测试 | `pnpm --filter backend test:integration` | 需要 Docker daemon |
 | 全部测试 | `pnpm --filter backend test:all` | 运行所有 Vitest project |
-| 构建 | `pnpm --filter backend build` | 输出到 `dist/` |
+| 构建 | `pnpm --filter backend build` | clean 后输出 JS、source map 与 migrations 到 `dist/` |
+| 生产 release | `pnpm package:backend` | 输出自包含的 `.artifacts/backend/` |
 | 生产启动 | `pnpm --filter backend start` | 运行已构建产物 |
+
+## 生产 release
+
+`pnpm --filter backend build` 只生成经过校验的 `dist/`，仍会使用 workspace 的依赖；它不是可独立搬运的部署包。生产交付使用：
+
+```sh
+pnpm package:backend
+```
+
+该命令先执行 clean build，再通过 `pnpm deploy --prod` 生成 `.artifacts/backend/`。release 顶层包含 `dist/`、隔离的 production `node_modules`、package metadata 和 dedicated lockfile，并显式排除 `.env`、日志、源码与测试；package metadata 仍声明 devDependencies，但 `--prod` 保证它们不被安装。部署时复制整个 release，不要只复制 `dist/` 或 workspace 符号链接。
+
+根 `.pnpmfile.cjs` 会在依赖解析阶段移除 Better Auth 1.6.23 中仅供测试和开发工具使用的 `vitest`、`drizzle-kit` optional peer，避免 workspace peer 去重把 Vite、TypeScript 和构建器带入生产包。`verify-release` 同时检查禁入 package 和 package instance 上限；升级 Better Auth 后如果上游元数据变化，必须重新核对依赖图，不能绕过门禁。开发日志美化器只在 development 模式动态加载并作为 devDependency 安装；production 使用 JSONL transport，release 内执行 migration/seed 的 test 模式使用 LogLayer 内置空 transport。
+
+release 内提供等价的 `start`、`migrate`、`bootstrap` package scripts，CI/local smoke 可以使用；生产宿主建议直接执行编译后的 Node.js 入口，并把工作目录、环境变量和日志状态放在不可变 release 外。migration 在切流前由独立 release job 执行一次；bootstrap 仅用于空生产环境首次初始化。
 
 ## 数据库命令
 
@@ -135,7 +150,7 @@ pnpm --filter backend auth:generate:reference
 | 首次部署管理员初始化 | `pnpm --filter backend db:bootstrap` |
 | 打开 Drizzle Studio | `pnpm --filter backend db:studio` |
 
-命令名称保留 `db:*` 便于使用，但实现入口位于 `src/commands/`；`db:bootstrap` 会在同一事务中创建首个用户、credential account 和 admin 角色授权。
+开发/workspace 命令名称保留 `db:*`，实现入口位于 `src/commands/`；production release 对应使用 compiled `migrate` / `bootstrap`。bootstrap 会在同一事务中创建首个用户、credential account 和 admin 角色授权。
 
 ## 相关文档
 

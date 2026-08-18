@@ -98,7 +98,7 @@ OpenAPI 不是附属品，而是 API contract 的源码真相。
 
 ## Playwright E2E 边界
 
-`apps/e2e` 是独立的验证 workspace，不属于 backend/frontend 生产运行时，也不向业务 feature 注入测试抽象。runner 负责临时 PostgreSQL、migration/seed、backend dist、Vite preview、认证状态和服务清理；测试只通过真实 HTTP 和浏览器行为验证跨层哨兵流程。
+`apps/e2e` 是独立的验证 workspace，不属于 backend/frontend 生产运行时，也不向业务 feature 注入测试抽象。runner 在仓库外生成带隔离 production dependencies 的 backend release，再负责临时 PostgreSQL、compiled migration/seed、backend release server、Vite preview、认证状态和服务清理；测试只通过真实 HTTP 和浏览器行为验证跨层哨兵流程。这一边界同时防止后端 release 缺失依赖时向上借用 workspace 根 `node_modules`。
 
 模板处于开发阶段时，E2E 只锁定认证、授权、Dashboard 和项目 CRUD 等高价值基线；新增业务 feature 应先补自身 unit/contract 测试，只有跨层回归风险明确时再增加 E2E 用例。浏览器失败产物保留在 `apps/e2e/test-results`，backend/Vite 日志保留在 `apps/e2e/service-logs`，不建立像素截图基线。
 

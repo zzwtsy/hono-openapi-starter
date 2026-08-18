@@ -60,10 +60,10 @@ lastReviewedAt: 2026-08-17
 
 E2E runner 位于 `apps/e2e`，不依赖开发者本地数据库：
 
-1. 预检查 `3001`、`5173` 端口，避免误连接已有服务。
-2. Testcontainers 启动临时 `postgres:16-alpine`。
-3. 构建 backend/frontend，执行 migration 与 `db:seed`。
-4. 启动 backend dist 和 Vite preview，同时等待服务响应与进程退出；服务在 ready 前退出时立即报告原始错误，不等待 120 秒超时。
+1. 预检查 backend/frontend 端口，避免误连接已有服务；默认 URL 是 `http://localhost:3001` 和 `http://localhost:5173`，显式设置 `E2E_BACKEND_URL` / `E2E_FRONTEND_URL` 可以选择隔离端口。
+2. 构建 frontend，并在仓库外生成、校验带 production dependencies 的 backend release。
+3. Testcontainers 启动临时 `postgres:16-alpine`，使用 release 内的 compiled command 执行 migration 与开发 seed。
+4. 启动 backend release 与 Vite preview，同时等待服务响应与进程退出；服务在 ready 前退出时立即报告原始错误，不等待 120 秒超时。
 5. 通过真实 API 准备 seed admin、独立 worker admin 和受限用户认证状态；setup 与各浏览器 project 使用不同 RFC 5737 测试 IP 作为限流 key。
 6. 运行 Playwright，失败时在 `test-results` 保留 screenshot、trace、video，在 `service-logs` 保留 backend/Vite 日志；SIGINT/SIGTERM 通过同一个 `AbortSignal` 协作取消当前命令或 readiness，finally 统一等待服务日志 flush 并清理进程和容器。
 

@@ -124,6 +124,7 @@ pnpm --filter frontend gen:api
 | 后端集成测试 | `pnpm --filter backend test:integration` |
 | 后端全部测试 | `pnpm --filter backend test:all` |
 | 后端构建 | `pnpm --filter backend build` |
+| 后端生产 release | `pnpm package:backend` |
 | 前端类型检查 | `pnpm --filter frontend typecheck` |
 | 前端测试 | `pnpm --filter frontend test` |
 | Playwright E2E | `pnpm test:e2e` |
@@ -132,7 +133,7 @@ pnpm --filter frontend gen:api
 | 执行数据库 migration | `pnpm --filter backend db:migrate` |
 | 打开 Drizzle Studio | `pnpm --filter backend db:studio` |
 
-后端集成测试和 Playwright E2E 都使用 Testcontainers，需要本机 Docker daemon 正常运行。E2E 会临时启动 PostgreSQL，执行 migration 与开发 seed，构建后端并以 dist、前端并以 Vite preview 启动真实服务；不会复用本地数据库。首次运行前安装目标浏览器，例如：
+后端集成测试和 Playwright E2E 都使用 Testcontainers，需要本机 Docker daemon 正常运行。E2E 会在仓库外生成独立 backend production release，使用其中的编译产物执行 migration、开发 seed 和服务启动，再以 Vite preview 启动前端；不会借用仓库根依赖或本地数据库。首次运行前安装目标浏览器，例如：
 
 ```sh
 pnpm --filter e2e exec playwright install chromium
@@ -142,23 +143,32 @@ pnpm --filter e2e exec playwright install chromium
 
 ## 生产首次初始化
 
-生产环境不要运行 `db:seed`。首次部署应在 `apps/backend/.env` 或部署平台中配置：
+生产环境不要运行 `db:seed`。先在与目标 OS/CPU 一致的 Node.js 24 构建环境生成 portable release：
+
+```sh
+pnpm package:backend
+```
+
+产物位于 `.artifacts/backend/`，包含编译后的 JavaScript、source map、Drizzle migrations 和隔离的 production dependencies；不包含 `.env`、日志、源码或测试，也不安装 package metadata 中声明的 devDependencies。发布校验还会拒绝 Vitest、Vite、TypeScript、Drizzle Kit 等非运行时工具链进入依赖图。将整个目录作为一个不可变版本发布，不要只复制 `dist/`。
+
+部署环境通过平台环境变量或 release 外的 EnvironmentFile 配置：
 
 - `NODE_ENV=production`
 - `BOOTSTRAP_ADMIN_EMAIL`
 - `BOOTSTRAP_ADMIN_PASSWORD`
 - `BOOTSTRAP_ROOT_ORG_ID`
 
-然后按以下顺序执行：
+解包到版本目录后，依次使用同一个候选 release 执行 migration、首次 bootstrap 和应用启动。生产入口直接使用 Node.js，不要求目标机安装 pnpm：
 
 ```sh
-pnpm --filter backend db:migrate
-pnpm --filter backend db:bootstrap
-pnpm --filter backend build
-pnpm --filter backend start
+node --enable-source-maps /opt/hono-openapi-starter/releases/<version>/dist/commands/migrate.js
+node --enable-source-maps /opt/hono-openapi-starter/releases/<version>/dist/commands/bootstrap-admin.js
+node --enable-source-maps /opt/hono-openapi-starter/releases/<version>/dist/index.js
 ```
 
-`db:bootstrap` 用于创建唯一系统根和第一个 admin。业务 API 只能创建子组织，不提供第二个根或替换根的入口。成功后应从部署环境中移除 `BOOTSTRAP_ADMIN_PASSWORD`，后续用户与授权通过管理界面或 API 维护。
+bootstrap 只用于空环境首次部署，负责创建唯一系统根和第一个 admin；普通版本发布不重复执行。业务 API 只能创建子组织，不提供第二个根或替换根的入口。成功后应从部署环境中移除 `BOOTSTRAP_ADMIN_PASSWORD`，后续用户与授权通过管理界面或 API 维护。
+
+migration 必须作为切流前的独立 release job 执行一次，不能由每个应用副本启动时并发执行。应用启动后等待 `/healthz` 与 `/readyz` 成功再切流；数据库变更继续遵循 expand/contract，应用回切不等于自动回滚 migration。
 
 生产环境默认不公开 `/openapi.json`，`/reference` 也不会挂载；确需公开 OpenAPI 时显式设置 `OPENAPI_PUBLIC=true`。
 

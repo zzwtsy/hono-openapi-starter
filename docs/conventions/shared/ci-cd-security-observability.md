@@ -28,7 +28,7 @@ lastReviewedAt: 2026-08-18
 实际 CI（`.github/workflows/ci.yml`，push main + PR 触发）使用三个并行 job：
 
 - `quality`：工具脚本测试、正式文档 frontmatter/链接、OpenAPI → Wormhole 生成物一致性和全仓 lint（含 boundary + format）；
-- `backend`：后端 typecheck、`test:all`（unit/integration/contract）和 build；
+- `backend`：后端 typecheck、`test:all`（unit/integration/contract），并生成、静态校验 portable production release；
 - `frontend`：前端 typecheck、test 和 build。
 
 三个 job 都使用 15 分钟超时、只读 `contents` 权限，并禁止 checkout 持久化凭据。PR 同一编号的新运行会取消旧运行；main push 不互相取消，避免主分支留下未验证状态。pnpm store 由 `actions/setup-node` 缓存，不缓存完整 `node_modules`。
@@ -38,7 +38,7 @@ lastReviewedAt: 2026-08-18
 - PR 和 main push 运行 Chromium；
 - 每周定时运行 Chromium、Firefox、WebKit；
 - 每个浏览器矩阵 job 在下载浏览器前先执行 E2E workspace typecheck 和无需 Docker/浏览器的 runner lifecycle 单测；
-- runner 使用 Testcontainers 临时 PostgreSQL，构建后端 dist 与前端 Vite preview，再运行代表性认证、授权、Dashboard 和项目 CRUD 哨兵流程；
+- runner 在仓库外生成 backend release，使用 release 内的 compiled migration/seed/server 与 Testcontainers 临时 PostgreSQL，构建前端 Vite preview，再运行代表性认证、授权、Dashboard 和项目 CRUD 哨兵流程；
 - 上传 `playwright-report`、`test-results`（screenshot/trace/video）和独立的 `service-logs`（backend/Vite），便于定位浏览器、前端或后端链路问题；服务日志不放进 Playwright 会清理的 outputDir。
 
 E2E 不并入根 `pnpm test`，避免 Docker 和浏览器启动成本拖慢本地快速回路；模板仍在开发期，因此只锁定跨层高价值基线，不把全部业务页面固化为长期门禁。
@@ -53,7 +53,9 @@ E2E 不并入根 `pnpm test`，避免 Docker 和浏览器启动成本拖慢本�
 
 第三方 Actions 固定到对应 major tag 当前解引用后的完整 commit SHA，行尾注释保留可读版本。`.github/dependabot.yml` 每周检查 `github-actions` 更新并把同批更新归组，避免 SHA 固定后失去自动升级路径。
 
-未实现：独立 route tests、通用 OpenAPI lint/validate、外部 SDK smoke test 和 deploy（模板无部署目标）。OpenAPI 静态导出和已提交前端生成物一致性已经是强制门禁，不能再描述为“未生成”。
+后端 build 与 production package 是两个门禁：build 只验证 clean dist、source map、alias 重写和 migration 资源；`pnpm package:backend` 再用 `pnpm deploy --prod` 生成带隔离 production dependencies 的 portable release。产物只允许 runtime 文件与 pnpm package metadata，不携带 `.env`、日志、源码或测试，也不安装 devDependencies。依赖解析阶段只修正 Better Auth 1.6.23 中与后端运行无关的 `vitest`、`drizzle-kit` optional peer；release 校验必须拒绝测试、编译和前端构建工具链，并用 package instance 上限阻止同类依赖图回归。E2E 必须从仓库外的临时 release 启动，避免向上解析 workspace 依赖而产生假通过。
+
+仍未实现：独立 route tests、通用 OpenAPI lint/validate、外部 SDK smoke test 和实际 deploy（模板无部署目标）。CI 生成 release 只证明产物可发布，不上传长期制品、不选择环境也不执行切流；OpenAPI 静态导出和已提交前端生成物一致性已经是强制门禁，不能再描述为“未生成”。
 
 ## OpenAPI CI
 
@@ -69,6 +71,8 @@ openapi-generator validate
 推荐额外做一次 SDK generation smoke test。
 
 ## 数据库迁移发布
+
+生产 migration 使用候选 release 内的 compiled command，在应用切流前由独立 release job 执行一次；禁止把 migration 放进每个应用副本的 startup。首次 bootstrap 也使用同一 release，但只在空环境人工执行，成功后移除 bootstrap password。
 
 使用 expand / contract 策略：
 
