@@ -33,3 +33,21 @@ export function hasActiveFilters(filters: AuditFilterState): boolean {
     || filters.from != null
     || filters.to != null;
 }
+
+/** 激活的筛选组数量；多个 action 仍算一个筛选组。 */
+export function countActiveFilterGroups(filters: AuditFilterState): number {
+  let count = 0;
+  if ((filters.actions?.length ?? 0) > 0) {
+    count += 1;
+  }
+  if (filters.status != null) {
+    count += 1;
+  }
+  if (filters.actorKeyword != null && filters.actorKeyword.trim() !== "") {
+    count += 1;
+  }
+  if (filters.from != null || filters.to != null) {
+    count += 1;
+  }
+  return count;
+}

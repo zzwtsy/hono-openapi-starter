@@ -19,6 +19,28 @@ const resourceTypeLabels: Record<string, string> = {
   setting: "配置",
 };
 
+const auditFieldLabels: Record<string, string> = {
+  id: "ID",
+  name: "名称",
+  email: "邮箱",
+  description: "描述",
+  orgId: "组织",
+  roleId: "角色",
+  disabled: "账号状态",
+  effect: "授权效果",
+  source: "来源",
+  createdAt: "创建时间",
+  updatedAt: "更新时间",
+  expiresAt: "过期时间",
+  permissionCodes: "权限",
+  roleIds: "角色",
+};
+const auditStringValueLabels: Record<string, Record<string, string>> = {
+  effect: { allow: "允许", deny: "拒绝" },
+  source: { code: "系统内置", instance: "自定义" },
+};
+const auditTimestampFields = new Set(["createdAt", "updatedAt", "expiresAt"]);
+
 /** 从审计条目组装时间线摘要(变更字段 / 失败原因)。失败优先:失败时 before 有值也不展示"变更"。 */
 export function formatAuditSummary(log: Pick<AuditLog, "status" | "errorCode" | "changedFields">): string {
   if (log.status === "failure") {
@@ -29,6 +51,43 @@ export function formatAuditSummary(log: Pick<AuditLog, "status" | "errorCode" | 
     return `变更：${changed.join(", ")}`;
   }
   return "";
+}
+
+/** 详情页首屏使用的自然语言事件摘要。 */
+export function formatAuditSentence(log: AuditLog, actions: readonly AuditAction[]): string {
+  const actor = formatActorName(log);
+  const action = getActionLabel(log.action, actions);
+  const resource = formatResourceRefs(log.resourceRefs) || "系统";
+  const result = log.status === "failure" ? `失败${log.errorCode == null ? "" : `（${log.errorCode}）`}` : "成功";
+  return `${actor} 对 ${resource} 执行“${action}”，结果为${result}。`;
+}
+
+export function formatAuditFieldLabel(field: string): string {
+  return auditFieldLabels[field] ?? field;
+}
+
+/** 将审计快照中的常见业务值转换为界面文案。 */
+export function formatAuditFieldValue(field: string, value: unknown, names?: Record<string, string>): string {
+  if (value == null) {
+    return "—";
+  }
+  if (typeof value === "string") {
+    const valueLabel = auditStringValueLabels[field]?.[value];
+    if (valueLabel != null) {
+      return valueLabel;
+    }
+    if (auditTimestampFields.has(field)) {
+      return formatAuditTime(value);
+    }
+    return names?.[field] ?? value;
+  }
+  if (typeof value === "boolean") {
+    if (field === "disabled") {
+      return value ? "已禁用" : "正常";
+    }
+    return value ? "是" : "否";
+  }
+  return typeof value === "number" ? String(value) : (JSON.stringify(value) ?? String(value));
 }
 
 /** 格式化时间(绝对时间 + 秒,如 `2026年7月1日 14:30:45`);无效日期回退原文。 */

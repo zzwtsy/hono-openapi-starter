@@ -7,6 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 
 /** 审计筛选用快捷预设；时间边界在打开 Popover 时解析，避免长驻页面使用过期的 now。 */
 export interface TimeRangePreset {
@@ -30,6 +31,8 @@ interface DateRangePickerProps {
   presets: readonly TimeRangePreset[];
   /** 范围变化统一出口；预设立即提交，自定义日历在点击“应用”后提交。 */
   onRangeChange: (from: string | undefined, to: string | undefined) => void;
+  /** 仅控制触发按钮布局。 */
+  className?: string;
 }
 
 const shortDateFormatter = new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" });
@@ -120,7 +123,7 @@ function getCalendarStartMonth(range: DateRange | undefined, today: Date, isWide
  * 适配:base-nova 无 asChild,触发用 render prop(date-picker.tsx 先例);
  * zhCN + weekStartsOn=1（项目约定）；禁未来日期；关闭弹层会丢弃未应用草稿。
  */
-export function DateRangePicker({ from, to, presets, onRangeChange }: DateRangePickerProps) {
+export function DateRangePicker({ from, to, presets, onRangeChange, className }: DateRangePickerProps) {
   const isWide = useMediaQuery("(min-width: 640px)");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>(() => toDateRange(from, to));
@@ -172,7 +175,7 @@ export function DateRangePicker({ from, to, presets, onRangeChange }: DateRangeP
             variant="outline"
             data-empty={from == null && to == null}
             aria-label="选择时间范围"
-            className="w-60 justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
+            className={cn("w-60 justify-start text-left font-normal data-[empty=true]:text-muted-foreground", className)}
             {...triggerProps}
           >
             <CalendarIcon data-icon="inline-start" aria-hidden="true" />

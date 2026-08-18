@@ -20,7 +20,7 @@ describe("AuditDiffList", () => {
       />,
     );
 
-    expect(screen.getByText("name")).toBeInTheDocument();
+    expect(screen.getByText("名称")).toBeInTheDocument();
     expect(screen.getByText("旧名")).toBeInTheDocument();
     expect(screen.getByText("新名")).toBeInTheDocument();
     // 值相同的 orgId 不进 diff
@@ -81,7 +81,7 @@ describe("AuditDiffList", () => {
     expect(screen.queryByText("_names")).not.toBeInTheDocument();
   });
 
-  it("数组输入:单行摘要(权限列表)", () => {
+  it("基础数组输入:只展示新增和移除项", () => {
     render(
       <AuditDiffList
         before={snap(["projects.read", "users.read"])}
@@ -90,9 +90,26 @@ describe("AuditDiffList", () => {
       />,
     );
 
-    // 数组内容以 JSON 形式出现在同一行(before/after 各一次,不逐项渲染 0/1 索引)
+    // 未变化项不重复展示，差异按新增/移除呈现。
     expect(screen.queryByText("0")).not.toBeInTheDocument();
-    expect(screen.getAllByText(/projects\.read/).length).toBeGreaterThan(0);
+    expect(screen.queryByText("projects.read")).not.toBeInTheDocument();
+    expect(screen.getByText("users.read")).toBeInTheDocument();
+    expect(screen.getByText("users.write")).toBeInTheDocument();
+  });
+
+  it("常见角色字段和值使用业务文案", () => {
+    render(
+      <AuditDiffList
+        before={snap(null)}
+        after={snap({ source: "instance", createdAt: "2026-08-18T12:30:45.000Z" })}
+        changedFields={["source", "createdAt"]}
+      />,
+    );
+
+    expect(screen.getByText("来源")).toBeInTheDocument();
+    expect(screen.getByText("自定义")).toBeInTheDocument();
+    expect(screen.getByText("创建时间")).toBeInTheDocument();
+    expect(screen.queryByText("instance")).not.toBeInTheDocument();
   });
 
   it("嵌套 JSON 使用生成的递归类型并按单字段展示", () => {
@@ -137,7 +154,7 @@ describe("AuditDiffList", () => {
     expect(screen.getByText(/旧名/)).toBeInTheDocument();
     expect(screen.getByText(/新名/)).toBeInTheDocument();
     fireEvent.click(screen.getByText("返回格式化视图"));
-    expect(screen.getByText("name")).toBeInTheDocument();
+    expect(screen.getByText("名称")).toBeInTheDocument();
   });
 
   it("空 diff:无变更数据占位", () => {

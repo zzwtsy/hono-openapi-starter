@@ -2,6 +2,7 @@ import type { AuditLog } from "@/api/globals";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatAuditFieldLabel, formatAuditFieldValue } from "../lib/format-diff";
 
 /**
  * 审计变更详情:结构化逐字段 diff(替代 JSON dump)。
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils";
  * - 变更标记:`<ins>` 新增(绿)/ `<del>` 删除(红)/ 值不同(蓝 + →)——颜色 + sr-only 前缀双通道,
  *   `<del>` 去默认删除线(低视力可读性);不靠颜色单独传达(WCAG 1.4.1)
  * - 值渲染:`_names` 关联名称优先于裸 id;对象/数组 JSON 截断 120 + 展开;长文本折叠
- * - 数组输入(before/after 为数组,如权限列表):单行摘要,不逐项 diff
+ * - 数组输入(before/after 为数组,如权限列表):基础值按新增/移除展示,复杂项回退整体 diff
  * - 「格式化 / 原始」切换兜底完整 JSON
  */
 
@@ -18,6 +19,7 @@ interface AuditDiffListProps {
   before: AuditLog["beforeState"];
   after: AuditLog["afterState"];
   changedFields?: AuditLog["changedFields"];
+  showRawToggle?: boolean;
 }
 
 /** 长值折叠阈值(字符),超出截断 + 展开按钮。 */
@@ -48,7 +50,7 @@ function valuesEqual(a: unknown, b: unknown): boolean {
   return false;
 }
 
-/** 收集 diff 行:数组输入返回单行摘要;对象输入按 changedFields/键并集逐字段判定。 */
+/** 收集 diff 行:数组输入按元素差异;对象输入按 changedFields/键并集逐字段判定。 */
 function collectRows(
   before: AuditLog["beforeState"],
   after: AuditLog["afterState"],
@@ -60,7 +62,7 @@ function collectRows(
   return collectObjectRows(before, after, changedFields);
 }
 
-/** 数组输入(权限列表等):单行摘要,不逐项 diff。 */
+/** 数组输入(权限列表等):基础值逐项展示新增/移除,复杂项保持整体 diff。 */
 function collectArrayRows(before: unknown, after: unknown): DiffRow[] {
   const hasBefore = Array.isArray(before);
   const hasAfter = Array.isArray(after);
@@ -73,7 +75,19 @@ function collectArrayRows(before: unknown, after: unknown): DiffRow[] {
   if (valuesEqual(before, after)) {
     return []; // 无变更
   }
+  if (isPrimitiveArray(before) && isPrimitiveArray(after)) {
+    const beforeSet = new Set(before.map(String));
+    const afterSet = new Set(after.map(String));
+    return [
+      ...before.filter(value => !afterSet.has(String(value))).map(value => ({ field: "值", kind: "removed" as const, before: value })),
+      ...after.filter(value => !beforeSet.has(String(value))).map(value => ({ field: "值", kind: "added" as const, after: value })),
+    ];
+  }
   return [{ field: "值", kind: "changed", before, after }];
+}
+
+function isPrimitiveArray(value: unknown): value is Array<string | number | boolean | null> {
+  return Array.isArray(value) && value.every(item => item == null || ["string", "number", "boolean"].includes(typeof item));
 }
 
 /** 对象输入:按 changedFields(过滤 `_names`)或键并集逐字段判定变更类型。 */
@@ -149,20 +163,6 @@ function namesOf(snapshot: unknown): Record<string, string> | undefined {
   return names;
 }
 
-/** 值渲染:_names 名称优先;对象/数组 JSON;标量 String;null -> "—"。 */
-function formatValue(field: string, value: unknown, names?: Record<string, string>): string {
-  if (value == null) {
-    return "—";
-  }
-  if (typeof value === "string") {
-    return names?.[field] ?? value;
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  return JSON.stringify(value) ?? String(value);
-}
-
 /** 长值折叠:超过阈值截断 + 展开按钮。 */
 function CollapsibleValue({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -197,7 +197,7 @@ const kindStyles: Record<ChangeKind, { wrapper: string; value: string; prefix: s
   },
 };
 
-export function AuditDiffList({ before, after, changedFields }: AuditDiffListProps) {
+export function AuditDiffList({ before, after, changedFields, showRawToggle = true }: AuditDiffListProps) {
   const [showRaw, setShowRaw] = useState(false);
   const rows = collectRows(before, after, changedFields);
 
@@ -218,7 +218,7 @@ export function AuditDiffList({ before, after, changedFields }: AuditDiffListPro
     return (
       <div className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">无变更数据。</p>
-        {before != null || after != null
+        {showRawToggle && (before != null || after != null)
           ? (
               <Button type="button" variant="ghost" size="sm" className="h-auto self-start p-0 text-xs" onClick={() => setShowRaw(true)}>
                 查看原始数据
@@ -233,12 +233,14 @@ export function AuditDiffList({ before, after, changedFields }: AuditDiffListPro
     <div className="flex flex-col gap-2">
       <dl className="flex flex-col gap-1.5">
         {rows.map(row => (
-          <DiffRowView key={row.field} row={row} before={before} after={after} />
+          <DiffRowView key={`${row.kind}-${row.field}-${JSON.stringify(row.before)}-${JSON.stringify(row.after)}`} row={row} before={before} after={after} />
         ))}
       </dl>
-      <Button type="button" variant="ghost" size="sm" className="h-auto self-start p-0 text-xs" onClick={() => setShowRaw(true)}>
-        查看原始数据
-      </Button>
+      {showRawToggle && (
+        <Button type="button" variant="ghost" size="sm" className="h-auto self-start p-0 text-xs" onClick={() => setShowRaw(true)}>
+          查看原始数据
+        </Button>
+      )}
     </div>
   );
 }
@@ -247,12 +249,12 @@ function DiffRowView({ row, before, after }: { row: DiffRow; before: AuditLog["b
   const style = kindStyles[row.kind];
   const beforeNames = namesOf(before);
   const afterNames = namesOf(after);
-  const beforeText = row.before !== undefined ? formatValue(row.field, row.before, beforeNames) : undefined;
-  const afterText = row.after !== undefined ? formatValue(row.field, row.after, afterNames) : undefined;
+  const beforeText = row.before !== undefined ? formatAuditFieldValue(row.field, row.before, beforeNames) : undefined;
+  const afterText = row.after !== undefined ? formatAuditFieldValue(row.field, row.after, afterNames) : undefined;
 
   return (
     <div className={cn("flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm", style.wrapper)}>
-      <dt className="w-28 shrink-0 truncate font-medium text-foreground">{row.field}</dt>
+      <dt className="w-28 shrink-0 truncate font-medium text-foreground">{formatAuditFieldLabel(row.field)}</dt>
       <dd className="contents">
         <span className="sr-only">{style.prefix}</span>
         <DiffValues kind={row.kind} beforeText={beforeText} afterText={afterText} valueClass={style.value} />

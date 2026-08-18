@@ -1,5 +1,7 @@
+import type { ResourceRef } from "@/api/globals";
+import type { AuditResourceNavigation } from "@/features/audit/components/audit-log-detail-sheet";
 import type { AuditSearch } from "@/features/audit/lib/audit-search";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/shared/page-header";
 import { AuditLogTable } from "@/features/audit/components/audit-log-table";
 import {
@@ -8,6 +10,7 @@ import {
   parseAuditSearchPage,
   parseAuditSearchPageSize,
 } from "@/features/audit/lib/audit-search";
+import { hasPermission } from "@/lib/permissions";
 import { requirePermission } from "@/lib/require-permission";
 
 export const Route = createFileRoute("/_authenticated/audit/")({
@@ -29,8 +32,10 @@ export const Route = createFileRoute("/_authenticated/audit/")({
 });
 
 function Audit() {
+  const { auth } = Route.useRouteContext();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const routerNavigate = useNavigate();
 
   /** 更新筛选/分页(search 唯一状态源;replace 不污染历史;非分页变更重置 page)。 */
   const handleSearchChange = (patch: Partial<AuditSearch>) => {
@@ -47,10 +52,29 @@ function Audit() {
     });
   };
 
+  const resolveResourceNavigation = (resource: ResourceRef): AuditResourceNavigation | undefined => {
+    if (resource.type === "user" && hasPermission(auth.permissionCodes, "users.read")) {
+      return { onNavigate: () => {
+        void routerNavigate({ to: "/iam/users", search: { user: resource.id, tab: "overview" } });
+      } };
+    }
+    if (resource.type === "role" && hasPermission(auth.permissionCodes, "roles.read")) {
+      return { onNavigate: () => {
+        void routerNavigate({ to: "/iam/roles", search: { role: resource.id } });
+      } };
+    }
+    if (resource.type === "org" && hasPermission(auth.permissionCodes, "organizations.read")) {
+      return { onNavigate: () => {
+        void routerNavigate({ to: "/iam/organizations", search: { org: resource.id } });
+      } };
+    }
+    return undefined;
+  };
+
   return (
     <div className="flex flex-1 min-h-0 flex-col gap-4 overflow-hidden p-6">
       <PageHeader title="操作日志" description="系统操作审计记录。" />
-      <AuditLogTable search={search} onSearchChange={handleSearchChange} />
+      <AuditLogTable search={search} onSearchChange={handleSearchChange} resolveResourceNavigation={resolveResourceNavigation} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { hasActiveFilters, presetToRange, TIME_PRESETS } from "./audit-filters";
+import { countActiveFilterGroups, hasActiveFilters, presetToRange, TIME_PRESETS } from "./audit-filters";
 
 describe("hasActiveFilters", () => {
   it("无筛选 false,有筛选 true", () => {
@@ -10,6 +10,18 @@ describe("hasActiveFilters", () => {
     expect(hasActiveFilters({ status: "failure" })).toBe(true);
     expect(hasActiveFilters({ actorKeyword: "  " })).toBe(false); // 纯空白不算
     expect(hasActiveFilters({ from: "2026-07-01T00:00:00.000Z" })).toBe(true);
+  });
+});
+
+describe("countActiveFilterGroups", () => {
+  it("多个 action 只算一个筛选组，时间起止也只算一个", () => {
+    expect(countActiveFilterGroups({
+      actions: ["auth.sign-in", "iam.role.create"],
+      status: "failure",
+      actorKeyword: "Admin",
+      from: "2026-07-01T00:00:00.000Z",
+      to: "2026-07-02T00:00:00.000Z",
+    })).toBe(4);
   });
 });
 

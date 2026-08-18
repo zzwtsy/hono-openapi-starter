@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, ComboboxTrigger } from "@/components/ui/combobox";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { presetToRange, TIME_PRESETS } from "../lib/audit-filters";
 
 const AUDIT_TIME_PRESETS: TimeRangePreset[] = TIME_PRESETS.map(preset => ({
@@ -14,6 +15,10 @@ const AUDIT_TIME_PRESETS: TimeRangePreset[] = TIME_PRESETS.map(preset => ({
   label: preset.label,
   resolveFrom: () => presetToRange(preset.key).from,
 }));
+const FILTER_LAYOUT_CLASSES = {
+  inline: { root: "flex-wrap items-center", action: "w-48", status: "w-32", date: undefined, actor: "w-44" },
+  stacked: { root: "flex-col items-stretch", action: "w-full", status: "w-full", date: "w-full", actor: "w-full" },
+} as const;
 
 interface AuditLogFiltersProps {
   actions: readonly AuditAction[];
@@ -31,6 +36,16 @@ interface AuditLogFiltersProps {
   /** 时间范围变化(预设/日历/清除统一入口),输出 ISO。 */
   onRangeChange: (from: string | undefined, to: string | undefined) => void;
   onReset: () => void;
+  layout?: "inline" | "stacked";
+  showReset?: boolean;
+}
+
+function hasResettableFilter(selectedActions: readonly string[], status: string | undefined, actorKeyword: string, from: string | undefined, to: string | undefined): boolean {
+  return [selectedActions.length > 0, status != null, actorKeyword.trim() !== "", from != null, to != null].includes(true);
+}
+
+function normalizeStatus(value: string | null): "success" | "failure" | undefined {
+  return value === "success" || value === "failure" ? value : undefined;
 }
 
 /** 筛选条:操作 + 结果 + 操作人 + 时间范围 + 重置(预设与日历收进 DateRangePicker)。 */
@@ -47,6 +62,8 @@ export function AuditLogFilters({
   onActorKeywordClear,
   onRangeChange,
   onReset,
+  layout = "inline",
+  showReset = true,
 }: AuditLogFiltersProps) {
   const actionItems = useMemo<AuditAction[]>(() => {
     const knownActions = new Set(actions.map(item => item.action));
@@ -68,7 +85,8 @@ export function AuditLogFilters({
   } else if (selectedActionItems.length > 1) {
     actionSummary = `已选 ${selectedActionItems.length} 项`;
   }
-  const canReset = selectedActions.length > 0 || status != null || actorKeyword.trim() !== "" || from != null || to != null;
+  const canReset = hasResettableFilter(selectedActions, status, actorKeyword, from, to);
+  const layoutClasses = FILTER_LAYOUT_CLASSES[layout];
 
   // Base UI Select 的 items prop 让 Value 按 label 渲染(Base UI 与 Radix 的差异,见 shadcn #9753)
   const statusItems = [
@@ -78,7 +96,7 @@ export function AuditLogFilters({
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={cn("flex gap-2", layoutClasses.root)}>
       <Combobox<AuditAction, true>
         items={actionItems}
         multiple
@@ -95,7 +113,7 @@ export function AuditLogFilters({
         <ComboboxTrigger
           aria-label="操作筛选"
           render={<Button type="button" variant="outline" />}
-          className="w-48 justify-between font-normal"
+          className={cn("justify-between font-normal", layoutClasses.action)}
         >
           <span className="min-w-0 flex-1 truncate text-left">{actionSummary}</span>
         </ComboboxTrigger>
@@ -118,9 +136,9 @@ export function AuditLogFilters({
       <Select
         items={statusItems}
         value={status ?? "all"}
-        onValueChange={v => onStatusChange(v == null || v === "all" ? undefined : v as "success" | "failure")}
+        onValueChange={v => onStatusChange(normalizeStatus(v))}
       >
-        <SelectTrigger aria-label="结果筛选" className="w-32"><SelectValue /></SelectTrigger>
+        <SelectTrigger aria-label="结果筛选" className={layoutClasses.status}><SelectValue /></SelectTrigger>
         <SelectContent align="start" alignItemWithTrigger={false}>
           <SelectGroup>
             {statusItems.map(item => (
@@ -134,8 +152,9 @@ export function AuditLogFilters({
         to={to}
         presets={AUDIT_TIME_PRESETS}
         onRangeChange={onRangeChange}
+        className={layoutClasses.date}
       />
-      <InputGroup className="w-44">
+      <InputGroup className={layoutClasses.actor}>
         <InputGroupInput
           aria-label="操作人姓名"
           name="actorKeyword"
@@ -155,7 +174,7 @@ export function AuditLogFilters({
           </InputGroupAddon>
         )}
       </InputGroup>
-      {canReset && (
+      {showReset && canReset && (
         <Button type="button" variant="ghost" size="sm" onClick={onReset}>
           <RotateCcw data-icon="inline-start" aria-hidden="true" />
           重置
