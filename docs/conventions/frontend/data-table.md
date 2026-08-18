@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: frontend
-lastReviewedAt: 2026-08-10
+lastReviewedAt: 2026-08-18
 ---
 
 # 前端 Data Table 约定
@@ -17,6 +17,12 @@ lastReviewedAt: 2026-08-10
 表格页面必须形成以下高度链：路由页 `overflow-hidden` → feature 根节点 `flex-1 min-h-0` → `DataTableFrame` → `DataTableViewport`。表体在 viewport 内滚动，表头吸顶；`DataTableFooter` 位于 viewport 外并始终渲染，因此加载、空数据和单页时分页位置不跳动。
 
 分页组件在没有数据时也保留，显示总数 0 并禁用页码跳转。服务端分页由 URL 持有 `page/pageSize`；客户端分页由表格组件持有 `PaginationState`。
+
+## 交互语义与移动视图
+
+- 数据行保持原生 `<tr>` 语义，不给整行添加 `role="button"`、`tabIndex`、点击或键盘处理。需要详情入口时，在固定操作单元格内放置带可访问名称的真实 `Button` 或 `Link`；行内其他链接、选择框和菜单因此不会与整行点击竞争。
+- 移动端不强制复用桌面列模型。列多、字段长或需要上下文摘要时，应在明确断点切换为语义列表/卡片；保留同一数据、筛选和分页状态所有权，避免仅靠横向滚动隐藏核心信息。
+- 移动列表优先呈现任务所需摘要和明确操作，技术字段按需进入详情层。空态、错误、加载和刷新行为必须与桌面视图一致。
 
 ## 列配置
 
@@ -37,6 +43,6 @@ localStorage key 为 `hono-openapi-starter:data-table:<tableId>:v1`，值只包�
 
 ## 分页边界
 
-- 审计：服务端 offset 分页，TanStack 使用 `manualPagination` + `rowCount/pageCount`，页容量 25/50/100，切换容量回到第 1 页。
+- 审计：服务端 offset 分页，桌面 TanStack 使用 `manualPagination` + `rowCount/pageCount`，页容量 25/50/100，切换容量回到第 1 页；移动端复用相同 URL 状态，使用紧凑上一页/下一页导航。
 - 项目：当前接口仍全量返回，TanStack 使用客户端 `paginatedRowModel`，页容量 10/25/50。它只减少 DOM 渲染，不改变接口传输规模。
 - 目前不启用排序、列宽、固定列（除操作列顺序约束）和虚拟滚动；需要时单独评估交互与性能边界。
