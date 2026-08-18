@@ -1,0 +1,40 @@
+name: Cleanup Actions runs
+
+on:
+  schedule:
+    - cron: "15 11 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 仅列出候选记录，不执行删除
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPOSITORY: ${{ github.repository }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+    steps:
+      - name: Delete completed runs older than 30 days
+        shell: bash
+        run: |
+          cutoff="$(date -u -d '30 days ago' +%Y-%m-%d)"
+          gh api --method GET "repos/${REPOSITORY}/actions/runs" \
+            -f status=completed -f created="<${cutoff}" -f per_page=100 \
+            --jq '.workflow_runs[].id' | while read -r run_id; do
+              if [[ "${DRY_RUN}" == "true" ]]; then
+                echo "would-delete ${run_id}"
+              else
+                gh api --method DELETE "repos/${REPOSITORY}/actions/runs/${run_id}"
+                echo "deleted ${run_id}"
+              fi
+            done
