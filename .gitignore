@@ -31,6 +31,7 @@ apps/e2e/service-logs/
 .turbo/
 .cache/
 .vitest/
+.artifacts/
 
 # Editors
 .vscode/*

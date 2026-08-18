@@ -2,11 +2,26 @@ import { createServer } from "node:http";
 
 import { expect, it } from "vitest";
 
+import { backendReleaseCommands } from "./backend-release.js";
 import { waitForService } from "./runner-lifecycle.js";
 
 async function pendingExit(): Promise<void> {
   await new Promise<void>(() => {});
 }
+
+it("backend release 只通过编译后的 Node 入口运行", () => {
+  const releaseRoot = "/tmp/backend-release";
+  const commands = backendReleaseCommands(releaseRoot);
+
+  expect(commands.migrate.cwd).toBe(releaseRoot);
+  expect(commands.migrate.args).toEqual([
+    "--enable-source-maps",
+    "/tmp/backend-release/dist/commands/migrate.js",
+  ]);
+  expect(commands.seed.args.at(-1)).toBe("/tmp/backend-release/dist/commands/seed-development.js");
+  expect(commands.server.args.at(-1)).toBe("/tmp/backend-release/dist/index.js");
+  expect(Object.values(commands).every(command => command.command === process.execPath)).toBe(true);
+});
 
 it("服务地址就绪后结束等待", async () => {
   const server = createServer((_request, response) => {

@@ -1,8 +1,9 @@
 /**
- * 编排 Playwright E2E 所需的一次性 PostgreSQL、构建/迁移、预览服务与统一清理。
+ * 编排 Playwright E2E 所需的临时 backend release、一次性 PostgreSQL 与预览服务。
  *
- * 仅负责基础设施生命周期，不定义测试断言；任一阶段失败或收到退出信号时停止后续阶段，
- * 并在 `run()` 的 finally 中回收子进程、完成日志 flush 和停止容器。
+ * 仅负责基础设施生命周期，不定义测试断言，也不复用 workspace 的 backend 运行时依赖；
+ * 任一阶段失败或收到退出信号时停止后续阶段，并在 `run()` 的 finally 中回收子进程、
+ * 完成日志 flush、停止容器并删除仓库外的临时 release。
  */
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import type { Buffer } from "node:buffer";
@@ -10,14 +11,16 @@ import type { Buffer } from "node:buffer";
 import type { ChildProcess } from "node:child_process";
 import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { finished } from "node:stream/promises";
 
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 
+import { backendReleaseCommands } from "./backend-release.js";
 import {
   BACKEND_URL,
   E2E_ROOT,
@@ -34,6 +37,7 @@ const CHILD_STOP_TIMEOUT_MS = 8_000;
 const children = new Set<ChildProcess>();
 const services = new Set<ManagedService>();
 let container: StartedPostgreSqlContainer | undefined;
+let backendReleaseTemporaryRoot: string | undefined;
 let shuttingDown = false;
 let requestedExitCode: number | undefined;
 const shutdownController = new AbortController();
@@ -226,7 +230,7 @@ function baseEnvironment(databaseUrl: string): NodeJS.ProcessEnv {
   return {
     ...process.env,
     NODE_ENV: "test",
-    PORT: "3001",
+    PORT: new URL(BACKEND_URL).port,
     DATABASE_URL: databaseUrl,
     LOG_LEVEL: "info",
     BETTER_AUTH_SECRET: "e2e-test-secret-at-least-32-characters-long",
@@ -255,6 +259,12 @@ async function stopAll(): Promise<void> {
       child.kill("SIGKILL");
     }
   }
+  if (backendReleaseTemporaryRoot != null) {
+    await rm(backendReleaseTemporaryRoot, { force: true, recursive: true }).catch((error) => {
+      process.stderr.write(`[e2e] failed to remove backend release: ${error instanceof Error ? error.message : String(error)}\n`);
+    });
+    backendReleaseTemporaryRoot = undefined;
+  }
 }
 
 async function prepareDirectories(): Promise<void> {
@@ -272,6 +282,29 @@ async function main(signal: AbortSignal): Promise<void> {
   await prepareDirectories();
   signal.throwIfAborted();
 
+  backendReleaseTemporaryRoot = await mkdtemp(path.join(tmpdir(), "hono-backend-release-"));
+  const backendRelease = path.join(backendReleaseTemporaryRoot, "backend");
+
+  await runCommand("backend build", "pnpm", ["--filter", "backend", "build"], REPO_ROOT, process.env, signal);
+  await runCommand(
+    "backend deploy",
+    "pnpm",
+    ["--filter", "backend", "--prod", "deploy", backendRelease],
+    REPO_ROOT,
+    process.env,
+    signal,
+  );
+  await runCommand(
+    "backend release verification",
+    process.execPath,
+    [path.join(REPO_ROOT, "scripts/backend/verify-release.mjs"), backendRelease],
+    REPO_ROOT,
+    process.env,
+    signal,
+  );
+  await runCommand("frontend build", "pnpm", ["--filter", "frontend", "build"], REPO_ROOT, process.env, signal);
+  signal.throwIfAborted();
+
   container = await new PostgreSqlContainer("postgres:16-alpine")
     .withDatabase("e2e")
     .withUsername("e2e")
@@ -280,25 +313,38 @@ async function main(signal: AbortSignal): Promise<void> {
   // Testcontainers 启动不接受 AbortSignal；返回后重新检查，让迟到容器进入 finally 清理。
   signal.throwIfAborted();
   const env = baseEnvironment(container.getConnectionUri());
+  const releaseCommands = backendReleaseCommands(backendRelease);
 
-  await runCommand("backend build", "pnpm", ["--filter", "backend", "build"], REPO_ROOT, env, signal);
-  await runCommand("frontend build", "pnpm", ["--filter", "frontend", "build"], REPO_ROOT, env, signal);
-  await runCommand("database migration", "pnpm", ["--filter", "backend", "db:migrate"], REPO_ROOT, env, signal);
+  await runCommand(
+    "database migration",
+    releaseCommands.migrate.command,
+    releaseCommands.migrate.args,
+    releaseCommands.migrate.cwd,
+    env,
+    signal,
+  );
   await runCommand(
     "development seed",
-    "pnpm",
-    ["--filter", "backend", "db:seed"],
-    REPO_ROOT,
+    releaseCommands.seed.command,
+    releaseCommands.seed.args,
+    releaseCommands.seed.cwd,
     { ...env, LOG_LEVEL: "silent" },
     signal,
   );
 
-  const backend = startService("backend", "pnpm", ["--filter", "backend", "start"], REPO_ROOT, env, signal);
+  const backend = startService(
+    "backend",
+    releaseCommands.server.command,
+    releaseCommands.server.args,
+    releaseCommands.server.cwd,
+    env,
+    signal,
+  );
   await waitForService(backend, `${BACKEND_URL}/readyz`, signal);
   const frontend = startService(
     "frontend",
     "pnpm",
-    ["--filter", "frontend", "exec", "vite", "preview", "--host", "127.0.0.1", "--port", "5173", "--strictPort"],
+    ["--filter", "frontend", "exec", "vite", "preview", "--host", "127.0.0.1", "--port", new URL(FRONTEND_URL).port, "--strictPort"],
     REPO_ROOT,
     env,
     signal,

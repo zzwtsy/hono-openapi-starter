@@ -8,8 +8,8 @@ export const TEST_RESULTS_DIR = path.join(E2E_ROOT, "test-results");
 // Playwright 会清空 outputDir；服务日志必须独立保存，避免测试启动时被删除。
 export const SERVICE_LOG_DIR = path.join(E2E_ROOT, "service-logs");
 
-export const BACKEND_URL = "http://localhost:3001";
-export const FRONTEND_URL = "http://localhost:5173";
+export const BACKEND_URL = process.env.E2E_BACKEND_URL ?? "http://localhost:3001";
+export const FRONTEND_URL = process.env.E2E_FRONTEND_URL ?? "http://localhost:5173";
 
 export const SEED_ADMIN = {
   email: "dev@example.com",

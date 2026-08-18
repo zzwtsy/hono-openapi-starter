@@ -61,8 +61,8 @@ jobs:
         run: pnpm --filter backend typecheck
       - name: Test backend
         run: pnpm --filter backend test:all
-      - name: Build backend
-        run: pnpm --filter backend build
+      - name: Package backend release
+        run: pnpm package:backend
 
   frontend:
     runs-on: ubuntu-latest

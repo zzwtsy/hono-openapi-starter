@@ -14,6 +14,7 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "openapi:generated:check": "node scripts/openapi/check-generated.mjs",
+    "package:backend": "node scripts/backend/clean-release.mjs && pnpm --filter backend build && pnpm --filter backend --prod deploy .artifacts/backend && node scripts/backend/verify-release.mjs",
     "test": "pnpm test:scripts && pnpm --filter backend test && pnpm --filter frontend test",
     "test:e2e": "pnpm --filter e2e test",
     "test:scripts": "vitest run scripts",

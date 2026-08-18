@@ -95,6 +95,7 @@ export default antfu(
       "**/*.md",
       "**/.agents/**",
       // 生成物和不可手改的数据库产物。
+      ".artifacts/**",
       "apps/frontend/src/routeTree.gen.ts",
       "apps/backend/src/db/migrations",
       "apps/backend/src/db/schema/auth-schema.ts",
