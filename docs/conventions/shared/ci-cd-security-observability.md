@@ -1,7 +1,7 @@
 ---
 status: Active
 owner: backend-platform
-lastReviewedAt: 2026-08-18
+lastReviewedAt: 2026-08-19
 ---
 
 # CI/CD、安全与可观测性
@@ -53,7 +53,7 @@ E2E 不并入根 `pnpm test`，避免 Docker 和浏览器启动成本拖慢本�
 
 第三方 Actions 固定到对应 major tag 当前解引用后的完整 commit SHA，行尾注释保留可读版本。`.github/dependabot.yml` 每周检查 `github-actions` 更新并把同批更新归组，避免 SHA 固定后失去自动升级路径。
 
-后端 build 与 production package 是两个门禁：build 只验证 clean dist、source map、alias 重写和 migration 资源；`pnpm package:backend` 再用 `pnpm deploy --prod` 生成带隔离 production dependencies 的 portable release。产物只允许 runtime 文件与 pnpm package metadata，不携带 `.env`、日志、源码或测试，也不安装 devDependencies。依赖解析阶段只修正 Better Auth 1.6.23 中与后端运行无关的 `vitest`、`drizzle-kit` optional peer；release 校验必须拒绝测试、编译和前端构建工具链，并用 package instance 上限阻止同类依赖图回归。E2E 必须从仓库外的临时 release 启动，避免向上解析 workspace 依赖而产生假通过。
+后端 build 与 production package 是两个门禁：build 以 Node.js 24 对应的 `ES2024` target 和受控 `ESNext.*` lib 编译，启用 `noEmitOnError`，并验证 clean dist、source map、alias 重写、已发射本地 import 的目标完整性和 migration 资源；`pnpm package:backend` 再用 `pnpm deploy --prod` 生成带隔离 production dependencies 的 portable release。产物只允许 runtime 文件与 pnpm package metadata，不携带 `.env`、日志、源码或测试，也不安装 devDependencies；release manifest 的 `engines.node` 必须与仓库根运行时契约一致。依赖解析阶段只修正 Better Auth 1.6.23 中与后端运行无关的 `vitest`、`drizzle-kit` optional peer；release 校验必须拒绝测试、编译和前端构建工具链，并用 package instance 上限阻止同类依赖图回归。E2E 必须从仓库外的临时 release 启动，避免向上解析 workspace 依赖而产生假通过。
 
 仍未实现：独立 route tests、通用 OpenAPI lint/validate、外部 SDK smoke test 和实际 deploy（模板无部署目标）。CI 生成 release 只证明产物可发布，不上传长期制品、不选择环境也不执行切流；OpenAPI 静态导出和已提交前端生成物一致性已经是强制门禁，不能再描述为“未生成”。
 
