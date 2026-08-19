@@ -4,6 +4,7 @@
     "rootDir": "./src",
     "inlineSourceMap": false,
     "inlineSources": false,
+    "noEmitOnError": true,
     "outDir": "./dist",
     "sourceMap": true
   },

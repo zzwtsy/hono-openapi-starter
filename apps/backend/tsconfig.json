@@ -1,8 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2024",
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
+    "lib": [
+      "ES2024",
+      "ESNext.Array",
+      "ESNext.Collection",
+      "ESNext.Error",
+      "ESNext.Iterator",
+      "ESNext.Promise"
+    ],
     "module": "NodeNext",
     "paths": {
       "@/*": ["./src/*"]

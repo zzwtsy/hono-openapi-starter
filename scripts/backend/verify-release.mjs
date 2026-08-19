@@ -10,7 +10,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { assertContainedPath, backendRelease } from "./artifact-paths.mjs";
+import { assertContainedPath, backendRelease, repoRoot } from "./artifact-paths.mjs";
 import { verifyDist, verifySymlinkContainment } from "./artifact-validation.mjs";
 
 const forbiddenProductionPackages = new Set([
@@ -42,6 +42,15 @@ async function pathExists(candidate) {
 
 function dependencyPath(nodeModules, dependency) {
   return path.join(nodeModules, ...dependency.split("/"));
+}
+
+async function readRequiredNodeEngine() {
+  const rootPackageJson = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
+  const nodeEngine = rootPackageJson.engines?.node;
+  if (typeof nodeEngine !== "string" || nodeEngine.length === 0) {
+    throw new Error("root package is missing the required Node.js engine");
+  }
+  return nodeEngine;
 }
 
 async function inspectVirtualStore(nodeModules) {
@@ -100,6 +109,12 @@ export async function verifyRelease(releaseRoot) {
   await verifyDist(path.join(root, "dist"));
 
   const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  const requiredNodeEngine = await readRequiredNodeEngine();
+  if (packageJson.engines?.node !== requiredNodeEngine) {
+    throw new Error(
+      `backend release Node.js engine must be ${requiredNodeEngine}; received ${packageJson.engines?.node ?? "missing"}`,
+    );
+  }
   const dependencies = Object.keys(packageJson.dependencies ?? {});
   const devDependencies = Object.keys(packageJson.devDependencies ?? {});
   const nodeModules = path.join(root, "node_modules");

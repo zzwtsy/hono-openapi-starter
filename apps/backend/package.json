@@ -5,6 +5,9 @@
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "node ../../scripts/backend/clean-dist.mjs && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node ../../scripts/backend/copy-runtime-assets.mjs && node ../../scripts/backend/verify-dist.mjs",

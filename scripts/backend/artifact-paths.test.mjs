@@ -1,10 +1,10 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { expect, it } from "vitest";
 
-import { assertContainedPath, assertFixedPath } from "./artifact-paths.mjs";
+import { assertContainedPath, assertFixedPath, repoRoot } from "./artifact-paths.mjs";
 import { validateMigrationFiles, verifyDist } from "./artifact-validation.mjs";
 import { verifyRelease } from "./verify-release.mjs";
 
@@ -36,6 +36,15 @@ async function writeVirtualStorePackage(root, name, version = "1.0.0") {
   return path.join(root, "node_modules/.pnpm", virtualStoreName);
 }
 
+async function validReleasePackage() {
+  const rootPackageJson = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
+  return {
+    dependencies: {},
+    devDependencies: {},
+    engines: { node: rootPackageJson.engines.node },
+  };
+}
+
 it("固定路径和子路径校验拒绝漂移或越界", () => {
   expect(() => assertFixedPath("/repo/apps/backend/dist", "/repo/apps/backend/dist", "dist")).not.toThrow();
   expect(() => assertFixedPath("/repo", "/repo/apps/backend/dist", "dist")).toThrow("must resolve");
@@ -59,8 +68,18 @@ it("dist 校验拒绝禁入文件和未重写 alias", async () => {
     await expect(verifyDist(root)).rejects.toThrow("forbidden files");
     await rm(path.join(root, ".env"));
 
+    await writeFixtureFile(root, "support.js", "export default true;\n");
+    await writeFile(path.join(root, "index.js"), "import value from './support.js';\nvoid value;\n");
+    await expect(verifyDist(root)).resolves.toContain("support.js");
+
+    await rm(path.join(root, "support.js"));
+    await expect(verifyDist(root)).rejects.toThrow("import target is missing: index.js -> ./support.js");
+
+    await writeFile(path.join(root, "index.js"), "import '../outside.js';\n");
+    await expect(verifyDist(root)).rejects.toThrow("import escapes dist: index.js -> ../outside.js");
+
     await writeFile(path.join(root, "index.js"), "import x from '@/config.js';\n");
-    await expect(verifyDist(root)).rejects.toThrow("unresolved path alias");
+    await expect(verifyDist(root)).rejects.toThrow("unresolved path alias: index.js -> @/config.js");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -73,8 +92,21 @@ it("release 校验拒绝顶层杂项和逃逸 symlink", async () => {
     await mkdir(path.join(release, "node_modules"), { recursive: true });
     await writeValidDist(path.join(release, "dist"));
     await writeVirtualStorePackage(release, "hono");
-    await writeFixtureFile(release, "package.json", JSON.stringify({ dependencies: {}, devDependencies: {} }));
+    const packageJson = await validReleasePackage();
+    await writeFixtureFile(release, "package.json", JSON.stringify(packageJson));
     await expect(verifyRelease(release)).resolves.toMatchObject({ dependencies: 0, packageInstances: 1 });
+
+    const missingEnginePackageJson = structuredClone(packageJson);
+    delete missingEnginePackageJson.engines;
+    await writeFile(path.join(release, "package.json"), JSON.stringify(missingEnginePackageJson));
+    await expect(verifyRelease(release)).rejects.toThrow("Node.js engine must be");
+
+    await writeFile(path.join(release, "package.json"), JSON.stringify({
+      ...packageJson,
+      engines: { node: ">=25 <26" },
+    }));
+    await expect(verifyRelease(release)).rejects.toThrow("received >=25 <26");
+    await writeFile(path.join(release, "package.json"), JSON.stringify(packageJson));
 
     await writeFixtureFile(release, ".env", "SECRET=not-read");
     await expect(verifyRelease(release)).rejects.toThrow("forbidden top-level entries");
